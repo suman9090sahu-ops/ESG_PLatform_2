@@ -4,7 +4,7 @@ Includes Phase 01 Core & UI showcase routes, Phase 02 Authentication & RBAC rout
 """
 
 from django.urls import path
-from apps.core import auth_views, org_views, views
+from apps.core import auth_views, org_views, period_views, views
 
 app_name = "core"
 
@@ -62,4 +62,14 @@ urlpatterns = [
     path("organization/sites/<int:site_id>/", org_views.site_detail_view, name="org_site_detail"),
     path("organization/sites/<int:site_id>/edit/", org_views.site_edit_view, name="org_site_edit"),
     path("organization/sites/<int:site_id>/deactivate/", org_views.site_deactivate_view, name="org_site_deactivate"),
+
+    # -------------------------------------------------------------------------
+    # Phase 04 Reporting Period Management Routes (/reporting-periods/...)
+    # -------------------------------------------------------------------------
+    path("reporting-periods/", period_views.period_list_view, name="period_list"),
+    path("reporting-periods/create/", period_views.period_create_view, name="period_create"),
+    path("reporting-periods/<int:period_id>/", period_views.period_detail_view, name="period_detail"),
+    path("reporting-periods/<int:period_id>/edit/", period_views.period_edit_view, name="period_edit"),
+    path("reporting-periods/<int:period_id>/status/", period_views.period_status_transition_view, name="period_status_transition"),
 ]
+

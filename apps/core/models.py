@@ -546,6 +546,9 @@ class AuthAuditLog(models.Model):
         ORGANIZATION_CREATED = "ORGANIZATION_CREATED", "Organization Entity Created"
         ORGANIZATION_UPDATED = "ORGANIZATION_UPDATED", "Organization Entity Updated"
         ORGANIZATION_DEACTIVATED = "ORGANIZATION_DEACTIVATED", "Organization Entity Deactivated"
+        PERIOD_CREATED = "PERIOD_CREATED", "Reporting Period Created"
+        PERIOD_UPDATED = "PERIOD_UPDATED", "Reporting Period Updated"
+        PERIOD_STATUS_CHANGED = "PERIOD_STATUS_CHANGED", "Reporting Period Status Changed"
 
     user = models.ForeignKey(
         User,
@@ -571,3 +574,213 @@ class AuthAuditLog(models.Model):
     def __str__(self):
         status = "SUCCESS" if self.success else "FAILURE"
         return f"[{self.created_at:%Y-%m-%d %H:%M:%S}] {self.event_type} - {self.username_attempted or (self.user.username if self.user else 'Anonymous')} ({status})"
+
+
+# -----------------------------------------------------------------------------
+# PHASE 04: REPORTING PERIODS & TEMPORAL GOVERNANCE
+# -----------------------------------------------------------------------------
+
+class PeriodStatus(models.TextChoices):
+    DRAFT = "DRAFT", "Draft"
+    OPEN = "OPEN", "Open"
+    CLOSED = "CLOSED", "Closed"
+    LOCKED = "LOCKED", "Locked"
+    FINALIZED = "FINALIZED", "Finalized"
+
+
+class ReportingPeriod(models.Model):
+    """
+    Reporting Period Domain Model for MEIL ESG CONTROL TOWER.
+
+    Establishes the authoritative temporal boundary for:
+    - ESG Activity Data Entry
+    - Evidence Ingestion & Verification
+    - Scope 1, Scope 2, Scope 3 Emission Accounting
+    - Consolidation & SEBI BRSR Reporting
+    - Audit Assurance & Data Lineage
+    """
+
+    ALLOWED_TRANSITIONS = {
+        PeriodStatus.DRAFT: [PeriodStatus.OPEN],
+        PeriodStatus.OPEN: [PeriodStatus.CLOSED],
+        PeriodStatus.CLOSED: [PeriodStatus.OPEN, PeriodStatus.LOCKED],
+        PeriodStatus.LOCKED: [PeriodStatus.CLOSED, PeriodStatus.FINALIZED],
+        PeriodStatus.FINALIZED: [],
+    }
+
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.PROTECT,
+        related_name="reporting_periods",
+        help_text="Organizational enterprise company scope.",
+    )
+    subsidiary = models.ForeignKey(
+        Subsidiary,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="reporting_periods",
+        help_text="Optional subsidiary division scope (if null, applies enterprise-wide across company).",
+    )
+    code = models.CharField(
+        max_length=50,
+        help_text="Stable period identifier (e.g. FY2025-26 or FY2025-Q1).",
+    )
+    name = models.CharField(
+        max_length=150,
+        help_text="Descriptive period label (e.g. FY 2025-26 Annual ESG Cycle).",
+    )
+    fiscal_year = models.CharField(
+        max_length=50,
+        help_text="Fiscal year label (e.g. FY 2025-26).",
+    )
+    start_date = models.DateField(
+        help_text="Period start date (inclusive). Authoritative temporal boundary.",
+    )
+    end_date = models.DateField(
+        help_text="Period end date (inclusive). Authoritative temporal boundary.",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=PeriodStatus.choices,
+        default=PeriodStatus.DRAFT,
+        db_index=True,
+        help_text="Controlled lifecycle state.",
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="Operational notes or compliance reporting guidelines.",
+    )
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_reporting_periods",
+        help_text="User who initiated this reporting cycle.",
+    )
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="updated_reporting_periods",
+        help_text="User who last updated or transitioned this period.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Reporting Period"
+        verbose_name_plural = "Reporting Periods"
+        ordering = ["-start_date", "code"]
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(start_date__lt=models.F("end_date")),
+                name="check_period_start_before_end",
+            ),
+            models.UniqueConstraint(
+                fields=["company", "code"],
+                name="unique_company_period_code",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["company", "status"], name="idx_period_company_status"),
+            models.Index(fields=["start_date", "end_date"], name="idx_period_dates"),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.code})"
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        super().clean()
+        if self.start_date and self.end_date:
+            if self.start_date >= self.end_date:
+                raise ValidationError({
+                    "end_date": "End date must be strictly after start date."
+                })
+
+            # Overlapping period validation:
+            # Prevent conflicting reporting periods within the same organizational scope
+            if self.company_id:
+                qs = ReportingPeriod.objects.filter(company_id=self.company_id)
+                if self.pk:
+                    qs = qs.exclude(pk=self.pk)
+
+                if self.subsidiary_id:
+                    qs = qs.filter(
+                        models.Q(subsidiary_id=self.subsidiary_id) | models.Q(subsidiary__isnull=True)
+                    )
+                else:
+                    # Enterprise period covers all subsidiaries or other enterprise periods
+                    pass
+
+                conflicting = qs.filter(
+                    start_date__lte=self.end_date,
+                    end_date__gte=self.start_date,
+                ).first()
+
+                if conflicting:
+                    raise ValidationError(
+                        f"Reporting period dates ({self.start_date} to {self.end_date}) overlap with "
+                        f"existing period '{conflicting.name}' ({conflicting.code}: {conflicting.start_date} to {conflicting.end_date})."
+                    )
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
+    @property
+    def is_draft(self):
+        return self.status == PeriodStatus.DRAFT
+
+    @property
+    def is_open(self):
+        return self.status == PeriodStatus.OPEN
+
+    @property
+    def is_closed(self):
+        return self.status == PeriodStatus.CLOSED
+
+    @property
+    def is_locked(self):
+        return self.status == PeriodStatus.LOCKED
+
+    @property
+    def is_finalized(self):
+        return self.status == PeriodStatus.FINALIZED
+
+    @property
+    def allows_data_entry(self):
+        """Operational data entry is permitted ONLY when period is explicitly OPEN."""
+        return self.status == PeriodStatus.OPEN
+
+    @property
+    def allows_data_modification(self):
+        """Data modifications are permitted ONLY when period is OPEN."""
+        return self.status == PeriodStatus.OPEN
+
+    @property
+    def allows_metadata_edit(self):
+        """Period configuration can be edited in DRAFT, OPEN, or CLOSED state, but NOT once LOCKED or FINALIZED."""
+        return self.status in [PeriodStatus.DRAFT, PeriodStatus.OPEN, PeriodStatus.CLOSED]
+
+    def get_allowed_transitions(self):
+        return self.ALLOWED_TRANSITIONS.get(self.status, [])
+
+    def can_transition_to(self, target_status):
+        return target_status in self.get_allowed_transitions()
+
+    @property
+    def status_badge_class(self):
+        badge_map = {
+            PeriodStatus.DRAFT: "badge-secondary",
+            PeriodStatus.OPEN: "badge-success",
+            PeriodStatus.CLOSED: "badge-warning",
+            PeriodStatus.LOCKED: "badge-danger",
+            PeriodStatus.FINALIZED: "badge-info",
+        }
+        return badge_map.get(self.status, "badge-secondary")
+

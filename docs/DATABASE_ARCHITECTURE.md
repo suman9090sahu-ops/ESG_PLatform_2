@@ -159,3 +159,43 @@ subsidiary.parent_company # -> Company
    - Adds `OrganizationStatus` lifecycle state choices (`ACTIVE`, `INACTIVE`, `CLOSED`) with database indexes.
    - Adds legal names, short names, countries, registered addresses, facility types, GPS coordinates, timelines, and contact attributes.
    - Enriches `AuthAuditLog` with `ORGANIZATION_CREATED`, `ORGANIZATION_UPDATED`, `ORGANIZATION_DEACTIVATED` event types.
+3. `core.0003_alter_authauditlog_event_type_reportingperiod`:
+   - Adds `ReportingPeriod` model with `CheckConstraint` (`start_date < end_date`), `UniqueConstraint` (`(company, code)`), and composite indexes.
+   - Enriches `AuthAuditLog` with `PERIOD_CREATED`, `PERIOD_UPDATED`, `PERIOD_STATUS_CHANGED` event types.
+
+---
+
+## 7. Reporting Periods & Temporal Governance (Phase 04)
+
+Reporting periods define the authoritative temporal boundaries for ESG activities, evidence ingestion, emission calculations, consolidation, and SEBI BRSR reporting.
+
+```text
++-------------------------------------------------------------+
+|                      ReportingPeriod                        |
+|  - id (BigAutoField, PK)                                    |
+|  - company_id (FK -> Company.id, PROTECT)                   |
+|  - subsidiary_id (FK -> Subsidiary.id, PROTECT, NULL)       |
+|  - code (VARCHAR(50), e.g. FY2025-26)                       |
+|  - name (VARCHAR(150), e.g. FY 2025-26 Annual ESG Cycle)   |
+|  - fiscal_year (VARCHAR(50), e.g. FY 2025-26)               |
+|  - start_date (DATE, inclusive)                             |
+|  - end_date (DATE, inclusive)                               |
+|  - status (VARCHAR(20), DRAFT/OPEN/CLOSED/LOCKED/FINALIZED) |
+|  - description (TEXT)                                       |
+|  - created_by (FK -> User.id, SET_NULL)                     |
+|  - updated_by (FK -> User.id, SET_NULL)                     |
+|  - created_at, updated_at (TIMESTAMPTZ)                     |
++-------------------------------------------------------------+
+```
+
+### Constraints & Integrity Rules
+- **CheckConstraint**: `check=Q(start_date < end_date)` ensures start date is strictly before end date.
+- **UniqueConstraint**: `unique_together = (company, code)` prevents duplicate period codes per company.
+- **Overlap Prevention**: Enforced at application and service layer; prevents overlapping date ranges within the same company and subsidiary scope.
+- **Controlled Lifecycle**:
+  `DRAFT` -> `OPEN` -> `CLOSED` -> `LOCKED` -> `FINALIZED`
+  Reopening supported: `CLOSED -> OPEN`, `LOCKED -> CLOSED`.
+  `FINALIZED` is an immutable terminal regulatory state.
+- **Data Protection**:
+  Operational data entry (`allows_data_entry`) is permitted ONLY when `status == OPEN`.
+

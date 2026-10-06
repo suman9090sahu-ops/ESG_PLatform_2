@@ -1,0 +1,250 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block page_actions %}
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'core:period_list' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="icon-arrow-left me-1"></i> All Periods
+    </a>
+    {% if allows_edit %}
+      <a href="{% url 'core:period_edit' period_id=period.id %}" class="btn btn-sm btn-outline-primary">
+        <i class="icon-pencil me-1"></i> Edit Parameters
+      </a>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="row g-3 mb-4">
+    <!-- Period Details & Metadata -->
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <h6 class="mb-0 fw-bold text-dark"><i class="icon-calendar text-primary me-2"></i> Temporal Boundary &amp; Governance Specification</h6>
+          <span class="badge bg-light text-dark border font-monospace">{{ period.code }}</span>
+        </div>
+        <div class="card-body">
+          <dl class="row mb-0">
+            <dt class="col-sm-4 text-muted small">Period Title</dt>
+            <dd class="col-sm-8 fw-bold text-dark">{{ period.name }}</dd>
+
+            <dt class="col-sm-4 text-muted small">Stable Identifier (Code)</dt>
+            <dd class="col-sm-8"><code>{{ period.code }}</code></dd>
+
+            <dt class="col-sm-4 text-muted small">Fiscal Year Designation</dt>
+            <dd class="col-sm-8 fw-semibold">{{ period.fiscal_year }}</dd>
+
+            <dt class="col-sm-4 text-muted small">Authoritative Date Range</dt>
+            <dd class="col-sm-8">
+              <span class="fw-semibold text-primary">{{ period.start_date|date:"d M Y" }}</span>
+              <span class="text-muted mx-2">&rarr;</span>
+              <span class="fw-semibold text-primary">{{ period.end_date|date:"d M Y" }}</span>
+              <span class="badge bg-light text-muted ms-2 small">Inclusive</span>
+            </dd>
+
+            <dt class="col-sm-4 text-muted small">Enterprise Company</dt>
+            <dd class="col-sm-8">{{ period.company.name }}</dd>
+
+            <dt class="col-sm-4 text-muted small">Divisional Scope</dt>
+            <dd class="col-sm-8">
+              {% if period.subsidiary %}
+                <span class="badge bg-info-subtle text-info">{{ period.subsidiary.name }} ({{ period.subsidiary.code }})</span>
+              {% else %}
+                <span class="badge bg-secondary-subtle text-secondary">Enterprise-Wide (All Subsidiaries &amp; Sites)</span>
+              {% endif %}
+            </dd>
+
+            <dt class="col-sm-4 text-muted small">Operational Status</dt>
+            <dd class="col-sm-8">
+              {% if period.status == 'OPEN' %}
+                <span class="badge bg-success-subtle text-success border border-success-subtle"><i class="icon-control-play me-1"></i>OPEN &mdash; Active Data Collection</span>
+              {% elif period.status == 'DRAFT' %}
+                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle"><i class="icon-settings me-1"></i>DRAFT &mdash; Configuration</span>
+              {% elif period.status == 'CLOSED' %}
+                <span class="badge bg-warning-subtle text-warning border border-warning-subtle"><i class="icon-clock me-1"></i>CLOSED &mdash; Review &amp; Verification</span>
+              {% elif period.status == 'LOCKED' %}
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle"><i class="icon-lock me-1"></i>LOCKED &mdash; Pre-Finalization Freeze</span>
+              {% elif period.status == 'FINALIZED' %}
+                <span class="badge bg-info-subtle text-info border border-info-subtle"><i class="icon-badge me-1"></i>FINALIZED &mdash; Audited &amp; Regulatory Immutable</span>
+              {% endif %}
+            </dd>
+
+            <dt class="col-sm-4 text-muted small">Data Entry Eligibility</dt>
+            <dd class="col-sm-8">
+              {% if period.allows_data_entry %}
+                <span class="badge bg-success text-white small"><i class="icon-check me-1"></i>Permitted (Open Period)</span>
+              {% else %}
+                <span class="badge bg-danger text-white small"><i class="icon-ban me-1"></i>Restricted (Period is {{ period.get_status_display }})</span>
+              {% endif %}
+            </dd>
+
+            <dt class="col-sm-4 text-muted small">Configuration Editable</dt>
+            <dd class="col-sm-8">
+              {% if period.allows_metadata_edit %}
+                <span class="text-success small fw-semibold"><i class="icon-check me-1"></i>Yes</span>
+              {% else %}
+                <span class="text-danger small fw-semibold"><i class="icon-lock me-1"></i>Locked against modifications</span>
+              {% endif %}
+            </dd>
+
+            <dt class="col-sm-4 text-muted small">Operational Guidelines</dt>
+            <dd class="col-sm-8 text-muted small mb-0">{{ period.description|default:"No special operational notes recorded." }}</dd>
+
+            <dt class="col-sm-4 text-muted small mt-2">Audit Metadata</dt>
+            <dd class="col-sm-8 small text-muted mt-2">
+              Created: {{ period.created_at|date:"d M Y, H:i" }} {% if period.created_by %}by {{ period.created_by.get_full_name|default:period.created_by.username }}{% endif %}
+              <br>
+              Updated: {{ period.updated_at|date:"d M Y, H:i" }} {% if period.updated_by %}by {{ period.updated_by.get_full_name|default:period.updated_by.username }}{% endif %}
+            </dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lifecycle Transition Governance -->
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark"><i class="icon-directions text-warning me-2"></i> Lifecycle Transition Governance</h6>
+        </div>
+        <div class="card-body d-flex flex-column justify-content-between">
+          <!-- Step indicator -->
+          <div class="mb-4">
+            <div class="text-muted small text-uppercase fw-semibold mb-3">Lifecycle Progress</div>
+            <div class="list-group list-group-flush border rounded">
+              <div class="list-group-item d-flex align-items-center justify-content-between py-2 {% if period.status == 'DRAFT' %}bg-light border-start border-4 border-secondary fw-bold text-dark{% endif %}">
+                <span><i class="icon-settings me-2 text-secondary"></i>1. DRAFT</span>
+                {% if period.status == 'DRAFT' %}<span class="badge bg-secondary">Current</span>{% endif %}
+              </div>
+              <div class="list-group-item d-flex align-items-center justify-content-between py-2 {% if period.status == 'OPEN' %}bg-light border-start border-4 border-success fw-bold text-dark{% endif %}">
+                <span><i class="icon-control-play me-2 text-success"></i>2. OPEN</span>
+                {% if period.status == 'OPEN' %}<span class="badge bg-success">Current</span>{% endif %}
+              </div>
+              <div class="list-group-item d-flex align-items-center justify-content-between py-2 {% if period.status == 'CLOSED' %}bg-light border-start border-4 border-warning fw-bold text-dark{% endif %}">
+                <span><i class="icon-clock me-2 text-warning"></i>3. CLOSED</span>
+                {% if period.status == 'CLOSED' %}<span class="badge bg-warning text-dark">Current</span>{% endif %}
+              </div>
+              <div class="list-group-item d-flex align-items-center justify-content-between py-2 {% if period.status == 'LOCKED' %}bg-light border-start border-4 border-danger fw-bold text-dark{% endif %}">
+                <span><i class="icon-lock me-2 text-danger"></i>4. LOCKED</span>
+                {% if period.status == 'LOCKED' %}<span class="badge bg-danger">Current</span>{% endif %}
+              </div>
+              <div class="list-group-item d-flex align-items-center justify-content-between py-2 {% if period.status == 'FINALIZED' %}bg-light border-start border-4 border-info fw-bold text-dark{% endif %}">
+                <span><i class="icon-badge me-2 text-info"></i>5. FINALIZED</span>
+                {% if period.status == 'FINALIZED' %}<span class="badge bg-info">Current</span>{% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- Transition Action Box -->
+          <div class="p-3 bg-light rounded border">
+            <h6 class="small fw-bold text-dark mb-2">Advance Period Lifecycle</h6>
+            {% if can_transition and allowed_transitions %}
+              <form method="post" action="{% url 'core:period_status_transition' period_id=period.id %}">
+                {% csrf_token %}
+                <div class="mb-2">
+                  <label for="id_target_status" class="form-label small text-muted">Destination State</label>
+                  {{ status_form.target_status }}
+                </div>
+                <div class="mb-3">
+                  <label for="id_transition_reason" class="form-label small text-muted">Governance Rationale</label>
+                  {{ status_form.reason }}
+                </div>
+                <button type="submit" class="btn btn-sm btn-primary w-100">
+                  <i class="icon-energy me-1"></i> Execute State Transition
+                </button>
+              </form>
+            {% elif period.is_finalized %}
+              <div class="text-muted small">
+                <i class="icon-check text-info me-1"></i> Period is officially <strong>FINALIZED</strong>. Terminal regulatory state cannot be mutated.
+              </div>
+            {% elif not can_transition %}
+              <div class="text-muted small">
+                <i class="icon-info text-secondary me-1"></i> Your current role (<strong>{{ user.get_primary_role }}</strong>) does not hold lifecycle transition authority.
+              </div>
+            {% else %}
+              <div class="text-muted small">No available transitions from current state.</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Downstream Architecture & Security Lineage -->
+  <div class="row g-3">
+    <!-- Future Module Integration Points -->
+    <div class="col-lg-7">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark"><i class="icon-layers text-success me-2"></i> Temporal Downstream ESG Integrations</h6>
+        </div>
+        <div class="card-body">
+          <p class="text-muted small mb-3">
+            This Reporting Period defines the boundary partition for all downstream ESG telemetry, calculations, and regulatory filings:
+          </p>
+          <div class="row g-2">
+            <div class="col-md-6">
+              <div class="p-2 border rounded bg-light small">
+                <div class="fw-bold text-dark"><i class="icon-pencil text-warning me-1"></i> Operational Activity Entry</div>
+                <div class="text-muted">Fuel, Electricity, Water &amp; Waste logged within [{{ period.start_date|date:"Y" }} &rarr; {{ period.end_date|date:"Y" }}].</div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="p-2 border rounded bg-light small">
+                <div class="fw-bold text-dark"><i class="icon-docs text-info me-1"></i> Evidence &amp; OCR Ingestion</div>
+                <div class="text-muted">Meter bills and lab reports timestamped to this period window.</div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="p-2 border rounded bg-light small">
+                <div class="fw-bold text-dark"><i class="icon-calculator text-primary me-1"></i> Scope 1, 2, 3 GHG Inventory</div>
+                <div class="text-muted">Emission factors applied across the {{ period.fiscal_year }} calendar span.</div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="p-2 border rounded bg-light small">
+                <div class="fw-bold text-dark"><i class="icon-chart text-success me-1"></i> SEBI BRSR Section C</div>
+                <div class="text-muted">Consolidated enterprise disclosures finalized upon period lock.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Security & Audit Log -->
+    <div class="col-lg-5">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark"><i class="icon-shield text-danger me-2"></i> Audit Lineage &amp; Security Events</h6>
+        </div>
+        <div class="card-body p-0">
+          <ul class="list-group list-group-flush small">
+            {% for log in audit_logs %}
+              <li class="list-group-item py-2 px-3">
+                <div class="d-flex justify-content-between align-items-center">
+                  <span class="badge {% if log.success %}bg-light text-dark border{% else %}bg-danger text-white{% endif %}">
+                    {{ log.event_type }}
+                  </span>
+                  <span class="text-muted" style="font-size: 0.75rem;">{{ log.created_at|date:"d M, H:i" }}</span>
+                </div>
+                <div class="text-muted mt-1 text-truncate" title="{{ log.details }}">
+                  {{ log.details }}
+                </div>
+              </li>
+            {% empty %}
+              <li class="list-group-item py-4 text-center text-muted">
+                No security audit events recorded for this period.
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

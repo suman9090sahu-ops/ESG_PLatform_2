@@ -65,6 +65,16 @@ This document tracks all active URL endpoints in **Phase 01 & Phase 02** as well
 | `/organization/sites/<id>/edit/` | `apps.core.org_views.site_edit_view` | `core:org_site_edit` | `MEIL_OPERATOR`, `SUBSIDIARY_MANAGER` (scoped) | Edit Operational Site Boundary | Phase 03 |
 | `/organization/sites/<id>/deactivate/` | `apps.core.org_views.site_deactivate_view` | `core:org_site_deactivate` | `MEIL_OPERATOR`, `SUBSIDIARY_MANAGER` (scoped) | Safe Archiving of Operational Site | Phase 03 |
 
+### 5. Reporting Period Management Routes (`/reporting-periods/...`)
+
+| URL Pattern | View Function | Route Name | Authorized Roles | Purpose | Phase |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `/reporting-periods/` | `apps.core.period_views.period_list_view` | `core:period_list` | Scoped Roles | Regulatory Cycles & Temporal Boundaries Registry | Phase 04 |
+| `/reporting-periods/create/` | `apps.core.period_views.period_create_view` | `core:period_create` | `MEIL_OPERATOR`, `ESG_MANAGER` | Configure New Reporting Cycle | Phase 04 |
+| `/reporting-periods/<id>/` | `apps.core.period_views.period_detail_view` | `core:period_detail` | Scoped Roles (IDOR Protected) | Temporal Boundary, Lifecycle Timeline & Lineage | Phase 04 |
+| `/reporting-periods/<id>/edit/` | `apps.core.period_views.period_edit_view` | `core:period_edit` | `MEIL_OPERATOR`, `ESG_MANAGER` | Edit Period Configuration (Draft/Open/Closed) | Phase 04 |
+| `/reporting-periods/<id>/status/` | `apps.core.period_views.period_status_transition_view` | `core:period_status_transition` | `MEIL_OPERATOR`, `ESG_MANAGER` | Controlled Status Lifecycle Transition (POST) | Phase 04 |
+
 ### Custom HTTP Error Handlers
 
 | Error Code | Handler Function | Template | Status |
@@ -128,7 +138,14 @@ This document tracks all active URL endpoints in **Phase 01 & Phase 02** as well
 │   ├── /sites/<id>/edit/              Edit Site Boundary (Scoped)
 │   └── /sites/<id>/deactivate/        Safe Site Archiving (Scoped)
 │
-├── /environmental/                    [Planned - Phase 04]
+├── /reporting-periods/                [Active - Phase 04]
+│   ├── /                              Reporting Periods & Cycles Registry
+│   ├── /create/                       Configure New Reporting Period (Scoped)
+│   ├── /<id>/                         Temporal Boundary Specification & Status Timeline
+│   ├── /<id>/edit/                    Edit Period Configuration (Scoped)
+│   └── /<id>/status/                  Controlled Lifecycle Transition (POST)
+│
+├── /environmental/                    [Planned - Phase 05]
 │   ├── /ghg/                          Scope 1, 2, 3 carbon accounting
 │   ├── /energy/                       Renewable vs non-renewable energy
 │   ├── /water/                        Withdrawal, consumption, recycling

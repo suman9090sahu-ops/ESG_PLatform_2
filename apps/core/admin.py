@@ -18,6 +18,7 @@ from apps.core.models import (
     SubsidiaryAssignment,
     User,
     UserRole,
+    ReportingPeriod,
 )
 
 
@@ -205,3 +206,54 @@ class AuthAuditLogAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+@admin.register(ReportingPeriod)
+class ReportingPeriodAdmin(admin.ModelAdmin):
+    list_display = (
+        "code",
+        "name",
+        "fiscal_year",
+        "company",
+        "subsidiary",
+        "start_date",
+        "end_date",
+        "status",
+        "created_at",
+    )
+    list_filter = ("status", "company", "fiscal_year")
+    search_fields = ("code", "name", "fiscal_year", "company__name", "description")
+    readonly_fields = ("created_at", "updated_at", "created_by", "updated_by")
+    fieldsets = (
+        (
+            "Period Identification",
+            {
+                "fields": ("code", "name", "fiscal_year", "status"),
+            },
+        ),
+        (
+            "Temporal Boundary",
+            {
+                "fields": ("start_date", "end_date"),
+            },
+        ),
+        (
+            "Organizational Scope",
+            {
+                "fields": ("company", "subsidiary"),
+            },
+        ),
+        (
+            "Operational Notes",
+            {
+                "fields": ("description",),
+            },
+        ),
+        (
+            "Audit Metadata",
+            {
+                "fields": ("created_by", "updated_by", "created_at", "updated_at"),
+            },
+        ),
+    )
+

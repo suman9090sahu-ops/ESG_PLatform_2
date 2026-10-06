@@ -162,7 +162,85 @@ def run():
     assert code == 403, f"Expected 403, got {code}"
     assert "Access Denied" in html or "Forbidden" in html
 
-    print("\nALL 18 LIVE E2E HTTP VERIFICATIONS PASSED SUCCESSFULLY!")
+    # -------------------------------------------------------------------------
+    # PHASE 04: REPORTING PERIODS & TEMPORAL GOVERNANCE LIVE E2E
+    # -------------------------------------------------------------------------
+    # 10. MEIL Operator Reporting Period Flow
+    code, html = get_url(opener_op, f"{BASE_URL}/reporting-periods/")
+    print(f"[19] /reporting-periods/ List: Status {code} (Expected 200)")
+    assert code == 200
+    assert "Authorized Reporting Cycles" in html
+    assert "FY2025-26" in html
+    assert "FY2024-25" in html
+
+    code, html = get_url(opener_op, f"{BASE_URL}/reporting-periods/2/")
+    print(f"[20] /reporting-periods/2/ Detail (FY2025-26): Status {code} (Expected 200)")
+    assert code == 200
+    assert "Temporal Boundary" in html
+    assert "OPEN" in html
+
+    code, html = get_url(opener_op, f"{BASE_URL}/reporting-periods/create/")
+    print(f"[21] /reporting-periods/create/ GET: Status {code} (Expected 200)")
+    assert code == 200
+    assert "Configure New Reporting Period" in html
+
+    # 11. ESG Manager Flow
+    opener_esg, _ = create_session()
+    code, _ = login_user(opener_esg, "esg_manager", "ESGManagerPass123!")
+    print(f"[22] Login esg_manager: Status {code} (Expected 200)")
+    assert code == 200
+
+    code, html = get_url(opener_esg, f"{BASE_URL}/reporting-periods/")
+    print(f"[23] esg_manager accesses /reporting-periods/: Status {code} (Expected 200)")
+    assert code == 200
+    assert "FY2025-26" in html
+
+    code, html = get_url(opener_esg, f"{BASE_URL}/reporting-periods/create/")
+    print(f"[24] esg_manager accesses /reporting-periods/create/: Status {code} (Expected 200)")
+    assert code == 200
+
+    # 12. Auditor Flow (Read-only)
+    opener_aud, _ = create_session()
+    code, _ = login_user(opener_aud, "auditor", "AuditorPass123!")
+    print(f"[25] Login auditor: Status {code} (Expected 200)")
+    assert code == 200
+
+    code, html = get_url(opener_aud, f"{BASE_URL}/reporting-periods/")
+    print(f"[26] auditor accesses /reporting-periods/: Status {code} (Expected 200)")
+    assert code == 200
+    assert "FY2025-26" in html
+
+    code, html = get_url(opener_aud, f"{BASE_URL}/reporting-periods/2/")
+    print(f"[27] auditor accesses /reporting-periods/2/ Detail: Status {code} (Expected 200)")
+    assert code == 200
+
+    code, html = get_url(opener_aud, f"{BASE_URL}/reporting-periods/create/")
+    print(f"[28] auditor attempts /reporting-periods/create/ -> Status {code} (Expected 403)")
+    assert code == 403, f"Expected 403, got {code}"
+    assert "Access Denied" in html or "Forbidden" in html
+
+    code, html = get_url(opener_aud, f"{BASE_URL}/reporting-periods/2/edit/")
+    print(f"[29] auditor attempts /reporting-periods/2/edit/ -> Status {code} (Expected 403)")
+    assert code == 403, f"Expected 403, got {code}"
+    assert "Access Denied" in html or "Forbidden" in html
+
+    # 13. Site Manager Flow (Read assigned periods, mutate denied)
+    code, html = get_url(opener_sm, f"{BASE_URL}/reporting-periods/")
+    print(f"[30] site_manager accesses /reporting-periods/: Status {code} (Expected 200)")
+    assert code == 200
+
+    code, html = get_url(opener_sm, f"{BASE_URL}/reporting-periods/create/")
+    print(f"[31] site_manager attempts /reporting-periods/create/ -> Status {code} (Expected 403)")
+    assert code == 403, f"Expected 403, got {code}"
+    assert "Access Denied" in html or "Forbidden" in html
+
+    code, html = get_url(opener_sm, f"{BASE_URL}/reporting-periods/2/edit/")
+    print(f"[32] site_manager attempts /reporting-periods/2/edit/ -> Status {code} (Expected 403)")
+    assert code == 403, f"Expected 403, got {code}"
+    assert "Access Denied" in html or "Forbidden" in html
+
+    print("\nALL 32 LIVE E2E HTTP VERIFICATIONS PASSED SUCCESSFULLY!")
 
 if __name__ == "__main__":
     run()
+

@@ -266,6 +266,12 @@ def get_role_sidebar_menu(user):
                         "icon": "icon-location-pin text-primary",
                     },
                     {
+                        "nav_id": "reporting_periods",
+                        "label": "Reporting Periods",
+                        "url": reverse("core:period_list"),
+                        "icon": "icon-calendar text-info",
+                    },
+                    {
                         "nav_id": "data_entry",
                         "label": "ESG Data Entry",
                         "url": "#",
@@ -328,6 +334,12 @@ def get_role_sidebar_menu(user):
                         "icon": "icon-organization text-primary",
                     },
                     {
+                        "nav_id": "reporting_periods",
+                        "label": "Reporting Periods",
+                        "url": reverse("core:period_list"),
+                        "icon": "icon-calendar text-info",
+                    },
+                    {
                         "nav_id": "submission_inbox",
                         "label": "Submission Inbox",
                         "url": "#",
@@ -383,6 +395,12 @@ def get_role_sidebar_menu(user):
                         "label": "Enterprise Hierarchy",
                         "url": reverse("core:org_overview"),
                         "icon": "icon-organization text-info",
+                    },
+                    {
+                        "nav_id": "reporting_periods",
+                        "label": "Reporting Periods",
+                        "url": reverse("core:period_list"),
+                        "icon": "icon-calendar text-info",
                     },
                     {
                         "nav_id": "ghg_accounting",
@@ -447,6 +465,12 @@ def get_role_sidebar_menu(user):
                         "icon": "icon-organization text-primary",
                     },
                     {
+                        "nav_id": "reporting_periods",
+                        "label": "Reporting Periods",
+                        "url": reverse("core:period_list"),
+                        "icon": "icon-calendar text-warning",
+                    },
+                    {
                         "nav_id": "governed_reports",
                         "label": "Governed Reports",
                         "url": "#",
@@ -503,6 +527,12 @@ def get_role_sidebar_menu(user):
                         "icon": "icon-organization text-info",
                     },
                     {
+                        "nav_id": "reporting_periods",
+                        "label": "Reporting Periods",
+                        "url": reverse("core:period_list"),
+                        "icon": "icon-calendar text-success",
+                    },
+                    {
                         "nav_id": "telemetry_sync",
                         "label": "Telemetry Pipelines",
                         "url": "#",
@@ -516,6 +546,7 @@ def get_role_sidebar_menu(user):
                     },
                 ],
             },
+
             {
                 "title": "System Tools",
                 "items": [

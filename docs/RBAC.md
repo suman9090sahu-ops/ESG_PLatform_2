@@ -136,5 +136,28 @@ Every security-sensitive event is logged to the `core_authauditlog` table for re
 - `ORGANIZATION_CREATED` (Company, Division, Project, or Site added)
 - `ORGANIZATION_UPDATED` (Entity metadata or boundaries edited)
 - `ORGANIZATION_DEACTIVATED` (Entity safely archived and marked inactive)
+- `PERIOD_CREATED` (Reporting period cycle configured)
+- `PERIOD_UPDATED` (Reporting period parameters modified)
+- `PERIOD_STATUS_CHANGED` (Reporting period lifecycle transitioned)
 
 Attributes captured include user reference, attempted username, event type, client IP address (`HTTP_X_FORWARDED_FOR` aware), user-agent string, resource URI, failure details, and indexed UTC timestamp.
+
+---
+
+## 8. Reporting Period Governance & Lifecycle RBAC (Phase 04)
+
+Reporting period management enforces clear role-based separation:
+
+| Role | Period Visibility | Creation & Metadata Edit | Lifecycle Status Transitions | Operational Data Entry |
+| :--- | :--- | :--- | :--- | :--- |
+| `MEIL_OPERATOR` | Enterprise-wide | Permitted across all companies | Full authority (`DRAFT`, `OPEN`, `CLOSED`, `LOCKED`, `FINALIZED`) | Permitted when OPEN |
+| `ESG_MANAGER` | Enterprise / Governed scope | Permitted for assigned companies | Full authority for assigned companies | Permitted when OPEN |
+| `SUBSIDIARY_MANAGER` | Assigned divisions + Enterprise periods | Prohibited (403) | Prohibited (403) | Permitted when OPEN |
+| `SITE_MANAGER` | Assigned site's division + Enterprise periods | Prohibited (403) | Prohibited (403) | Permitted when OPEN |
+| `AUDITOR` | Governed scope (Read-Only) | Strictly Prohibited (403) | Strictly Prohibited (403) | Strictly Prohibited (Read-only) |
+
+### Temporal Data Protection Guards
+- Operational ESG data entry (`can_user_enter_data`) and modifications (`can_user_modify_data`) are allowed ONLY when the period status is `OPEN`.
+- Periods in `CLOSED`, `LOCKED`, or `FINALIZED` prohibit operational data creation and modification.
+- Historical locked and finalized periods prohibit metadata edits, protecting regulatory audit lineage.
+

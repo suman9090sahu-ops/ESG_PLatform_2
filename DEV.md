@@ -1,48 +1,50 @@
 # MEIL ESG CONTROL TOWER — Development Tracking
 
 ## Current Phase
-**PHASE 03 — ORGANIZATION HIERARCHY & ORGANIZATIONAL SCOPE**
+**PHASE 04 — REPORTING PERIODS & TEMPORAL GOVERNANCE**
 
 **Status:** COMPLETED  
-**Phase 03 Completion:** 100%  
-**Total Project Completion:** 65%
+**Phase 04 Completion:** 100%  
+**Total Project Completion:** 75%
 
 ---
 
-## 1. Phase 03 Implementation Summary
+## 1. Phase 04 Implementation Summary
 
-Built the production-grade organizational hierarchy representing the MEIL ESG Control Tower operating structure as a single integrated Django application.
+Engineered the authoritative temporal governance foundation for the MEIL ESG Control Tower as part of the integrated Django monolith. Reporting periods establish the immutable regulatory boundaries for operational telemetry data entry, utility invoices, evidence OCR verification, Scope 1/2/3 GHG calculations, consolidation, and SEBI BRSR reporting.
 
 ### Key Architectural Deliverables
-1. **Four-Tiered Relational Organization Hierarchy:**
-   - `MEIL Enterprise Group (Company)` → `Subsidiary Divisions (Subsidiary)` → `Infrastructure Projects (Project)` → `Operational Sites (Site)`.
-   - Relational inheritance traversal properties: `site.subsidiary`, `site.company`, `project.company`, `subsidiary.parent_company`.
-   - All critical downward relationships enforce `on_delete=models.PROTECT` to prevent cascading loss of compliance assets.
-2. **Operational Lifecycle & Status Governance (`OrganizationStatus`):**
-   - Choices: `ACTIVE`, `INACTIVE`, `CLOSED` with indexed database fields across all organizational levels.
-   - Automatic synchronization with boolean `is_active` attribute preserving backwards compatibility with Phase 01 & Phase 02 queries.
-3. **Enriched Enterprise Metadata:**
-   - Legal corporate names, short monikers, industry sectors, operating countries, registered headquarters addresses.
-   - Facility type classifications (e.g., Dam Headworks, Solar PV Array, Substation).
-   - High-precision GPS coordinates (`latitude`, `longitude`), site in-charge engineer, and official correspondence emails.
-4. **Organizational Scope Service (`apps/core/scope_services.py`):**
-   - Centralized Queryset Scoping: `get_accessible_companies()`, `get_accessible_subsidiaries()`, `get_accessible_projects()`, `get_accessible_sites()`.
-   - Server-Side Object-Level Authorization: `user_can_access_company()`, `user_can_access_subsidiary()`, `user_can_access_project()`, `user_can_access_site()`.
-   - Role-Specific Mutation Governance: `user_can_manage_hierarchy()`, `user_can_manage_subsidiary()`, `user_can_manage_project()`, `user_can_manage_site()`.
+1. **Reporting Period Domain Model (`ReportingPeriod`):**
+   - Fields: `company` (PROTECT FK), `subsidiary` (optional PROTECT FK), `code` (e.g. `FY2025-26`), `name`, `fiscal_year`, `start_date`, `end_date`, `status`, `description`, `created_by`, `updated_by`, timestamps.
+   - Database `CheckConstraint` (`start_date < end_date`) ensuring strict date ordering.
+   - Database `UniqueConstraint` on `(company, code)` enforcing unique cycle identifiers per enterprise company while preserving multi-tenant isolation.
+   - Composite database indexes on `(company, status)` and `(start_date, end_date)`.
+   - Application-level overlap prevention in `clean()` prohibiting conflicting date windows for the same organizational scope.
+2. **Controlled Lifecycle State Machine (`PeriodStatus`):**
+   - Strict state progression: `DRAFT` &rarr; `OPEN` &rarr; `CLOSED` &rarr; `LOCKED` &rarr; `FINALIZED`.
+   - Explicit authorized reopening (`CLOSED -> OPEN`) and unlocking (`LOCKED -> CLOSED`).
+   - `FINALIZED` is enforced as an immutable terminal regulatory state.
+3. **Temporal Scoping & Governance Services (`apps/core/period_services.py`):**
+   - Queryset scoping: `get_accessible_reporting_periods(user)` resolving access based on user role and assigned organization scope.
+   - Current period resolver: `get_current_reporting_period(company, subsidiary, as_of_date)`.
+   - Server-side object authorization: `user_can_access_reporting_period`, `user_can_manage_reporting_period`, `user_can_manage_period_lifecycle`.
+   - Operational data guards: `can_user_enter_data`, `can_user_modify_data` permitting data mutations ONLY when the period status is `OPEN`.
+4. **Audit-Ready Regulatory Lineage (`AuthAuditLog`):**
+   - Extended with `PERIOD_CREATED`, `PERIOD_UPDATED`, and `PERIOD_STATUS_CHANGED`.
+   - Transition events capture old state, new state, user actor, timestamp, and optional governance rationale.
 5. **Insecure Direct Object Reference (IDOR) Protection:**
-   - Server validates user assignment before resolving objects (`/organization/subsidiaries/<id>/`, `/organization/projects/<id>/`, `/organization/sites/<id>/`).
-   - Tampered request IDs trigger immediate `403 Forbidden` and log security violation audit events (`UNAUTHORIZED_ACCESS_ATTEMPT`).
-6. **Safe Deactivation & Archiving Policy:**
-   - Deactivation updates status to `INACTIVE` (`is_active=False`) and logs `ORGANIZATION_DEACTIVATED` event without hard-deleting records.
-   - Preserves historical ESG records for regulatory audit lineage and reporting period continuity.
-7. **Organization Management User Interface:**
-   - `/organization/`: Multi-tier Hierarchy Tree Explorer with rollup metrics.
-   - `/organization/companies/` and `/organization/companies/<id>/`: Enterprise entity profile and division list.
-   - `/organization/subsidiaries/`, `create/`, `<id>/`, `<id>/edit/`, `<id>/deactivate/`: Division registry and CRUD.
-   - `/organization/projects/`, `create/`, `<id>/`, `<id>/edit/`, `<id>/deactivate/`: Project registry and scoped CRUD.
-   - `/organization/sites/`, `create/`, `<id>/`, `<id>/edit/`, `<id>/deactivate/`: Facility boundary registry and scoped CRUD.
-8. **Dynamic Sidebar Navigation:**
-   - Updated context menu with direct links to Hierarchy Tree, Assigned Subsidiaries, and Governed Entities for `MEIL_OPERATOR`, `SUBSIDIARY_MANAGER`, `ESG_MANAGER`, and `AUDITOR`.
+   - Tampered period IDs (`/reporting-periods/<id>/`, `/reporting-periods/<id>/edit/`, `/reporting-periods/<id>/status/`) trigger immediate `403 Forbidden` responses.
+   - Tampering attempts record `UNAUTHORIZED_ACCESS_ATTEMPT` audit events.
+6. **Reporting Period Management UI & Bootstrap Design:**
+   - `/reporting-periods/`: List view with 6 KPI cards (Total, Open, Draft, Closed, Locked, Finalized), filters by status/company, search, and responsive table.
+   - `/reporting-periods/<id>/`: Detail view featuring temporal boundary specifications, lifecycle progress indicator, authorized transition form, downstream integration hooks, and recent security audit events.
+   - `/reporting-periods/create/`: Scoped creation form with server-side validation.
+   - `/reporting-periods/<id>/edit/`: Scoped edit form with lock protection for historical records.
+   - `/reporting-periods/<id>/status/`: POST-only transition handler with CSRF and permission enforcement.
+7. **Dynamic Sidebar Navigation:**
+   - Context-injected "Reporting Periods" navigation item across `MEIL_OPERATOR`, `ESG_MANAGER`, `AUDITOR`, `SUBSIDIARY_MANAGER`, and `SITE_MANAGER` menus.
+8. **Automated Seeding Integration (`seed_rbac_data`):**
+   - Seeds standard reporting periods: `FY2024-25` (LOCKED), `FY2025-26` (OPEN), `FY2026-27` (DRAFT).
 
 ---
 
@@ -63,13 +65,13 @@ Result: PASS
 ### `python manage.py test`
 ```text
 Creating test database for alias 'default'...
-...............................................................................................................
+...........................................................................................................................
 ----------------------------------------------------------------------
-Ran 111 tests in 100.912s
+Ran 127 tests in 121.386s
 
 OK
 Destroying test database for alias 'default'...
-Found 111 test(s).
+Found 127 test(s).
 System check identified no issues (0 silenced).
 Result: PASS
 ```
@@ -94,42 +96,53 @@ Result: PASS
 [16] site_manager attempts /organization/ overview: Status 403 (Expected 403)
 [17] site_manager accesses assigned Site 1 (/organization/sites/1/): Status 200 (Expected 200)
 [18] IDOR attempt: site_manager tampers URL to unassigned Site 2 (/organization/sites/2/): Status 403 (Expected 403)
+[19] /reporting-periods/ List: Status 200 (Expected 200)
+[20] /reporting-periods/2/ Detail (FY2025-26): Status 200 (Expected 200)
+[21] /reporting-periods/create/ GET: Status 200 (Expected 200)
+[22] Login esg_manager: Status 200 (Expected 200)
+[23] esg_manager accesses /reporting-periods/: Status 200 (Expected 200)
+[24] esg_manager accesses /reporting-periods/create/: Status 200 (Expected 200)
+[25] Login auditor: Status 200 (Expected 200)
+[26] auditor accesses /reporting-periods/: Status 200 (Expected 200)
+[27] auditor accesses /reporting-periods/2/ Detail: Status 200 (Expected 200)
+[28] auditor attempts /reporting-periods/create/ -> Status 403 (Expected 403)
+[29] auditor attempts /reporting-periods/2/edit/ -> Status 403 (Expected 403)
+[30] site_manager accesses /reporting-periods/: Status 200 (Expected 200)
+[31] site_manager attempts /reporting-periods/create/ -> Status 403 (Expected 403)
+[32] site_manager attempts /reporting-periods/2/edit/ -> Status 403 (Expected 403)
 
-ALL 18 LIVE E2E HTTP VERIFICATIONS PASSED SUCCESSFULLY!
+ALL 32 LIVE E2E HTTP VERIFICATIONS PASSED SUCCESSFULLY!
 ```
 
 ### Test Suite Breakdown
-- **Phase 03 Organization Hierarchy Suite (`tests/test_organization.py`):** 15 tests (Model instantiation, status sync, unique constraints, FK protection, scoping service across 5 personas, cross-tenant isolation, IDOR direct URL tampering, scoped creation, safe archiving).
+- **Phase 04 Reporting Period Suite (`tests/test_reporting_periods.py`):** 16 tests (Model instantiation, date range validation, CheckConstraint, UniqueConstraint, overlap validation, multi-tenant isolation, scoping across 5 personas, IDOR defense, lifecycle transitions, reopening/unlocking, data guards, locked/finalized immutability).
+- **Phase 03 Organization Hierarchy Suite (`tests/test_organization.py`):** 15 tests.
 - **Authentication Suite (`tests/test_auth.py`):** 10 tests.
 - **RBAC Suite (`tests/test_rbac.py`):** 12 tests.
 - **Object Access & IDOR Suite (`tests/test_object_access.py`):** 10 tests.
 - **Phase 01 UI Foundation Baseline (`tests/test_phase01_foundation.py`):** 64 tests.
-- **Total Tests:** 111 | **Passed:** 111 | **Failed:** 0 | **Errors:** 0
+- **Total Tests:** 127 | **Passed:** 127 | **Failed:** 0 | **Errors:** 0
 
 ---
 
 ## 3. Database Changes
-- `apps/core/migrations/0002_company_country_company_legal_name_and_more.py`:
-  - `Company`: Added `legal_name`, `country`, `registered_address`, `status`.
-  - `Subsidiary`: Added `legal_name`, `short_name`, `country`, `registered_address`, `status`.
-  - `Project`: Added `description`, `location`, `status`, `start_date`, `end_date`.
-  - `Site`: Added `facility_type`, `latitude`, `longitude`, `contact_person`, `contact_email`, `status`, `description`.
-  - `AuthAuditLog`: Added event types `ORGANIZATION_CREATED`, `ORGANIZATION_UPDATED`, `ORGANIZATION_DEACTIVATED`.
+- `apps/core/migrations/0003_alter_authauditlog_event_type_reportingperiod.py`:
+  - `ReportingPeriod`: Added domain model with `CheckConstraint` (`start_date < end_date`), `UniqueConstraint` on `(company, code)`, and composite indexes.
+  - `AuthAuditLog`: Added event types `PERIOD_CREATED`, `PERIOD_UPDATED`, `PERIOD_STATUS_CHANGED`.
 
 ---
 
 ## 4. Documentation Updated
-- `docs/DATABASE_ARCHITECTURE.md`: Complete schema diagram, relationships, constraints, deletion policy.
-- `docs/RBAC.md`: Scoping service, mutation authority matrix, IDOR security policy.
-- `docs/ROUTE_MAP.md`: Active `/organization/...` endpoint registry and architectural tree.
-- `docs/DEVELOPMENT.md`: Developer commands, seed commands, test suite workflows.
-- `docs/WORKFLOW.md`: Governance tiers and review lineage.
-- `DEV.md`: Phase 03 completion report and test telemetry.
+- `docs/DATABASE_ARCHITECTURE.md`: Added Section 7 detailing ReportingPeriod schema, constraints, and lifecycle state machine.
+- `docs/RBAC.md`: Added Section 8 detailing Reporting Period RBAC matrix, temporal data protection guards, and event types.
+- `docs/ROUTE_MAP.md`: Registered `/reporting-periods/...` routes and updated architectural tree.
+- `DEV.md`: Phase 04 completion report and test telemetry.
 
 ---
 
 ## 5. Next Recommended Phase
-**PHASE 04 — REPORTING PERIODS & TEMPORAL GOVERNANCE**
-- Define reporting period boundaries (Financial Years, Quarters, Months) linked to companies and subsidiaries.
-- Manage period status lifecycles (OPEN, LOCKED, SUBMITTED, CLOSED, ARCHIVED).
-- Provide the temporal scope required for activity data entry, evidence ingestion, and BRSR consolidation.
+**PHASE 05 — SITES / PROJECTS INTEGRATION & OPERATIONAL BOUNDARIES**
+- Bind reporting periods to operational site boundaries and activity data entry workflows.
+- Provide data collection initiation desk per reporting period.
+- Connect facility equipment meters and telemetry channels to active reporting periods.
+

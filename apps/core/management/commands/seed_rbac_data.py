@@ -17,6 +17,8 @@ from apps.core.models import (
     SubsidiaryAssignment,
     User,
     UserRole,
+    PeriodStatus,
+    ReportingPeriod,
 )
 
 
@@ -291,4 +293,60 @@ class Command(BaseCommand):
             status = "Created" if created else "Updated"
             self.stdout.write(f"  User [{username}]: {status} (Role: {uconf['role_code']})")
 
+        # 4. Seed Standard Reporting Periods
+        self.stdout.write(self.style.NOTICE("Seeding Reporting Periods..."))
+        operator_user = User.objects.filter(username="meil_operator").first()
+
+        periods_data = [
+            {
+                "company": meil_company,
+                "code": "FY2024-25",
+                "name": "FY 2024-25 Regulatory ESG & BRSR Reporting Cycle",
+                "fiscal_year": "FY 2024-25",
+                "start_date": "2024-04-01",
+                "end_date": "2025-03-31",
+                "status": PeriodStatus.LOCKED,
+                "description": "Audited and verified historical annual ESG reporting period. Protected from active edits.",
+            },
+            {
+                "company": meil_company,
+                "code": "FY2025-26",
+                "name": "FY 2025-26 Operational Annual ESG Reporting Cycle",
+                "fiscal_year": "FY 2025-26",
+                "start_date": "2025-04-01",
+                "end_date": "2026-03-31",
+                "status": PeriodStatus.OPEN,
+                "description": "Active operational ESG data collection, meter telemetry, fuel tracking, and BRSR governance.",
+            },
+            {
+                "company": meil_company,
+                "code": "FY2026-27",
+                "name": "FY 2026-27 Forthcoming ESG Reporting Cycle",
+                "fiscal_year": "FY 2026-27",
+                "start_date": "2026-04-01",
+                "end_date": "2027-03-31",
+                "status": PeriodStatus.DRAFT,
+                "description": "Draft configuration for future ESG compliance and materiality assessment cycle.",
+            },
+        ]
+
+        for pdata in periods_data:
+            period, created = ReportingPeriod.objects.get_or_create(
+                company=pdata["company"],
+                code=pdata["code"],
+                defaults={
+                    "name": pdata["name"],
+                    "fiscal_year": pdata["fiscal_year"],
+                    "start_date": pdata["start_date"],
+                    "end_date": pdata["end_date"],
+                    "status": pdata["status"],
+                    "description": pdata["description"],
+                    "created_by": operator_user,
+                    "updated_by": operator_user,
+                },
+            )
+            p_status = "Created" if created else "Exists"
+            self.stdout.write(f"  Reporting Period [{pdata['code']}]: {p_status} ({pdata['status']})")
+
         self.stdout.write(self.style.SUCCESS("MEIL ESG RBAC Seeding successfully completed."))
+
