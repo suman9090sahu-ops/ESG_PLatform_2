@@ -1,0 +1,9 @@
+<!-- Icon Button Component -->
+<button type="{{ type|default:'button' }}"
+        class="btn-esg-icon {{ extra_class }}"
+        {% if id %}id="{{ id }}"{% endif %}
+        {% if title %}title="{{ title }}"{% endif %}
+        {% if aria_label %}aria-label="{{ aria_label }}"{% elif title %}aria-label="{{ title }}"{% endif %}
+        {% if disabled %}disabled{% endif %}>
+  <i class="{{ icon|default:'icon-options' }}" aria-hidden="true"></i>
+</button>

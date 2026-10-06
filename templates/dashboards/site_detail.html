@@ -1,0 +1,90 @@
+{% extends "layouts/dashboard.html" %}
+{% load static esg_tags %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block header_actions %}
+  <a href="{% url 'core:site_manager_dashboard' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="icon-arrow-left me-1"></i> Back to Dashboard
+  </a>
+{% endblock %}
+
+{% block kpi_section %}
+  <div class="col-md-4 grid-margin stretch-card">
+    <div class="card card-statistics border-0 shadow-sm">
+      <div class="card-body">
+        <h6 class="text-muted font-weight-normal mb-1">Site Code</h6>
+        <h4 class="mb-0 font-weight-bold text-dark"><code>{{ site.code }}</code></h4>
+        <p class="text-success small mt-2 mb-0"><i class="icon-check me-1"></i> Object Access Verified</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4 grid-margin stretch-card">
+    <div class="card card-statistics border-0 shadow-sm">
+      <div class="card-body">
+        <h6 class="text-muted font-weight-normal mb-1">Parent Project</h6>
+        <h4 class="mb-0 font-weight-bold text-dark">{{ site.project.name }}</h4>
+        <p class="text-muted small mt-2 mb-0">Project Code: <code>{{ site.project.code }}</code></p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4 grid-margin stretch-card">
+    <div class="card card-statistics border-0 shadow-sm">
+      <div class="card-body">
+        <h6 class="text-muted font-weight-normal mb-1">Subsidiary Division</h6>
+        <h4 class="mb-0 font-weight-bold text-dark">{{ site.project.subsidiary.name }}</h4>
+        <p class="text-muted small mt-2 mb-0">Division Code: <code>{{ site.project.subsidiary.code }}</code></p>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block main_panel %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+      <h6 class="mb-0 font-weight-bold text-dark">
+        <i class="icon-screen-desktop me-2 text-primary"></i> Site Operational Telemetry &amp; Compliance Details
+      </h6>
+      <span class="badge badge-success">Active Site</span>
+    </div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label small text-muted">Site Formal Name</label>
+          <p class="fw-bold text-dark">{{ site.name }}</p>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small text-muted">Geographic Location</label>
+          <p class="fw-bold text-dark">{{ site.location|default:"Polavaram, Andhra Pradesh" }}</p>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small text-muted">Enterprise Scope</label>
+          <p class="fw-bold text-dark">{{ site.project.subsidiary.company.name }}</p>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small text-muted">Direct Object Authorization Status</label>
+          <p><span class="badge-workflow badge-wf-approved"><i class="icon-shield me-1"></i>ACCESS PERMITTED (SERVER VERIFIED)</span></p>
+        </div>
+      </div>
+
+      <div class="alert alert-success mt-4 mb-0 small">
+        <i class="icon-check me-2"></i> <strong>Authorization Check Passed:</strong> The server validated that user <code>{{ request.user.username }}</code> has an active assignment linking them to this site record. No client-side request tampering or ID manipulation was accepted.
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block side_panel %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white py-3 border-bottom">
+      <h6 class="mb-0 font-weight-bold text-dark">
+        <i class="icon-lock me-2 text-danger"></i> IDOR Verification Test
+      </h6>
+    </div>
+    <div class="card-body small">
+      <p class="text-muted">To test Insecure Direct Object Reference prevention, try changing the site ID in your browser address bar to a site you are not assigned to.</p>
+      <p class="text-muted mb-0">Expected Result: <strong>403 Forbidden Access Denied</strong>.</p>
+    </div>
+  </div>
+{% endblock %}

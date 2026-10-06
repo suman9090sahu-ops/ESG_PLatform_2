@@ -1,0 +1,36 @@
+<!-- Reusable Confirmation Dialog Modal -->
+<div class="modal fade"
+     id="{{ modal_id|default:'esgConfirmationModal' }}"
+     tabindex="-1"
+     aria-labelledby="{{ modal_id|default:'esgConfirmationModal' }}Label"
+     aria-hidden="true"
+     role="dialog"
+     aria-modal="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <form method="post" action="{{ action_url|default:'#' }}">
+        {% csrf_token %}
+        <div class="modal-header border-bottom">
+          <h5 class="modal-title font-weight-bold text-dark d-flex align-items-center gap-2" id="{{ modal_id|default:'esgConfirmationModal' }}Label">
+            <i class="icon-question text-warning" aria-hidden="true"></i>
+            <span>{{ dialog_title|default:"Confirm Operation" }}</span>
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <p class="modal-body-text text-muted mb-0">
+            {{ message|default:"Are you sure you want to proceed with this governance action? This step may be recorded in the audit log." }}
+          </p>
+        </div>
+        <div class="modal-footer border-top bg-light">
+          <button type="button" class="btn btn-esg-secondary" data-bs-dismiss="modal">
+            {{ cancel_label|default:"Cancel" }}
+          </button>
+          <button type="submit" class="btn {{ confirm_variant|default:'btn-esg-danger' }} btn-confirm-action">
+            {{ confirm_label|default:"Confirm" }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

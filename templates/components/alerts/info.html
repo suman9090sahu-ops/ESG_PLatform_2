@@ -1,0 +1,14 @@
+<!-- Info Alert Component -->
+<div class="alert alert-info alert-dismissible fade show d-flex align-items-start gap-2" role="alert">
+  <div class="alert-icon-wrap mt-1">
+    <i class="icon-info fs-5" aria-hidden="true"></i>
+    <span class="sr-only">[i] </span>
+  </div>
+  <div class="flex-grow-1">
+    {% if title %}<strong class="d-block mb-1">{{ title }}</strong>{% endif %}
+    <span>{{ message|default:"Information notice." }}</span>
+  </div>
+  {% if dismissible|default:True %}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  {% endif %}
+</div>

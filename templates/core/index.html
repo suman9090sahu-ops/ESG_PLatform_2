@@ -1,0 +1,271 @@
+{% extends "layouts/dashboard.html" %}
+{% load static esg_tags %}
+
+{% block title %}Executive ESG Dashboard{% endblock %}
+
+{% block page_header %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+  <div class="esg-page-title-group">
+    <div class="d-flex align-items-center gap-2">
+      <h1 class="h3 font-weight-bold mb-0 text-dark">Executive ESG Dashboard</h1>
+      <span class="badge badge-success badge-pill py-1 px-2 font-weight-normal fs-6">
+        <span class="status-indicator-dot bg-success me-1"></span> Live
+      </span>
+    </div>
+    <p class="text-muted small mt-1 mb-0">{{ page_subtitle|default:"Continuous ESG Governance, BRSR Core Disclosures & Compliance Audit" }}</p>
+  </div>
+  <div class="esg-page-actions mt-2 mt-sm-0">
+    <span class="badge bg-warning text-dark border me-2 py-2 px-3">
+      <i class="icon-info me-1"></i>Demo Data &bull; Phase 01 Prototype
+    </span>
+    <a href="{% url 'core:ui_preview' %}" class="btn btn-esg-primary btn-sm">
+      <i class="icon-layers me-1"></i>UI Component Preview
+    </a>
+    {% block breadcrumb %}
+      {% include "components/breadcrumbs/breadcrumb.html" with current_page="Dashboard" %}
+    {% endblock %}
+  </div>
+</div>
+{% endblock %}
+
+{% block kpi_section %}
+<!-- KPI Cards Row (Static Demo Values) -->
+<div class="row mb-4">
+  <div class="col-12 mb-2">
+    <div class="esg-section-header">
+      <h2 class="esg-section-title d-flex align-items-center gap-2">
+        <i class="icon-speedometer text-success" aria-hidden="true"></i>
+        <span>ESG Executive KPIs</span>
+      </h2>
+      <span class="text-muted small">Reporting Cycle: FY 2025-26 &bull; Real-time Telemetry Simulation</span>
+    </div>
+  </div>
+
+  <!-- KPI 1: Scope 1 Emissions -->
+  <div class="col-xl-3 col-md-6 mb-3">
+    {% include "components/cards/metric.html" with title="Scope 1 Direct GHG" value="12,450" unit="tCO₂e" delta_type="increase" delta_val="+4.2%" delta_text="4.2%" comparison_label="vs previous period" badge_class="badge-wf-under_review" %}
+  </div>
+
+  <!-- KPI 2: Scope 2 Emissions -->
+  <div class="col-xl-3 col-md-6 mb-3">
+    {% include "components/cards/metric.html" with title="Scope 2 Electricity" value="8,920" unit="tCO₂e" delta_type="decrease" delta_val="-6.8%" delta_text="6.8%" comparison_label="vs previous period" %}
+  </div>
+
+  <!-- KPI 3: Water Stewardship -->
+  <div class="col-xl-3 col-md-6 mb-3">
+    {% include "components/cards/metric.html" with title="Water Recycled" value="74.2" unit="%" delta_type="increase" delta_val="+5.1%" delta_text="5.1%" comparison_label="vs target baseline" %}
+  </div>
+
+  <!-- KPI 4: BRSR Core Disclosures -->
+  <div class="col-xl-3 col-md-6 mb-3">
+    {% include "components/cards/metric.html" with title="BRSR Disclosures" value="94.2" unit="%" delta_type="decrease" delta_val="0.0%" delta_text="9 of 9 Principles" comparison_label="Assurance Ready" %}
+  </div>
+</div>
+{% endblock %}
+
+{% block main_panel %}
+<!-- Recent Activity Section -->
+<div class="card card-esg mb-4">
+  <div class="card-esg-header">
+    <h3 class="card-esg-title d-flex align-items-center gap-2">
+      <i class="icon-clock text-primary" aria-hidden="true"></i>
+      <span>Recent ESG Governance Activity</span>
+    </h3>
+    <span class="badge bg-light text-secondary border">Simulated Audit Trail</span>
+  </div>
+  <div class="card-esg-body p-0">
+    <div class="table-responsive">
+      <table class="table table-esg table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Site / Subsidiary</th>
+            <th>Activity Logged</th>
+            <th>Workflow State</th>
+            <th>Evidence</th>
+            <th>Lineage</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="font-mono text-muted small">Today, 14:30</td>
+            <td><strong>MEIL Hyderabad Unit 4</strong></td>
+            <td>CEMS Sensor Ingestion Batch #409</td>
+            <td>{% workflow_badge 'VERIFIED' %}</td>
+            <td>{% evidence_indicator count=4 verified=True %}</td>
+            <td>{% lineage_indicator traceable=True %}</td>
+          </tr>
+          <tr>
+            <td class="font-mono text-muted small">Today, 11:15</td>
+            <td><strong>Polavaram Project Site</strong></td>
+            <td>Diesel Generator Fuel Invoice Upload</td>
+            <td>{% workflow_badge 'UNDER_REVIEW' %}</td>
+            <td>{% evidence_indicator count=2 verified=False %}</td>
+            <td>{% lineage_indicator traceable=True %}</td>
+          </tr>
+          <tr>
+            <td class="font-mono text-muted small">Yesterday, 18:45</td>
+            <td><strong>Z-Morh Tunnel Division</strong></td>
+            <td>Electricity Substation Billing Q3</td>
+            <td>{% workflow_badge 'CORRECTION_REQUIRED' %}</td>
+            <td>{% evidence_indicator count=1 verified=False %}</td>
+            <td>{% lineage_indicator traceable=False label="Incomplete" %}</td>
+          </tr>
+          <tr>
+            <td class="font-mono text-muted small">Yesterday, 09:10</td>
+            <td><strong>Solar EPC Division</strong></td>
+            <td>Renewable Generation Dispatch Logs</td>
+            <td>{% workflow_badge 'APPROVED' %}</td>
+            <td>{% evidence_indicator count=6 verified=True %}</td>
+            <td>{% lineage_indicator traceable=True %}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Data Status Section -->
+<div class="card card-esg">
+  <div class="card-esg-header">
+    <h3 class="card-esg-title d-flex align-items-center gap-2">
+      <i class="icon-chart text-success" aria-hidden="true"></i>
+      <span>ESG Data Status by Subsidiary</span>
+    </h3>
+    <span class="badge bg-light text-secondary border">9 Subdivisions Monitored</span>
+  </div>
+  <div class="card-esg-body">
+    <div class="row g-3">
+      <div class="col-md-4">
+        <div class="p-3 border rounded bg-light">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="small font-weight-bold text-dark">Infra &amp; Construction</span>
+            {% workflow_badge 'VERIFIED' %}
+          </div>
+          <div class="progress mb-2" style="height: 6px;">
+            <div class="progress-bar bg-success" style="width: 95%" role="progressbar" aria-valuenow="95" aria-valuemin="0" aria-valuemax="100"></div>
+          </div>
+          <div class="d-flex justify-content-between small text-muted">
+            <span>Completeness: 95%</span>
+            <span>{% calculation_indicator calculated=True %}</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="p-3 border rounded bg-light">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="small font-weight-bold text-dark">Hydro &amp; Irrigation</span>
+            {% workflow_badge 'PENDING' %}
+          </div>
+          <div class="progress mb-2" style="height: 6px;">
+            <div class="progress-bar bg-warning" style="width: 78%" role="progressbar" aria-valuenow="78" aria-valuemin="0" aria-valuemax="100"></div>
+          </div>
+          <div class="d-flex justify-content-between small text-muted">
+            <span>Completeness: 78%</span>
+            <span>{% anomaly_indicator count=1 label="Sensor Flag" %}</span>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="p-3 border rounded bg-light">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="small font-weight-bold text-dark">Solar &amp; Clean Energy</span>
+            {% workflow_badge 'FINALIZED' %}
+          </div>
+          <div class="progress mb-2" style="height: 6px;">
+            <div class="progress-bar bg-info" style="width: 100%" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+          </div>
+          <div class="d-flex justify-content-between small text-muted">
+            <span>Completeness: 100%</span>
+            <span>{% verification_indicator verified=True %}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block side_panel %}
+<!-- Pending Actions Section -->
+<div class="card card-esg mb-4">
+  <div class="card-esg-header">
+    <h3 class="card-esg-title d-flex align-items-center gap-2">
+      <i class="icon-bell text-danger" aria-hidden="true"></i>
+      <span>Pending Actions</span>
+    </h3>
+    <span class="badge bg-danger text-white badge-pill">3 Require Attention</span>
+  </div>
+  <div class="card-esg-body p-0">
+    <div class="list-group list-group-flush">
+      <div class="list-group-item p-3">
+        <div class="d-flex justify-content-between align-items-start mb-1">
+          <span class="fw-semibold text-dark small">Stationary Fuel Log Mismatch</span>
+          {% workflow_badge 'CORRECTION_REQUIRED' %}
+        </div>
+        <p class="text-muted small mb-2">Unit 2 generator flowmeter calibration discrepancy exceeds &gt;5% threshold.</p>
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="text-muted fs-xs">Assigned to: Site Manager</span>
+          <button type="button"
+                  class="btn btn-outline-danger btn-sm py-1 px-2"
+                  data-esg-confirm="true"
+                  data-esg-confirm-title="Request Correction"
+                  data-esg-confirm-message="Send correction notice to Site Manager for Unit 2 flowmeter logs?"
+                  data-esg-confirm-btn="Notify Manager">
+            Take Action
+          </button>
+        </div>
+      </div>
+
+      <div class="list-group-item p-3">
+        <div class="d-flex justify-content-between align-items-start mb-1">
+          <span class="fw-semibold text-dark small">SEBI BRSR Q3 Assurance Sign-off</span>
+          {% workflow_badge 'UNDER_REVIEW' %}
+        </div>
+        <p class="text-muted small mb-2">Auditor review pending for Scope 2 market-based electricity disclosures.</p>
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="text-muted fs-xs">Assigned to: ESG Lead Auditor</span>
+          <button type="button"
+                  class="btn btn-outline-primary btn-sm py-1 px-2"
+                  data-esg-confirm="true"
+                  data-esg-confirm-title="Initiate Review"
+                  data-esg-confirm-message="Lock disclosure records and open auditor review session?"
+                  data-esg-confirm-btn="Open Review"
+                  data-esg-confirm-variant="btn-primary">
+            Review
+          </button>
+        </div>
+      </div>
+
+      <div class="list-group-item p-3">
+        <div class="d-flex justify-content-between align-items-start mb-1">
+          <span class="fw-semibold text-dark small">Hazardous Waste Disposal Manifest</span>
+          {% workflow_badge 'DRAFT' %}
+        </div>
+        <p class="text-muted small mb-2">PCB manifest certificate scan required before monthly closure.</p>
+        <div class="d-flex align-items-center justify-content-between">
+          <span class="text-muted fs-xs">Due in: 3 days</span>
+          <span class="badge bg-light text-secondary border">Awaiting Upload</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Platform Architecture Info Box -->
+<div class="p-3 bg-white border rounded">
+  <div class="d-flex align-items-center gap-2 mb-2">
+    <i class="icon-layers text-primary fs-5" aria-hidden="true"></i>
+    <span class="fw-bold text-dark small">MEIL Governance Shell</span>
+  </div>
+  <p class="text-muted small mb-2">
+    The application shell and Bootstrap design system are unified across all 4 target personas: Site Manager, Subsidiary Manager, ESG Manager, and Auditor.
+  </p>
+  <div class="d-flex flex-wrap gap-1">
+    <span class="badge bg-light text-dark border fs-xs">Bootstrap 5.3</span>
+    <span class="badge bg-light text-dark border fs-xs">Vanilla JS</span>
+    <span class="badge bg-light text-dark border fs-xs">Django 5.2 LTS</span>
+    <span class="badge bg-light text-dark border fs-xs">WCAG Ready</span>
+  </div>
+</div>
+{% endblock %}

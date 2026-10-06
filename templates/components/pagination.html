@@ -1,0 +1,54 @@
+{# Reusable Component: Pagination #}
+{# Usage: include "components/pagination.html" with page_obj=page_obj #}
+<nav aria-label="Page navigation" class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">
+  <div class="pagination-info small text-muted">
+    {% if page_obj %}
+      Showing page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} ({{ page_obj.paginator.count }} total items)
+    {% else %}
+      Showing page {{ current_page|default:1 }} of {{ total_pages|default:1 }}
+    {% endif %}
+  </div>
+
+  <ul class="pagination pagination-sm mb-0">
+    {% if page_obj %}
+      {% if page_obj.has_previous %}
+        <li class="page-item">
+          <a class="page-link" href="?page=1" aria-label="First">&laquo;</a>
+        </li>
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+        </li>
+      {% else %}
+        <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+        <li class="page-item disabled"><span class="page-link">Previous</span></li>
+      {% endif %}
+
+      <li class="page-item active" aria-current="page">
+        <span class="page-link">{{ page_obj.number }}</span>
+      </li>
+
+      {% if page_obj.has_next %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+        </li>
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" aria-label="Last">&raquo;</a>
+        </li>
+      {% else %}
+        <li class="page-item disabled"><span class="page-link">Next</span></li>
+        <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+      {% endif %}
+    {% else %}
+      <li class="page-item {% if not has_previous %}disabled{% endif %}">
+        <a class="page-link" href="{% if has_previous %}?page={{ current_page|add:'-1' }}{% else %}#{% endif %}">Previous</a>
+      </li>
+      <li class="page-item active"><span class="page-link">{{ current_page|default:1 }}</span></li>
+      {% if total_pages and total_pages > 1 %}
+        <li class="page-item"><a class="page-link" href="?page=2">2</a></li>
+      {% endif %}
+      <li class="page-item {% if not has_next %}disabled{% endif %}">
+        <a class="page-link" href="{% if has_next %}?page={{ current_page|add:'1' }}{% else %}#{% endif %}">Next</a>
+      </li>
+    {% endif %}
+  </ul>
+</nav>

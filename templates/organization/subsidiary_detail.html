@@ -1,0 +1,167 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block page_actions %}
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'core:org_subsidiary_list' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="icon-arrow-left me-1"></i> Divisions
+    </a>
+    {% if can_edit %}
+      <a href="{% url 'core:org_subsidiary_edit' subsidiary_id=subsidiary.id %}" class="btn btn-sm btn-outline-primary">
+        <i class="icon-pencil me-1"></i> Edit Division
+      </a>
+      {% if subsidiary.status == 'ACTIVE' %}
+        <a href="{% url 'core:org_subsidiary_deactivate' subsidiary_id=subsidiary.id %}" class="btn btn-sm btn-outline-danger">
+          <i class="icon-ban me-1"></i> Archive
+        </a>
+      {% endif %}
+    {% endif %}
+    {% if can_create_project %}
+      <a href="{% url 'core:org_project_create' %}?subsidiary_id={{ subsidiary.id }}" class="btn btn-sm btn-primary">
+        <i class="icon-plus me-1"></i> Add Project
+      </a>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <!-- Division Metadata & Breadcrumbs -->
+  <div class="row g-3 mb-4">
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <h6 class="mb-0 fw-bold text-dark"><i class="icon-briefcase text-info me-2"></i> Division Specification</h6>
+          <span class="badge bg-light text-dark border">
+            Enterprise: {{ subsidiary.company.name }}
+          </span>
+        </div>
+        <div class="card-body">
+          <dl class="row mb-0">
+            <dt class="col-sm-4 text-muted small">Subsidiary Title</dt>
+            <dd class="col-sm-8 fw-bold">{{ subsidiary.name }}</dd>
+
+            <dt class="col-sm-4 text-muted small">Legal Corporate Name</dt>
+            <dd class="col-sm-8">{{ subsidiary.legal_name|default:subsidiary.name }}</dd>
+
+            <dt class="col-sm-4 text-muted small">Unique Code</dt>
+            <dd class="col-sm-8"><code>{{ subsidiary.code }}</code></dd>
+
+            <dt class="col-sm-4 text-muted small">Industry Sector</dt>
+            <dd class="col-sm-8">{{ subsidiary.industry|default:"Infrastructure & Engineering" }}</dd>
+
+            <dt class="col-sm-4 text-muted small">Lifecycle Status</dt>
+            <dd class="col-sm-8">
+              {% if subsidiary.status == 'ACTIVE' %}
+                <span class="badge bg-success-subtle text-success">Active</span>
+              {% else %}
+                <span class="badge bg-secondary-subtle text-secondary">{{ subsidiary.status }}</span>
+              {% endif %}
+            </dd>
+
+            <dt class="col-sm-4 text-muted small">Operating Country</dt>
+            <dd class="col-sm-8">{{ subsidiary.country|default:"India" }}</dd>
+
+            <dt class="col-sm-4 text-muted small">Registered Address</dt>
+            <dd class="col-sm-8 small text-muted">{{ subsidiary.registered_address|default:"Not specified" }}</dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark"><i class="icon-chart text-warning me-2"></i> Operational Scope</h6>
+        </div>
+        <div class="card-body d-flex flex-column justify-content-around">
+          <div class="p-3 border rounded bg-light mb-3 text-center">
+            <span class="text-muted small text-uppercase fw-semibold">Infrastructure Projects</span>
+            <h3 class="fw-bold text-warning mb-0">{{ projects.count }}</h3>
+          </div>
+          <div class="p-3 border rounded bg-light text-center">
+            <span class="text-muted small text-uppercase fw-semibold">Operational Sites</span>
+            <h3 class="fw-bold text-success mb-0">{{ sites.count }}</h3>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Projects Under Subsidiary -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+      <h6 class="mb-0 fw-bold text-dark">
+        <i class="icon-folder text-warning me-2"></i> Infrastructure Projects Under {{ subsidiary.name }}
+      </h6>
+      {% if can_create_project %}
+        <a href="{% url 'core:org_project_create' %}?subsidiary_id={{ subsidiary.id }}" class="btn btn-xs btn-outline-primary">
+          <i class="icon-plus me-1"></i> New Project
+        </a>
+      {% endif %}
+    </div>
+    <div class="card-body p-0">
+      {% for proj in projects %}
+        <div class="p-3 border-bottom bg-light">
+          <div class="d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2">
+              <i class="icon-folder text-warning"></i>
+              <strong class="text-dark">
+                <a href="{% url 'core:org_project_detail' project_id=proj.id %}" class="text-dark text-decoration-none">
+                  {{ proj.name }}
+                </a>
+              </strong>
+              <code>{{ proj.code }}</code>
+              {% if proj.location %}
+                <small class="text-muted"><i class="icon-map me-1"></i>{{ proj.location }}</small>
+              {% endif %}
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge bg-primary text-white">{{ proj.sites.count }} Sites</span>
+              <a href="{% url 'core:org_project_detail' project_id=proj.id %}" class="btn btn-xs btn-outline-warning">
+                View
+              </a>
+            </div>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead class="bg-white">
+              <tr class="small text-muted">
+                <th>SITE CODE</th>
+                <th>SITE NAME</th>
+                <th>FACILITY TYPE</th>
+                <th>LOCATION</th>
+                <th class="text-end">ACTION</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for site in proj.sites.all %}
+                <tr>
+                  <td><code>{{ site.code }}</code></td>
+                  <td>{{ site.name }}</td>
+                  <td><span class="badge bg-light text-dark border">{{ site.facility_type|default:"Operational Facility" }}</span></td>
+                  <td><small class="text-muted">{{ site.location }}</small></td>
+                  <td class="text-end">
+                    <a href="{% url 'core:org_site_detail' site_id=site.id %}" class="btn btn-xs btn-outline-success">
+                      Inspect
+                    </a>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="5" class="text-muted small p-2">No operational sites registered under this project.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% empty %}
+        <div class="p-4 text-center text-muted">No infrastructure projects found under this subsidiary division.</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

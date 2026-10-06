@@ -1,0 +1,58 @@
+<!-- Reusable File Upload Drag-and-Drop Component -->
+<div class="mb-3 {{ wrapper_class }}">
+  {% if label %}
+    <label for="{{ field_id|default:name }}" class="form-label form-label-esg">
+      <span>{{ label }}</span>
+      {% if required %}
+        <span class="required-star" aria-hidden="true">*</span>
+        <span class="sr-only">(required)</span>
+      {% endif %}
+    </label>
+  {% endif %}
+
+  <div class="esg-file-dropzone" id="dropzone_{{ field_id|default:name }}">
+    <div class="dropzone-icon">
+      <i class="icon-cloud-upload" aria-hidden="true"></i>
+    </div>
+    <h5 class="dropzone-title text-dark font-weight-bold mb-1">
+      {{ title|default:"Drop evidence documents here or browse" }}
+    </h5>
+    <p class="text-muted small mb-0">
+      {{ subtitle|default:"Supports PDF, XLSX, CSV, JPG, PNG (Max 25MB)" }}
+    </p>
+
+    <input type="file"
+           id="{{ field_id|default:name }}"
+           name="{{ name|default:'file' }}"
+           accept="{{ accept|default:'.pdf,.xlsx,.csv,.png,.jpg,.jpeg' }}"
+           {% if required %}required aria-required="true"{% endif %}
+           {% if multiple %}multiple{% endif %}
+           onchange="window.handleEsgFileChange(this, '{{ field_id|default:name }}_feedback');"
+           aria-label="{% if label %}{{ label }}{% elif title %}{{ title }}{% else %}Upload evidence file{% endif %}">
+  </div>
+
+  <!-- Selected File Live Feedback -->
+  <div id="{{ field_id|default:name }}_feedback" class="mt-2 p-2 bg-light border rounded d-none">
+    <div class="d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center gap-2">
+        <i class="icon-doc text-success fs-5" aria-hidden="true"></i>
+        <div>
+          <p class="file-name font-weight-bold text-dark small mb-0"></p>
+          <span class="file-size text-muted small"></span>
+        </div>
+      </div>
+      <span class="badge badge-success badge-pill">Ready to upload</span>
+    </div>
+  </div>
+
+  {% if help_text %}
+    <div class="form-help-text mt-1">{{ help_text }}</div>
+  {% endif %}
+
+  {% if errors %}
+    <div class="form-error-feedback" role="alert">
+      <i class="icon-close" aria-hidden="true"></i>
+      <span>{{ errors.0|default:errors }}</span>
+    </div>
+  {% endif %}
+</div>

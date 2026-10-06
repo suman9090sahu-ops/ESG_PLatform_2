@@ -1,0 +1,6 @@
+{# Reusable Component: Badge #}
+{# Usage: include "components/badge.html" with text="BRSR Pillar 3" variant="primary" pill=True icon="icon-tag" #}
+<span class="badge badge-{% if outline %}outline-{% endif %}{{ variant|default:'primary' }} {% if pill %}badge-pill{% endif %} d-inline-flex align-items-center gap-1 font-weight-medium">
+  {% if icon %}<i class="{{ icon }}"></i>{% endif %}
+  <span>{{ text }}</span>
+</span>

@@ -1,0 +1,40 @@
+{# Reusable Component: Card #}
+{# Usage: include "components/card.html" with title="Scope 1 Emissions" subtitle="FY 2026 Monthly Data" body_html="<p>Data here</p>" card_class="shadow-sm" #}
+<div class="card {{ card_class|default:'' }}" id="{{ card_id|default:'' }}">
+  <div class="card-body">
+    {% if title or subtitle or header_action_label or header_badge %}
+      <div class="card-header-flex">
+        <div>
+          {% if title %}
+            <h4 class="card-title mb-1 font-weight-bold text-dark">{{ title }}</h4>
+          {% endif %}
+          {% if subtitle %}
+            <p class="card-description mb-0 text-muted small">{{ subtitle }}</p>
+          {% endif %}
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          {% if header_badge %}
+            <span class="badge badge-{{ header_badge_variant|default:'primary' }} badge-pill">{{ header_badge }}</span>
+          {% endif %}
+          {% if header_action_url %}
+            <a href="{{ header_action_url }}" class="btn btn-sm btn-outline-primary">{{ header_action_label|default:'View' }}</a>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="card-content-wrap">
+      {% if body_html %}
+        {{ body_html|safe }}
+      {% else %}
+        {{ content|default:''|safe }}
+      {% endif %}
+    </div>
+
+    {% if footer_html %}
+      <div class="card-footer bg-transparent border-top mt-3 pt-3 px-0 pb-0">
+        {{ footer_html|safe }}
+      </div>
+    {% endif %}
+  </div>
+</div>

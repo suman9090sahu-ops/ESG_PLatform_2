@@ -1,0 +1,28 @@
+<!-- Accessible Breadcrumb Navigation Component -->
+<nav aria-label="Breadcrumb navigation">
+  <ol class="breadcrumb bg-transparent p-0 mb-0 align-items-center">
+    <li class="breadcrumb-item">
+      <a href="{% url 'core:index' %}" class="text-decoration-none text-muted small">
+        <i class="icon-home me-1" aria-hidden="true"></i>Control Tower
+      </a>
+    </li>
+
+    {% if items %}
+      {% for item in items %}
+        {% if item.active or forloop.last and not item.url %}
+          <li class="breadcrumb-item active text-dark small font-weight-medium" aria-current="page">
+            {{ item.label }}
+          </li>
+        {% else %}
+          <li class="breadcrumb-item small">
+            <a href="{{ item.url }}" class="text-decoration-none text-muted">{{ item.label }}</a>
+          </li>
+        {% endif %}
+      {% endfor %}
+    {% elif current_page %}
+      <li class="breadcrumb-item active text-dark small font-weight-medium" aria-current="page">
+        {{ current_page }}
+      </li>
+    {% endif %}
+  </ol>
+</nav>

@@ -1,0 +1,11 @@
+<!-- ESG Anomaly Presentation Indicator -->
+<div class="d-inline-flex flex-column align-items-start {{ extra_class }}">
+  {% if show_label|default:True %}
+    <span class="text-muted small fw-medium mb-1">Anomaly</span>
+  {% endif %}
+  <span class="esg-indicator indicator-anomaly" title="Telemetry Anomaly Detected">
+    <span class="me-1">{{ label|default:"Anomaly" }}</span>
+    <i class="icon-exclamation" aria-hidden="true"></i>
+    <span class="sr-only">[!]</span>
+  </span>
+</div>

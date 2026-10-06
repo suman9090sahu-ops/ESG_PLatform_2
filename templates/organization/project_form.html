@@ -1,0 +1,97 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block page_actions %}
+  <a href="{% url 'core:org_project_list' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="icon-arrow-left me-1"></i> Back to Projects
+  </a>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-folder text-warning me-2"></i>
+            {% if is_create %}Register Infrastructure Project{% else %}Edit Project: {{ project.name }}{% endif %}
+          </h6>
+        </div>
+        <div class="card-body p-4">
+          <form method="post" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger" role="alert">
+                {% for err in form.non_field_errors %}{{ err }}<br>{% endfor %}
+              </div>
+            {% endif %}
+
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold text-dark">Authorized Subsidiary Division <span class="text-danger">*</span></label>
+                {{ form.subsidiary }}
+                {% if form.subsidiary.errors %}<div class="text-danger small mt-1">{{ form.subsidiary.errors.0 }}</div>{% endif %}
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label fw-semibold text-dark">Unique Project Code <span class="text-danger">*</span></label>
+                {{ form.code }}
+                <div class="form-text small">e.g. PRJ-POL-01, PRJ-KRN-02</div>
+                {% if form.code.errors %}<div class="text-danger small mt-1">{{ form.code.errors.0 }}</div>{% endif %}
+              </div>
+
+              <div class="col-md-12">
+                <label class="form-label fw-semibold text-dark">Infrastructure Project Name <span class="text-danger">*</span></label>
+                {{ form.name }}
+                {% if form.name.errors %}<div class="text-danger small mt-1">{{ form.name.errors.0 }}</div>{% endif %}
+              </div>
+
+              <div class="col-md-8">
+                <label class="form-label fw-semibold text-dark">Geographic Location / State</label>
+                {{ form.location }}
+                {% if form.location.errors %}<div class="text-danger small mt-1">{{ form.location.errors.0 }}</div>{% endif %}
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label fw-semibold text-dark">Project Status</label>
+                {{ form.status }}
+                {% if form.status.errors %}<div class="text-danger small mt-1">{{ form.status.errors.0 }}</div>{% endif %}
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label fw-semibold text-dark">Commencement / Start Date</label>
+                {{ form.start_date }}
+                {% if form.start_date.errors %}<div class="text-danger small mt-1">{{ form.start_date.errors.0 }}</div>{% endif %}
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label fw-semibold text-dark">Expected / Actual Completion Date</label>
+                {{ form.end_date }}
+                {% if form.end_date.errors %}<div class="text-danger small mt-1">{{ form.end_date.errors.0 }}</div>{% endif %}
+              </div>
+
+              <div class="col-md-12">
+                <label class="form-label fw-semibold text-dark">Project Scope & Engineering Description</label>
+                {{ form.description }}
+                {% if form.description.errors %}<div class="text-danger small mt-1">{{ form.description.errors.0 }}</div>{% endif %}
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+              <a href="{% url 'core:org_project_list' %}" class="btn btn-outline-secondary">Cancel</a>
+              <button type="submit" class="btn btn-primary">
+                {% if is_create %}Register Project{% else %}Save Changes{% endif %}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

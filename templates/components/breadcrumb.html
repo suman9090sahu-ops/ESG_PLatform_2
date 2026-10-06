@@ -1,0 +1,24 @@
+{# Reusable Component: Breadcrumb #}
+{# Usage: include "components/breadcrumb.html" with items=breadcrumb_items current_page="Live Data" #}
+<nav aria-label="breadcrumb" class="esg-breadcrumb-nav">
+  <ol class="breadcrumb mb-0 bg-transparent p-0 align-items-center">
+    <li class="breadcrumb-item">
+      <a href="{% url 'core:index' %}" class="text-decoration-none">
+        <i class="icon-home me-1"></i>Home
+      </a>
+    </li>
+    {% if items %}
+      {% for item in items %}
+        {% if item.active or forloop.last %}
+          <li class="breadcrumb-item active" aria-current="page">{{ item.label }}</li>
+        {% else %}
+          <li class="breadcrumb-item">
+            <a href="{{ item.url|default:'#' }}" class="text-decoration-none">{{ item.label }}</a>
+          </li>
+        {% endif %}
+      {% endfor %}
+    {% elif current_page %}
+      <li class="breadcrumb-item active" aria-current="page">{{ current_page }}</li>
+    {% endif %}
+  </ol>
+</nav>

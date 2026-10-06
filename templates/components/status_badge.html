@@ -1,0 +1,33 @@
+{# Reusable Component: Status Badge #}
+{# Usage: include "components/status_badge.html" with status="compliant" label="Compliant" #}
+{% if status == 'compliant' or status == 'approved' %}
+  <span class="badge badge-success {% if pill|default:True %}badge-pill{% endif %} d-inline-flex align-items-center gap-1 px-2 py-1 esg-status-badge">
+    <span class="status-indicator-dot bg-success me-1"></span>
+    <span>{{ label|default:"Compliant" }}</span>
+  </span>
+{% elif status == 'breach' or status == 'critical' %}
+  <span class="badge badge-danger {% if pill|default:True %}badge-pill{% endif %} d-inline-flex align-items-center gap-1 px-2 py-1 esg-status-badge">
+    <span class="status-indicator-dot bg-danger me-1"></span>
+    <span>{{ label|default:"Breach / Critical" }}</span>
+  </span>
+{% elif status == 'warning' %}
+  <span class="badge badge-warning {% if pill|default:True %}badge-pill{% endif %} d-inline-flex align-items-center gap-1 px-2 py-1 esg-status-badge">
+    <span class="status-indicator-dot bg-warning me-1"></span>
+    <span>{{ label|default:"Action Needed" }}</span>
+  </span>
+{% elif status == 'pending' %}
+  <span class="badge badge-info {% if pill|default:True %}badge-pill{% endif %} d-inline-flex align-items-center gap-1 px-2 py-1 esg-status-badge">
+    <span class="status-indicator-dot bg-info me-1"></span>
+    <span>{{ label|default:"Pending Review" }}</span>
+  </span>
+{% elif status == 'in_progress' %}
+  <span class="badge badge-primary {% if pill|default:True %}badge-pill{% endif %} d-inline-flex align-items-center gap-1 px-2 py-1 esg-status-badge">
+    <span class="status-indicator-dot bg-primary me-1"></span>
+    <span>{{ label|default:"In Progress" }}</span>
+  </span>
+{% else %}
+  <span class="badge badge-secondary {% if pill|default:True %}badge-pill{% endif %} d-inline-flex align-items-center gap-1 px-2 py-1 esg-status-badge">
+    <span class="status-indicator-dot bg-secondary me-1"></span>
+    <span>{{ label|default:status|title }}</span>
+  </span>
+{% endif %}

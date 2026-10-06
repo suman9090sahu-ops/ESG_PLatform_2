@@ -1,0 +1,92 @@
+{% extends "layouts/dashboard.html" %}
+{% load static esg_tags %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block header_actions %}
+  <span class="badge badge-danger px-3 py-2 fs-6">
+    <i class="icon-wrench me-1"></i> Role: MEIL_OPERATOR
+  </span>
+{% endblock %}
+
+{% block kpi_section %}
+  <div class="col-md-4 col-sm-6 grid-margin stretch-card">
+    <div class="card card-statistics border-0 shadow-sm">
+      <div class="card-body">
+        <h6 class="text-muted font-weight-normal mb-1">Operational Role</h6>
+        <h3 class="mb-0 font-weight-bold text-dark">MEIL Operator</h3>
+        <p class="text-muted small mt-2 mb-0"><i class="icon-info me-1"></i> Enterprise Operations Scope</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4 col-sm-6 grid-margin stretch-card">
+    <div class="card card-statistics border-0 shadow-sm">
+      <div class="card-body">
+        <h6 class="text-muted font-weight-normal mb-1">Superuser Separation</h6>
+        <h3 class="mb-0 font-weight-bold text-success">ENFORCED</h3>
+        <p class="text-success small mt-2 mb-0"><i class="icon-shield me-1"></i> Business Role != Superuser</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4 col-sm-6 grid-margin stretch-card">
+    <div class="card card-statistics border-0 shadow-sm">
+      <div class="card-body">
+        <h6 class="text-muted font-weight-normal mb-1">Security Audit Log</h6>
+        <h3 class="mb-0 font-weight-bold text-primary">{{ recent_audit_events.count }} Recent</h3>
+        <p class="text-primary small mt-2 mb-0"><i class="icon-list me-1"></i> Real-Time Telemetry Tracking</p>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block main_panel %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+      <h6 class="mb-0 font-weight-bold text-dark">
+        <i class="icon-shield me-2 text-danger"></i> Audit-Ready Authentication &amp; Authorization Telemetry Log
+      </h6>
+      <span class="badge badge-danger">Live Security Stream</span>
+    </div>
+    <div class="card-body p-0">
+      {% if recent_audit_events %}
+        <div class="table-responsive">
+          <table class="table table-hover table-sm align-middle mb-0" style="font-size: 0.825rem;">
+            <thead class="bg-light">
+              <tr class="text-muted">
+                <th>TIMESTAMP</th>
+                <th>EVENT TYPE</th>
+                <th>USER</th>
+                <th>RESOURCE</th>
+                <th>CLIENT IP</th>
+                <th>STATUS</th>
+                <th>DETAILS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for ev in recent_audit_events %}
+                <tr>
+                  <td><code>{{ ev.created_at|date:"Y-m-d H:i:s" }}</code></td>
+                  <td><span class="badge bg-light text-dark border">{{ ev.event_type }}</span></td>
+                  <td><strong>{{ ev.username_attempted|default:"Anonymous" }}</strong></td>
+                  <td><small class="text-muted">{{ ev.resource_accessed|default:"—" }}</small></td>
+                  <td><code>{{ ev.ip_address|default:"127.0.0.1" }}</code></td>
+                  <td>
+                    {% if ev.success %}
+                      <span class="badge badge-success">SUCCESS</span>
+                    {% else %}
+                      <span class="badge badge-danger">DENIED / FAIL</span>
+                    {% endif %}
+                  </td>
+                  <td><small class="text-muted">{{ ev.details|truncatechars:40 }}</small></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="p-4 text-center text-muted">No security events recorded yet.</div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

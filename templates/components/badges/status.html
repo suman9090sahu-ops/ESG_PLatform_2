@@ -1,0 +1,7 @@
+{% load esg_tags %}
+<!-- Workflow & ESG Status Badge Component -->
+{% if is_workflow %}
+  {% workflow_badge status=status custom_label=label %}
+{% else %}
+  {% status_badge status=status custom_label=label pill=pill|default:True %}
+{% endif %}

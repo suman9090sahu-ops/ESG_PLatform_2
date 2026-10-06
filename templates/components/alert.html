@@ -1,0 +1,28 @@
+{# Reusable Component: Alert #}
+{# Usage: include "components/alert.html" with variant="success" title="Target Met" message="Message here" dismissible=True #}
+<div class="alert alert-{{ variant|default:'info' }} {% if dismissible|default:True %}alert-dismissible fade show{% endif %} d-flex align-items-start gap-2 shadow-xs" role="alert">
+  <div class="alert-icon-box mt-1">
+    {% if icon %}
+      <i class="{{ icon }} fs-5"></i>
+    {% elif variant == 'success' %}
+      <i class="icon-check fs-5 text-success"></i>
+    {% elif variant == 'danger' %}
+      <i class="icon-close fs-5 text-danger"></i>
+    {% elif variant == 'warning' %}
+      <i class="icon-exclamation fs-5 text-warning"></i>
+    {% elif variant == 'primary' %}
+      <i class="icon-bell fs-5 text-primary"></i>
+    {% else %}
+      <i class="icon-info fs-5 text-info"></i>
+    {% endif %}
+  </div>
+  <div class="flex-grow-1">
+    {% if title %}
+      <h6 class="alert-heading font-weight-bold mb-1">{{ title }}</h6>
+    {% endif %}
+    <div class="alert-body small">{{ message|safe }}</div>
+  </div>
+  {% if dismissible|default:True %}
+    <button type="button" class="btn-close ms-2" data-bs-dismiss="alert" aria-label="Close"></button>
+  {% endif %}
+</div>

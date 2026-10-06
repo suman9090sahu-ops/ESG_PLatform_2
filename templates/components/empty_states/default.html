@@ -1,0 +1,21 @@
+<!-- Reusable Empty State Component -->
+<div class="esg-empty-state {{ extra_class }}">
+  <div class="esg-empty-state-icon">
+    <i class="{{ icon|default:'icon-folder-alt' }}" aria-hidden="true"></i>
+  </div>
+  <h4 class="font-weight-bold text-dark mb-1">{{ title|default:"No Data Recorded" }}</h4>
+  <p class="text-muted small mb-3 mx-auto" style="max-width: 460px;">
+    {{ description|default:"No telemetry readings, activity logs, or evidence documents found for this period." }}
+  </p>
+  {% if action_url and action_label %}
+    <a href="{{ action_url }}" class="btn btn-esg-primary btn-sm">
+      {% if action_icon %}<i class="{{ action_icon }} me-1" aria-hidden="true"></i>{% endif %}
+      <span>{{ action_label }}</span>
+    </a>
+  {% elif action_label %}
+    <button type="button" class="btn btn-esg-primary btn-sm" {% if action_onclick %}onclick="{{ action_onclick }}"{% endif %}>
+      {% if action_icon %}<i class="{{ action_icon }} me-1" aria-hidden="true"></i>{% endif %}
+      <span>{{ action_label }}</span>
+    </button>
+  {% endif %}
+</div>

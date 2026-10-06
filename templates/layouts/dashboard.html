@@ -1,0 +1,48 @@
+{% extends "base/base.html" %}
+
+{% block page_header %}
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+  <div class="esg-page-title-group">
+    <div class="d-flex align-items-center gap-2">
+      <h1 class="h3 font-weight-bold mb-0 text-dark">{{ page_title|default:"Executive ESG Control Tower" }}</h1>
+      {% if is_live_monitoring %}
+        <span class="badge badge-success badge-pill py-1 px-2 font-weight-normal fs-6">
+          <span class="status-indicator-dot bg-success me-1"></span> Live
+        </span>
+      {% endif %}
+    </div>
+    <p class="text-muted small mt-1 mb-0">{{ page_subtitle|default:"Continuous ESG Governance, BRSR Core Disclosures & Compliance Audit" }}</p>
+  </div>
+  <div class="esg-page-actions mt-2 mt-sm-0">
+    {% block page_actions %}
+      <span class="text-muted small me-2"><i class="icon-calendar me-1"></i>FY 2025-26</span>
+    {% endblock %}
+    {% block breadcrumb %}
+      {% include "components/breadcrumbs/breadcrumb.html" with current_page=page_title|default:"Dashboard" %}
+    {% endblock %}
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+  <!-- Top KPI Cards Row -->
+  {% block kpi_section %}{% endblock %}
+
+  <!-- Primary Analytics / Data Grids -->
+  {% block analytics_section %}{% endblock %}
+
+  <!-- Activity & Governance Status Rows -->
+  <div class="row">
+    <div class="col-lg-8 mb-4">
+      {% block main_panel %}{% endblock %}
+    </div>
+    <div class="col-lg-4 mb-4">
+      {% block side_panel %}{% endblock %}
+    </div>
+  </div>
+
+  <!-- Additional Dashboard Widgets -->
+  {% block extra_dashboard_content %}{% endblock %}
+</div>
+{% endblock %}

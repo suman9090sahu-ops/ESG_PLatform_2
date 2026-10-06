@@ -1,0 +1,161 @@
+/* ==========================================================================
+   MEIL ESG CONTROL TOWER - Design Tokens & Utilities
+   ========================================================================== */
+
+:root {
+  /* Typography Scale */
+  --esg-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --esg-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+  /* ESG Semantic Color Tokens */
+  --esg-color-env: #1b8a5a;
+  --esg-color-env-subtle: #e8f5ee;
+  --esg-color-env-border: #a7f3d0;
+
+  --esg-color-soc: #1f6feb;
+  --esg-color-soc-subtle: #eff6ff;
+  --esg-color-soc-border: #bfdbfe;
+
+  --esg-color-gov: #7928ca;
+  --esg-color-gov-subtle: #f5edfa;
+  --esg-color-gov-border: #ddd6fe;
+
+  --esg-color-success: #10b981;
+  --esg-color-success-subtle: #ecfdf5;
+  --esg-color-success-border: #a7f3d0;
+
+  --esg-color-warning: #f59e0b;
+  --esg-color-warning-subtle: #fffbeb;
+  --esg-color-warning-border: #fde68a;
+
+  --esg-color-danger: #ef4444;
+  --esg-color-danger-subtle: #fef2f2;
+  --esg-color-danger-border: #fecaca;
+
+  --esg-color-info: #0284c7;
+  --esg-color-info-subtle: #f0f9ff;
+  --esg-color-info-border: #bae6fd;
+
+  --esg-color-neutral: #64748b;
+  --esg-color-neutral-subtle: #f8fafc;
+  --esg-color-neutral-border: #e2e8f0;
+
+  /* Accessible Focus Rings */
+  --esg-focus-ring: 0 0 0 3px rgba(27, 138, 90, 0.35);
+  --esg-focus-ring-danger: 0 0 0 3px rgba(239, 68, 68, 0.35);
+}
+
+/* Accessibility Focus States */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.btn:focus-visible {
+  outline: none;
+  box-shadow: var(--esg-focus-ring) !important;
+}
+
+/* Accessible Screen Reader Helper */
+.sr-only,
+.esg-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* High Contrast Indicators */
+.text-high-contrast {
+  color: #0f172a !important;
+  font-weight: 600;
+}
+
+/* Utility Helpers */
+.font-mono {
+  font-family: var(--esg-font-mono) !important;
+}
+
+.fs-xs {
+  font-size: 0.75rem !important;
+}
+
+.fs-sm {
+  font-size: 0.8125rem !important;
+}
+
+.fw-medium {
+  font-weight: 500 !important;
+}
+
+.fw-semibold {
+  font-weight: 600 !important;
+}
+
+.cursor-pointer {
+  cursor: pointer !important;
+}
+
+/* Status Dot Component */
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-dot-pulse-green {
+  background-color: var(--esg-color-success);
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  animation: esg-pulse-green 2s infinite;
+}
+
+.status-dot-pulse-red {
+  background-color: var(--esg-color-danger);
+  box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  animation: esg-pulse-red 1.5s infinite;
+}
+
+.status-dot-pulse-yellow {
+  background-color: var(--esg-color-warning);
+  box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+  animation: esg-pulse-yellow 2s infinite;
+}
+
+@keyframes esg-pulse-green {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+@keyframes esg-pulse-red {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+  70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+@keyframes esg-pulse-yellow {
+  0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+  70% { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
+
+/* Glassmorphism & Surface Tokens */
+.esg-surface {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--esg-radius-lg);
+  box-shadow: var(--esg-shadow-xs);
+}
+
+.esg-surface-hover:hover {
+  box-shadow: var(--esg-shadow-md);
+  border-color: #cbd5e1;
+  transition: all var(--esg-transition-normal);
+}

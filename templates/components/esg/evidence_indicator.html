@@ -1,0 +1,11 @@
+<!-- ESG Evidence Presentation Indicator -->
+<div class="d-inline-flex flex-column align-items-start {{ extra_class }}">
+  {% if show_label|default:True %}
+    <span class="text-muted small fw-medium mb-1">Evidence</span>
+  {% endif %}
+  <span class="esg-indicator indicator-evidence" title="Attached Evidence: {{ count|default:1 }} Document{% if count != 1 %}s{% endif %}">
+    <i class="icon-check me-1" aria-hidden="true"></i>
+    <span class="sr-only">[✓] </span>
+    <span>{{ count|default:1 }} Document{% if count != 1 %}s{% endif %}</span>
+  </span>
+</div>

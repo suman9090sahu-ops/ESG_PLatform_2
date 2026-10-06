@@ -1,0 +1,20 @@
+{# Reusable Component: Loading State #}
+{# Usage: include "components/loading_state.html" with message="Synchronizing data..." color="success" #}
+{% if skeleton %}
+  <div class="esg-skeleton-loader p-3 w-100">
+    <div class="placeholder-glow">
+      <span class="placeholder col-6 bg-secondary mb-2" style="height: 18px; border-radius: 4px;"></span>
+      <span class="placeholder col-12 bg-light mb-2" style="height: 14px; border-radius: 4px;"></span>
+      <span class="placeholder col-10 bg-light mb-2" style="height: 14px; border-radius: 4px;"></span>
+      <span class="placeholder col-8 bg-light" style="height: 14px; border-radius: 4px;"></span>
+    </div>
+  </div>
+{% else %}
+  <div class="esg-loading-container d-flex flex-column align-items-center justify-content-center my-4">
+    <div class="spinner-border text-{{ color|default:'success' }} mb-3 esg-spinner-glow" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <h6 class="font-weight-medium text-dark mb-1">{{ message|default:"Loading ESG Data..." }}</h6>
+    <span class="text-muted small">Please wait while the platform processes your request</span>
+  </div>
+{% endif %}

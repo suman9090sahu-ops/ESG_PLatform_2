@@ -1,0 +1,44 @@
+{# Reusable Component: File Upload #}
+{# Usage: include "components/file_upload.html" with name="emission_evidence" field_id="emissionFile" accept=".pdf,.xlsx,.csv" #}
+<div class="esg-file-upload-wrapper mb-3" id="{{ field_id|default:'esgFile' }}_wrapper">
+  {% if label %}
+    <label class="form-label font-weight-medium text-dark small mb-1">
+      {{ label }}
+      {% if required %}<span class="text-danger ms-1">*</span>{% endif %}
+    </label>
+  {% endif %}
+
+  <div class="esg-file-dropzone p-4" onclick="document.getElementById('{{ field_id|default:'esgFile' }}').click();">
+    <input
+      type="file"
+      id="{{ field_id|default:'esgFile' }}"
+      name="{{ name|default:'file' }}"
+      class="d-none"
+      accept="{{ accept|default:'.pdf,.xlsx,.xls,.csv' }}"
+      {% if multiple %}multiple{% endif %}
+      {% if required %}required{% endif %}
+      onchange="handleEsgFileChange(this, '{{ field_id|default:'esgFile' }}_feedback')"
+    >
+    <div class="dropzone-icon">
+      <i class="icon-cloud-upload"></i>
+    </div>
+    <h6 class="font-weight-bold text-dark mb-1">{{ title|default:"Choose a file or drag & drop here" }}</h6>
+    <p class="text-muted small mb-2">Accepted formats: {{ accept|default:"PDF, Excel (.xlsx), CSV" }} (Max: {{ max_size|default:"25 MB" }})</p>
+    <button type="button" class="btn btn-sm btn-outline-primary px-3">
+      <i class="icon-folder me-1"></i> Browse Files
+    </button>
+  </div>
+
+  <div id="{{ field_id|default:'esgFile' }}_feedback" class="mt-2 small text-muted d-none">
+    <div class="d-flex align-items-center justify-content-between p-2 bg-light rounded border">
+      <div class="d-flex align-items-center gap-2">
+        <i class="icon-doc text-primary fs-5"></i>
+        <div>
+          <span class="file-name font-weight-bold text-dark d-block"></span>
+          <span class="file-size text-muted small"></span>
+        </div>
+      </div>
+      <span class="badge badge-success badge-pill">Ready to upload</span>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,12 @@
+<!-- Reusable Platform Footer -->
+<footer class="footer esg-footer" role="contentinfo">
+  <div class="d-sm-flex justify-content-center justify-content-sm-between py-2 px-3">
+    <span class="text-muted text-center text-sm-start d-block d-sm-inline-block small">
+      &copy; {{ CURRENT_YEAR|default:"2026" }} <strong>MEIL</strong> &mdash; ESG CONTROL TOWER. All rights reserved.
+    </span>
+    <span class="float-none float-sm-end d-block mt-1 mt-sm-0 text-center text-muted small">
+      <span class="badge bg-light border text-secondary me-2">{{ ENVIRONMENT|default:"production"|upper }}</span>
+      v{{ APP_VERSION|default:"1.0.0" }} | Timezone: {{ TIME_ZONE|default:"Asia/Kolkata" }}
+    </span>
+  </div>
+</footer>

@@ -1,0 +1,119 @@
+<!-- Reusable Component: Sidebar -->
+<nav class="sidebar sidebar-offcanvas" id="sidebar">
+  <ul class="nav">
+    <!-- Mobile mini brand -->
+    <li class="nav-item navbar-brand-mini-wrapper d-none">
+      <a class="nav-link navbar-brand brand-logo-mini" href="{% url 'core:index' %}">
+        <span class="badge badge-success">MEIL</span>
+      </a>
+    </li>
+
+    <!-- User Profile Strip -->
+    <li class="nav-item nav-profile border-bottom">
+      <a href="#" class="nav-link">
+        <div class="profile-image">
+          <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; font-weight: 700; font-size: 0.85rem;">
+            CT
+          </div>
+          <div class="dot-indicator bg-success"></div>
+        </div>
+        <div class="text-wrapper">
+          <p class="profile-name mb-0 font-weight-bold">Control Tower</p>
+          <p class="designation mb-0 text-muted small">BRSR / GRI / GHG</p>
+        </div>
+      </a>
+    </li>
+
+    <!-- Section: Overview -->
+    <li class="nav-item nav-category">
+      <span class="nav-link">OVERVIEW</span>
+    </li>
+    <li class="nav-item {% if active_nav == 'dashboard' %}active{% endif %}">
+      <a class="nav-link" href="{% url 'core:index' %}">
+        <span class="menu-title">ESG Dashboard</span>
+        <i class="icon-screen-desktop menu-icon text-success"></i>
+      </a>
+    </li>
+
+    <!-- Section: Design System & Foundations -->
+    <li class="nav-item nav-category">
+      <span class="nav-link">DESIGN SYSTEM</span>
+    </li>
+    <li class="nav-item {% if active_nav == 'components' %}active{% endif %}">
+      <a class="nav-link" href="{% url 'core:components_showcase' %}">
+        <span class="menu-title">UI Components (15)</span>
+        <i class="icon-layers menu-icon text-primary"></i>
+      </a>
+    </li>
+
+    <!-- Section: ESG Pillars (Planned modules) -->
+    <li class="nav-item nav-category">
+      <span class="nav-link">ESG PILLARS (ROADMAP)</span>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" data-bs-toggle="collapse" href="#envPillar" aria-expanded="false" aria-controls="envPillar">
+        <span class="menu-title">Environmental (E)</span>
+        <i class="icon-globe menu-icon text-success"></i>
+      </a>
+      <div class="collapse" id="envPillar">
+        <ul class="nav flex-column sub-menu">
+          <li class="nav-item">
+            <span class="nav-link text-muted small"><i class="icon-clock me-1"></i> Scope 1, 2, 3 GHG (Phase 01)</span>
+          </li>
+          <li class="nav-item">
+            <span class="nav-link text-muted small"><i class="icon-clock me-1"></i> Energy & Water (Phase 01)</span>
+          </li>
+        </ul>
+      </div>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" data-bs-toggle="collapse" href="#socPillar" aria-expanded="false" aria-controls="socPillar">
+        <span class="menu-title">Social (S)</span>
+        <i class="icon-people menu-icon text-info"></i>
+      </a>
+      <div class="collapse" id="socPillar">
+        <ul class="nav flex-column sub-menu">
+          <li class="nav-item">
+            <span class="nav-link text-muted small"><i class="icon-clock me-1"></i> Workforce & Safety (Phase 02)</span>
+          </li>
+          <li class="nav-item">
+            <span class="nav-link text-muted small"><i class="icon-clock me-1"></i> CSR Operations (Phase 02)</span>
+          </li>
+        </ul>
+      </div>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" data-bs-toggle="collapse" href="#govPillar" aria-expanded="false" aria-controls="govPillar">
+        <span class="menu-title">Governance (G)</span>
+        <i class="icon-shield menu-icon text-warning"></i>
+      </a>
+      <div class="collapse" id="govPillar">
+        <ul class="nav flex-column sub-menu">
+          <li class="nav-item">
+            <span class="nav-link text-muted small"><i class="icon-clock me-1"></i> Ethics & Compliance (Phase 03)</span>
+          </li>
+          <li class="nav-item">
+            <span class="nav-link text-muted small"><i class="icon-clock me-1"></i> BRSR Disclosures (Phase 03)</span>
+          </li>
+        </ul>
+      </div>
+    </li>
+
+    <!-- Section: Operations & Probes -->
+    <li class="nav-item nav-category">
+      <span class="nav-link">SYSTEM OPERATIONS</span>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="{% url 'core:health_check' %}" target="_blank">
+        <span class="menu-title">Health Check Probe</span>
+        <i class="icon-pulse menu-icon text-danger"></i>
+      </a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="/admin/" target="_blank">
+        <span class="menu-title">Django Admin</span>
+        <i class="icon-settings menu-icon text-secondary"></i>
+      </a>
+    </li>
+  </ul>
+</nav>

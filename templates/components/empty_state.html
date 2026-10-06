@@ -1,0 +1,22 @@
+{# Reusable Component: Empty State #}
+{# Usage: include "components/empty_state.html" with title="No Emission Incidents" description="Zero incidents." action_label="Log" #}
+<div class="esg-empty-state my-4">
+  <div class="esg-empty-state-icon">
+    <i class="{{ icon|default:'icon-folder-alt' }}"></i>
+  </div>
+  <h5 class="font-weight-bold text-dark mb-2">{{ title|default:"No Data Available" }}</h5>
+  <p class="text-muted small mx-auto mb-3" style="max-width: 440px;">
+    {{ description|default:"There is currently no information or records to show in this view." }}
+  </p>
+  {% if action_label %}
+    {% if action_modal_target %}
+      <button type="button" class="btn btn-primary btn-sm px-3 shadow-xs" data-bs-toggle="modal" data-bs-target="{{ action_modal_target }}">
+        <i class="icon-plus me-1"></i> {{ action_label }}
+      </button>
+    {% else %}
+      <a href="{{ action_url|default:'#' }}" class="btn btn-primary btn-sm px-3 shadow-xs">
+        <i class="icon-plus me-1"></i> {{ action_label }}
+      </a>
+    {% endif %}
+  {% endif %}
+</div>

@@ -1,0 +1,51 @@
+{# Reusable Component: Confirmation Dialog #}
+{# Usage: include "components/confirmation_dialog.html" with modal_id="confirmDeleteAudit" dialog_title="Delete" #}
+<div class="modal fade" id="{{ modal_id }}" tabindex="-1" aria-labelledby="{{ modal_id }}Label" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header border-bottom py-3">
+        <h5 class="modal-title font-weight-bold text-dark d-flex align-items-center gap-2" id="{{ modal_id }}Label">
+          <i class="{{ icon|default:'icon-exclamation' }} text-{{ icon_color|default:'danger' }}"></i>
+          <span>{{ dialog_title|default:"Confirm Action" }}</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body py-4">
+        <div class="d-flex align-items-start gap-3">
+          <div class="p-3 bg-light rounded-circle text-{{ icon_color|default:'danger' }} fs-4">
+            <i class="{{ icon|default:'icon-shield' }}"></i>
+          </div>
+          <div>
+            <p class="mb-0 text-dark font-weight-medium">{{ message|default:"Are you sure you want to proceed with this operation?" }}</p>
+            {% if warning_text %}
+              <div class="alert alert-warning py-2 px-3 small mt-2 mb-0">
+                <i class="icon-info me-1"></i> {{ warning_text }}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer border-top py-2 bg-light">
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">
+          {{ cancel_label|default:"Cancel" }}
+        </button>
+
+        {% if confirm_method == 'POST' or confirm_method == 'post' %}
+          <form action="{{ confirm_url }}" method="POST" class="d-inline m-0">
+            {% csrf_token %}
+            {% if extra_hidden_input_name %}
+              <input type="hidden" name="{{ extra_hidden_input_name }}" value="{{ extra_hidden_input_val }}">
+            {% endif %}
+            <button type="submit" class="btn btn-sm {{ confirm_button_class|default:'btn-danger' }}">
+              {{ confirm_label|default:"Confirm" }}
+            </button>
+          </form>
+        {% else %}
+          <a href="{{ confirm_url|default:'#' }}" class="btn btn-sm {{ confirm_button_class|default:'btn-danger' }}">
+            {{ confirm_label|default:"Confirm" }}
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,26 @@
+<!-- Validation Summary Alert Component -->
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+  <div class="d-flex align-items-center gap-2 mb-2">
+    <i class="icon-close fs-5" aria-hidden="true"></i>
+    <span class="sr-only">[!] </span>
+    <strong class="font-weight-bold">{{ title|default:"Please correct the following errors:" }}</strong>
+  </div>
+  {% if errors %}
+    <ul class="mb-0 ps-4 small">
+      {% for field, error_list in errors.items %}
+        {% for error in error_list %}
+          <li><strong>{{ field|title }}:</strong> {{ error }}</li>
+        {% endfor %}
+      {% endfor %}
+    </ul>
+  {% elif error_list %}
+    <ul class="mb-0 ps-4 small">
+      {% for error in error_list %}
+        <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="mb-0 small">{{ message|default:"Validation failed. Please verify the submitted form values." }}</p>
+  {% endif %}
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>

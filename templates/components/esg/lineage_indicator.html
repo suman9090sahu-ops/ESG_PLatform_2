@@ -1,0 +1,11 @@
+<!-- ESG Lineage & Traceability Presentation Indicator -->
+<div class="d-inline-flex flex-column align-items-start {{ extra_class }}">
+  {% if show_label|default:True %}
+    <span class="text-muted small fw-medium mb-1">Audit Trail</span>
+  {% endif %}
+  <span class="esg-indicator indicator-lineage" title="Full data lineage traceable from IoT raw reading to consolidated BRSR disclosure">
+    <span class="me-1">{{ label|default:"Traceable" }}</span>
+    <i class="icon-arrow-right" aria-hidden="true"></i>
+    <span class="sr-only">[→]</span>
+  </span>
+</div>

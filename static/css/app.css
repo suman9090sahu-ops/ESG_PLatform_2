@@ -1,0 +1,27 @@
+/* ==========================================================================
+   MEIL ESG CONTROL TOWER - Master Stylesheet Architecture
+   Phase 01 UI Foundation
+   ========================================================================== */
+
+@import url("./layout.css");
+@import url("./utilities.css");
+@import url("./components.css");
+@import url("./esg-custom.css");
+
+/* Global Smooth Rendering & Box Sizing */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--esg-font-family);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  background-color: #f4f6f9;
+  color: #1e293b;
+  overflow-x: hidden;
+}

@@ -1,0 +1,26 @@
+<!-- Standard Card Component -->
+<div class="card card-esg {{ extra_class }}">
+  {% if title or header_action %}
+    <div class="card-esg-header">
+      <div>
+        <h4 class="card-esg-title">{{ title }}</h4>
+        {% if subtitle %}<p class="text-muted small mb-0">{{ subtitle }}</p>{% endif %}
+      </div>
+      {% if header_action %}
+        <div>{{ header_action|safe }}</div>
+      {% endif %}
+    </div>
+  {% endif %}
+  <div class="card-esg-body">
+    {% if body_html %}
+      {{ body_html|safe }}
+    {% else %}
+      {{ content }}
+    {% endif %}
+  </div>
+  {% if footer %}
+    <div class="card-footer bg-light border-top py-2 px-3 small text-muted">
+      {{ footer|safe }}
+    </div>
+  {% endif %}
+</div>

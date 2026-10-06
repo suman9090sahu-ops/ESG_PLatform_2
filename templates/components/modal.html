@@ -1,0 +1,26 @@
+{# Reusable Component: Modal #}
+{# Usage: include "components/modal.html" with modal_id="uploadModal" modal_title="Upload Emission Data" body_html="<p>Form</p>" size="lg" #}
+<div class="modal fade" id="{{ modal_id }}" tabindex="-1" aria-labelledby="{{ modal_id }}Label" aria-hidden="true">
+  <div class="modal-dialog {% if size %}modal-{{ size }}{% endif %} {% if centered|default:True %}modal-dialog-centered{% endif %}">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header border-bottom py-3">
+        <h5 class="modal-title font-weight-bold text-dark d-flex align-items-center gap-2" id="{{ modal_id }}Label">
+          {% if icon %}<i class="{{ icon }} text-primary"></i>{% endif %}
+          <span>{{ modal_title }}</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body py-4">
+        {{ body_html|safe }}
+      </div>
+      <div class="modal-footer border-top py-2 bg-light">
+        {% if footer_html %}
+          {{ footer_html|safe }}
+        {% else %}
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-sm btn-primary">Save Changes</button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>

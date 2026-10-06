@@ -1,0 +1,19 @@
+<!-- Permission Denied (403) Feedback Component -->
+<div class="feedback-box {{ extra_class }}">
+  <div class="feedback-icon-circle feedback-icon-danger">
+    <i class="icon-lock" aria-hidden="true"></i>
+  </div>
+  <h3 class="h4 font-weight-bold text-dark mb-1">{{ title|default:"Access Restricted" }}</h3>
+  <p class="text-muted small mb-3 mx-auto" style="max-width: 480px;">
+    {{ message|default:"You do not possess the required RBAC role permissions (Site Manager, Subsidiary Manager, ESG Manager, or Auditor) to view this module." }}
+  </p>
+  {% if action_url %}
+    <a href="{{ action_url }}" class="btn btn-esg-secondary btn-sm">
+      <i class="icon-arrow-left me-1"></i>{{ action_label|default:"Return to Dashboard" }}
+    </a>
+  {% else %}
+    <a href="{% url 'core:index' %}" class="btn btn-esg-secondary btn-sm">
+      <i class="icon-arrow-left me-1"></i>Return to Dashboard
+    </a>
+  {% endif %}
+</div>

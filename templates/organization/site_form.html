@@ -1,0 +1,115 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block page_actions %}
+  <a href="{% url 'core:org_site_list' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="icon-arrow-left me-1"></i> Back to Sites
+  </a>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-location-pin text-success me-2"></i>
+            {% if is_create %}Register Operational Site{% else %}Edit Site: {{ site.name }}{% endif %}
+          </h6>
+        </div>
+        <div class="card-body p-4">
+          <form method="post" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger" role="alert">
+                {% for err in form.non_field_errors %}{{ err }}<br>{% endfor %}
+              </div>
+            {% endif %}
+
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold text-dark">Parent Infrastructure Project <span class="text-danger">*</span></label>
+                {{ form.project }}
+                {% if form.project.errors %}<div class="text-danger small mt-1">{{ form.project.errors.0 }}</div>{% endif %}
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label fw-semibold text-dark">Unique Site Code <span class="text-danger">*</span></label>
+                {{ form.code }}
+                <div class="form-text small">e.g. SITE-POL-101, SITE-KRN-201</div>
+                {% if form.code.errors %}<div class="text-danger small mt-1">{{ form.code.errors.0 }}</div>{% endif %}
+              </div>
+
+              <div class="col-md-8">
+                <label class="form-label fw-semibold text-dark">Operational Site Name <span class="text-danger">*</span></label>
+                {{ form.name }}
+                {% if form.name.errors %}<div class="text-danger small mt-1">{{ form.name.errors.0 }}</div>{% endif %}
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label fw-semibold text-dark">Facility Classification</label>
+                {{ form.facility_type }}
+                {% if form.facility_type.errors %}<div class="text-danger small mt-1">{{ form.facility_type.errors.0 }}</div>{% endif %}
+              </div>
+
+              <div class="col-md-8">
+                <label class="form-label fw-semibold text-dark">Geographic Location / Address</label>
+                {{ form.location }}
+                {% if form.location.errors %}<div class="text-danger small mt-1">{{ form.location.errors.0 }}</div>{% endif %}
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label fw-semibold text-dark">Operational Status</label>
+                {{ form.status }}
+                {% if form.status.errors %}<div class="text-danger small mt-1">{{ form.status.errors.0 }}</div>{% endif %}
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label fw-semibold text-dark">Latitude (GPS Coordinate)</label>
+                {{ form.latitude }}
+                {% if form.latitude.errors %}<div class="text-danger small mt-1">{{ form.latitude.errors.0 }}</div>{% endif %}
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label fw-semibold text-dark">Longitude (GPS Coordinate)</label>
+                {{ form.longitude }}
+                {% if form.longitude.errors %}<div class="text-danger small mt-1">{{ form.longitude.errors.0 }}</div>{% endif %}
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label fw-semibold text-dark">Site In-Charge Engineer</label>
+                {{ form.contact_person }}
+                {% if form.contact_person.errors %}<div class="text-danger small mt-1">{{ form.contact_person.errors.0 }}</div>{% endif %}
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label fw-semibold text-dark">Official Correspondence Email</label>
+                {{ form.contact_email }}
+                {% if form.contact_email.errors %}<div class="text-danger small mt-1">{{ form.contact_email.errors.0 }}</div>{% endif %}
+              </div>
+
+              <div class="col-md-12">
+                <label class="form-label fw-semibold text-dark">ESG Boundary Description</label>
+                {{ form.description }}
+                {% if form.description.errors %}<div class="text-danger small mt-1">{{ form.description.errors.0 }}</div>{% endif %}
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+              <a href="{% url 'core:org_site_list' %}" class="btn btn-outline-secondary">Cancel</a>
+              <button type="submit" class="btn btn-success">
+                {% if is_create %}Register Site{% else %}Save Changes{% endif %}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

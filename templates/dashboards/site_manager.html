@@ -1,0 +1,146 @@
+{% extends "layouts/dashboard.html" %}
+{% load static esg_tags %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block header_actions %}
+  <span class="badge badge-success px-3 py-2 fs-6">
+    <i class="icon-user me-1"></i> Role: SITE_MANAGER
+  </span>
+{% endblock %}
+
+{% block kpi_section %}
+  <div class="col-md-4 col-sm-6 grid-margin stretch-card">
+    <div class="card card-statistics border-0 shadow-sm">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <h6 class="text-muted font-weight-normal mb-1">Assigned Sites</h6>
+            <h3 class="mb-0 font-weight-bold text-dark">{{ assigned_sites.count }}</h3>
+          </div>
+          <div class="icon-box bg-light-success text-success p-3 rounded-circle">
+            <i class="icon-location-pin" style="font-size: 1.5rem;"></i>
+          </div>
+        </div>
+        <p class="text-muted small mt-2 mb-0"><i class="icon-check text-success me-1"></i> Authorized Operational Scope</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4 col-sm-6 grid-margin stretch-card">
+    <div class="card card-statistics border-0 shadow-sm">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <h6 class="text-muted font-weight-normal mb-1">Telemetry Status</h6>
+            <h3 class="mb-0 font-weight-bold text-success">ONLINE</h3>
+          </div>
+          <div class="icon-box bg-light-primary text-primary p-3 rounded-circle">
+            <i class="icon-feed" style="font-size: 1.5rem;"></i>
+          </div>
+        </div>
+        <p class="text-muted small mt-2 mb-0"><i class="icon-clock text-info me-1"></i> Live Stream Connected</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4 col-sm-6 grid-margin stretch-card">
+    <div class="card card-statistics border-0 shadow-sm">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <h6 class="text-muted font-weight-normal mb-1">Pending Submissions</h6>
+            <h3 class="mb-0 font-weight-bold text-warning">2</h3>
+          </div>
+          <div class="icon-box bg-light-warning text-warning p-3 rounded-circle">
+            <i class="icon-doc" style="font-size: 1.5rem;"></i>
+          </div>
+        </div>
+        <p class="text-muted small mt-2 mb-0"><i class="icon-exclamation text-warning me-1"></i> Due for Monthly Cycle</p>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block main_panel %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+      <h6 class="mb-0 font-weight-bold text-dark">
+        <i class="icon-location-pin me-2 text-success"></i> My Authorized Operational Sites
+      </h6>
+      <span class="badge badge-outline-primary small">RBAC Scoped</span>
+    </div>
+    <div class="card-body p-0">
+      {% if assigned_sites %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="bg-light">
+              <tr class="small text-muted">
+                <th>SITE CODE</th>
+                <th>SITE NAME</th>
+                <th>PROJECT</th>
+                <th>SUBSIDIARY</th>
+                <th>LOCATION</th>
+                <th>STATUS</th>
+                <th class="text-end">ACTION</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for site in assigned_sites %}
+                <tr>
+                  <td><code>{{ site.code }}</code></td>
+                  <td><strong>{{ site.name }}</strong></td>
+                  <td>{{ site.project.name }}</td>
+                  <td><span class="badge bg-light text-dark border">{{ site.project.subsidiary.code }}</span></td>
+                  <td><small class="text-muted">{{ site.location|default:"—" }}</small></td>
+                  <td><span class="badge-workflow badge-wf-verified"><i class="icon-check me-1"></i>AUTHORIZED</span></td>
+                  <td class="text-end">
+                    <a href="{% url 'core:site_detail' site_id=site.id %}" class="btn btn-sm btn-outline-primary">
+                      <i class="icon-eye me-1"></i> Inspect Site
+                    </a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="p-4 text-center text-muted">
+          <i class="icon-info mb-2" style="font-size: 2rem;"></i>
+          <p class="mb-0">No operational sites currently assigned to your account. Contact your subsidiary manager.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm mt-4">
+    <div class="card-header bg-white py-3 border-bottom">
+      <h6 class="mb-0 font-weight-bold text-dark">
+        <i class="icon-shield me-2 text-primary"></i> RBAC Object-Level Security Demonstration
+      </h6>
+    </div>
+    <div class="card-body">
+      <div class="alert alert-info small mb-0">
+        <strong>Security Policy Notice:</strong> You are authenticated as a <code>SITE_MANAGER</code>. Server-side authorization ensures you can only view operational data for sites explicitly assigned to you in the database. Direct URL access to unassigned sites (e.g. Site 102 if unassigned) will result in an immediate <code>403 Forbidden</code> response and an entry in the security audit log.
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block side_panel %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white py-3 border-bottom">
+      <h6 class="mb-0 font-weight-bold text-dark">
+        <i class="icon-user me-2 text-success"></i> Operator Profile
+      </h6>
+    </div>
+    <div class="card-body small">
+      <p class="mb-2"><strong>User:</strong> {{ request.user.username }}</p>
+      <p class="mb-2"><strong>Name:</strong> {{ request.user.get_full_name|default:"Not specified" }}</p>
+      <p class="mb-2"><strong>Department:</strong> {{ request.user.department|default:"Hydro Operations" }}</p>
+      <p class="mb-2"><strong>Designation:</strong> {{ request.user.designation|default:"Site In-Charge" }}</p>
+      <p class="mb-0"><strong>Primary Role:</strong> <span class="badge badge-success">{{ request.user.get_primary_role }}</span></p>
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,54 @@
+<!-- Responsive Table Component -->
+<div class="table-responsive table-esg-container {{ extra_class }}">
+  <table class="table table-esg table-hover align-middle mb-0" {% if table_id %}id="{{ table_id }}"{% endif %}>
+    {% if caption %}
+      <caption class="ps-3 pt-2 small text-muted">{{ caption }}</caption>
+    {% endif %}
+    <thead>
+      <tr>
+        {% for header in headers %}
+          <th scope="col" class="{% if header.sortable %}sortable{% endif %} {% if header.align %}text-{{ header.align }}{% endif %}">
+            <div class="d-inline-flex align-items-center gap-1">
+              <span>{% if header.label %}{{ header.label }}{% else %}{{ header }}{% endif %}</span>
+              {% if header.sortable %}
+                <i class="icon-arrow-down fs-xs text-muted" aria-hidden="true"></i>
+              {% endif %}
+            </div>
+          </th>
+        {% endfor %}
+        {% if show_actions %}
+          <th scope="col" class="text-end">Actions</th>
+        {% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% if rows %}
+        {% for row in rows %}
+          <tr>
+            {% for cell in row %}
+              <td>{{ cell|safe }}</td>
+            {% endfor %}
+            {% if show_actions %}
+              <td class="text-end">
+                <div class="table-row-actions">
+                  <button type="button" class="btn-esg-icon btn-sm" title="View details" aria-label="View details">
+                    <i class="icon-eye"></i>
+                  </button>
+                  <button type="button" class="btn-esg-icon btn-sm" title="Audit trail" aria-label="Audit trail">
+                    <i class="icon-clock"></i>
+                  </button>
+                </div>
+              </td>
+            {% endif %}
+          </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="{% if show_actions %}{{ headers|length|add:1 }}{% else %}{{ headers|length }}{% endif %}" class="p-0">
+            {% include "components/tables/empty.html" with message="No records found in current view." %}
+          </td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>

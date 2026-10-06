@@ -1,0 +1,38 @@
+<!-- Select Dropdown Component -->
+<div class="mb-3 {{ wrapper_class }}">
+  {% if label %}
+    <label for="{{ id|default:name }}" class="form-label form-label-esg">
+      <span>{{ label }}</span>
+      {% if required %}
+        <span class="required-star" aria-hidden="true">*</span>
+        <span class="sr-only">(required)</span>
+      {% endif %}
+    </label>
+  {% endif %}
+
+  <select class="form-select form-select-esg {% if errors %}is-invalid{% endif %} {{ extra_class }}"
+          id="{{ id|default:name }}"
+          name="{{ name }}"
+          {% if required %}required aria-required="true"{% endif %}
+          {% if disabled %}disabled{% endif %}>
+    {% if placeholder %}
+      <option value="" {% if not selected_value %}selected{% endif %}>{{ placeholder }}</option>
+    {% endif %}
+    {% for option in options %}
+      <option value="{{ option.value }}" {% if option.value == selected_value %}selected{% endif %}>
+        {{ option.label }}
+      </option>
+    {% endfor %}
+  </select>
+
+  {% if help_text %}
+    <div class="form-help-text">{{ help_text }}</div>
+  {% endif %}
+
+  {% if errors %}
+    <div class="form-error-feedback" role="alert">
+      <i class="icon-close" aria-hidden="true"></i>
+      <span>{{ errors.0|default:errors }}</span>
+    </div>
+  {% endif %}
+</div>

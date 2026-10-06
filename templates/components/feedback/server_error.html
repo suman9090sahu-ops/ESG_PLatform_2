@@ -1,0 +1,18 @@
+<!-- Server Error (500) Feedback Component -->
+<div class="feedback-box {{ extra_class }}">
+  <div class="feedback-icon-circle feedback-icon-danger">
+    <i class="icon-close" aria-hidden="true"></i>
+  </div>
+  <h3 class="h4 font-weight-bold text-dark mb-1">{{ title|default:"System Error Occurred" }}</h3>
+  <p class="text-muted small mb-3 mx-auto" style="max-width: 480px;">
+    {{ message|default:"An unexpected exception occurred while executing this ESG calculation or service query. The incident has been recorded in the platform audit log." }}
+  </p>
+  <div class="d-flex justify-content-center gap-2">
+    <button type="button" class="btn btn-esg-secondary btn-sm" onclick="window.location.reload();">
+      <i class="icon-refresh me-1"></i>Try Again
+    </button>
+    <a href="{% url 'core:health_check' %}" target="_blank" class="btn btn-outline-secondary btn-sm">
+      <i class="icon-pulse me-1"></i>System Health
+    </a>
+  </div>
+</div>

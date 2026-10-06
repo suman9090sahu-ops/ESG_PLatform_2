@@ -1,0 +1,71 @@
+{# Reusable Component: Form Field #}
+{# Usage: include "components/form_field.html" with label="Facility" name="facility_id" required=True #}
+<div class="mb-3 esg-form-group">
+  {% if field %}
+    <!-- Django BoundField support -->
+    <label for="{{ field.id_for_label }}" class="form-label font-weight-medium text-dark small mb-1">
+      {{ field.label }}
+      {% if field.field.required %}<span class="text-danger ms-1">*</span>{% endif %}
+    </label>
+    {{ field }}
+    {% if field.help_text %}
+      <div class="form-text small text-muted">{{ field.help_text }}</div>
+    {% endif %}
+    {% if field.errors %}
+      {% for error in field.errors %}
+        <div class="invalid-feedback d-block small text-danger">{{ error }}</div>
+      {% endfor %}
+    {% endif %}
+  {% else %}
+    <!-- Explicit parameter support -->
+    {% if label %}
+      <label for="{{ field_id|default:name }}" class="form-label font-weight-medium text-dark small mb-1">
+        {{ label }}
+        {% if required %}<span class="text-danger ms-1">*</span>{% endif %}
+      </label>
+    {% endif %}
+
+    {% if type == 'textarea' %}
+      <textarea
+        class="form-control {% if error_text %}is-invalid{% endif %}"
+        id="{{ field_id|default:name }}"
+        name="{{ name }}"
+        rows="{{ rows|default:3 }}"
+        placeholder="{{ placeholder|default:'' }}"
+        {% if required %}required{% endif %}>{{ value|default:'' }}</textarea>
+    {% elif type == 'select' %}
+      <select
+        class="form-select form-control {% if error_text %}is-invalid{% endif %}"
+        id="{{ field_id|default:name }}"
+        name="{{ name }}"
+        {% if required %}required{% endif %}>
+        {% if options %}
+          {% for opt in options %}
+            <option value="{{ opt.value }}" {% if opt.value == value %}selected{% endif %}>{{ opt.label }}</option>
+          {% endfor %}
+        {% else %}
+          <option value="">Select option...</option>
+        {% endif %}
+      </select>
+    {% else %}
+      <input
+        type="{{ type|default:'text' }}"
+        class="form-control {% if error_text %}is-invalid{% endif %}"
+        id="{{ field_id|default:name }}"
+        name="{{ name }}"
+        value="{{ value|default:'' }}"
+        placeholder="{{ placeholder|default:'' }}"
+        {% if step %}step="{{ step }}"{% endif %}
+        {% if min %}min="{{ min }}"{% endif %}
+        {% if max %}max="{{ max }}"{% endif %}
+        {% if required %}required{% endif %}>
+    {% endif %}
+
+    {% if help_text %}
+      <div class="form-text small text-muted">{{ help_text }}</div>
+    {% endif %}
+    {% if error_text %}
+      <div class="invalid-feedback d-block small text-danger">{{ error_text }}</div>
+    {% endif %}
+  {% endif %}
+</div>

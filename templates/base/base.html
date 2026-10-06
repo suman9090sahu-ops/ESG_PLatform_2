@@ -1,0 +1,86 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>{% block title %}{% if page_title %}{{ page_title }}{% elif SITE_NAME %}{{ SITE_NAME }}{% else %}MEIL ESG CONTROL TOWER{% endif %}{% endblock %} | {{ SITE_NAME|default:"MEIL" }}</title>
+  {% block head %}
+    {% include "base/_head.html" %}
+  {% endblock %}
+  {% block extra_css %}{% endblock %}
+</head>
+<body class="esg-body">
+  <div class="container-scroller">
+    <!-- Navbar Component -->
+    {% block navbar %}
+      {% include "base/_navbar.html" %}
+    {% endblock %}
+
+    <div class="container-fluid page-body-wrapper">
+      <!-- Sidebar Component -->
+      {% block sidebar %}
+        {% include "base/_sidebar.html" %}
+      {% endblock %}
+
+      <!-- Main Content Panel -->
+      <div class="main-panel esg-main-panel">
+        <div class="content-wrapper esg-content-container">
+          <!-- Page Header & Breadcrumbs Block -->
+          {% block page_header %}
+          <div class="page-header d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+            <div class="esg-page-title-group">
+              <h1 class="h3 font-weight-bold mb-1 text-dark">{% if page_title %}{{ page_title }}{% elif SITE_NAME %}{{ SITE_NAME }}{% else %}MEIL ESG CONTROL TOWER{% endif %}</h1>
+              <p class="text-muted small mb-0">{% if page_subtitle %}{{ page_subtitle }}{% elif SITE_SUBTITLE %}{{ SITE_SUBTITLE }}{% else %}Enterprise Environmental, Social &amp; Governance Platform{% endif %}</p>
+            </div>
+            <div>
+              {% block breadcrumb %}
+                {% include "components/breadcrumbs/breadcrumb.html" with current_page=page_title|default:"Dashboard" %}
+              {% endblock %}
+            </div>
+          </div>
+          {% endblock %}
+
+          <!-- Global Django Messages Framework Display -->
+          {% block messages %}
+            {% if messages %}
+              <div class="mb-4">
+                {% for message in messages %}
+                  <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags %}{{ message.tags }}{% else %}info{% endif %} alert-dismissible fade show d-flex align-items-center" role="alert">
+                    <i class="icon-info me-2 fs-5" aria-hidden="true"></i>
+                    <div class="flex-grow-1">{{ message }}</div>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                  </div>
+                {% endfor %}
+              </div>
+            {% endif %}
+          {% endblock %}
+
+          <!-- Main Page Body Content -->
+          {% block content %}{% endblock %}
+        </div>
+        <!-- content-wrapper ends -->
+
+        <!-- Platform Footer -->
+        {% block footer %}
+          {% include "base/_footer.html" %}
+        {% endblock %}
+      </div>
+      <!-- main-panel ends -->
+    </div>
+    <!-- page-body-wrapper ends -->
+  </div>
+  <!-- container-scroller ends -->
+
+  <!-- Global Modal Placeholder -->
+  {% block global_modals %}
+    {% include "components/modals/confirmation.html" with modal_id="esgConfirmationModal" dialog_title="Confirm Action" message="Are you sure you want to perform this operation?" confirm_label="Proceed" %}
+  {% endblock %}
+
+  <!-- Core Scripts -->
+  {% block scripts %}
+    {% include "base/_scripts.html" %}
+  {% endblock %}
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,37 @@
+<!-- Standard Form Field Component -->
+<div class="mb-3 {{ wrapper_class }}">
+  {% if label %}
+    <label for="{{ id|default:name }}" class="form-label form-label-esg">
+      <span>{{ label }}</span>
+      {% if required %}
+        <span class="required-star" aria-hidden="true">*</span>
+        <span class="sr-only">(required)</span>
+      {% endif %}
+    </label>
+  {% endif %}
+
+  <input type="{{ type|default:'text' }}"
+         class="form-control form-control-esg {% if errors %}is-invalid{% endif %} {{ extra_class }}"
+         id="{{ id|default:name }}"
+         name="{{ name }}"
+         value="{{ value|default:'' }}"
+         placeholder="{{ placeholder|default:'' }}"
+         {% if required %}required aria-required="true"{% endif %}
+         {% if disabled %}disabled{% endif %}
+         {% if readonly %}readonly{% endif %}
+         {% if step %}step="{{ step }}"{% endif %}
+         {% if min %}min="{{ min }}"{% endif %}
+         {% if max %}max="{{ max }}"{% endif %}
+         {% if help_text %}aria-describedby="{{ id|default:name }}_help"{% endif %}>
+
+  {% if help_text %}
+    <div id="{{ id|default:name }}_help" class="form-help-text">{{ help_text }}</div>
+  {% endif %}
+
+  {% if errors %}
+    <div class="form-error-feedback" role="alert">
+      <i class="icon-close" aria-hidden="true"></i>
+      <span>{{ errors.0|default:errors }}</span>
+    </div>
+  {% endif %}
+</div>

@@ -1,0 +1,17 @@
+<!-- Form Actions Bar Component -->
+<div class="form-actions-wrapper d-flex align-items-center gap-2 justify-content-{{ align|default:'end' }} {{ extra_class }}">
+  {% if show_cancel|default:True %}
+    <a href="{{ cancel_url|default:'#' }}" class="btn btn-esg-secondary">
+      {{ cancel_label|default:"Cancel" }}
+    </a>
+  {% endif %}
+  {% if show_reset %}
+    <button type="reset" class="btn btn-light border">
+      {{ reset_label|default:"Reset" }}
+    </button>
+  {% endif %}
+  <button type="submit" class="btn btn-esg-primary" {% if submit_disabled %}disabled{% endif %}>
+    {% if submit_icon %}<i class="{{ submit_icon }} me-1" aria-hidden="true"></i>{% endif %}
+    <span>{{ submit_label|default:"Save Changes" }}</span>
+  </button>
+</div>

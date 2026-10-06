@@ -1,0 +1,58 @@
+{% extends "layouts/dashboard.html" %}
+{% load static esg_tags %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block header_actions %}
+  <span class="badge badge-warning text-dark px-3 py-2 fs-6">
+    <i class="icon-lock me-1"></i> Role: AUDITOR (READ-ONLY)
+  </span>
+{% endblock %}
+
+{% block kpi_section %}
+  <div class="col-md-4 col-sm-6 grid-margin stretch-card">
+    <div class="card card-statistics border-0 shadow-sm">
+      <div class="card-body">
+        <h6 class="text-muted font-weight-normal mb-1">Governed Disclosures</h6>
+        <h3 class="mb-0 font-weight-bold text-dark">48 Indicators</h3>
+        <p class="text-success small mt-2 mb-0"><i class="icon-check me-1"></i> 100% Traceable Lineage</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4 col-sm-6 grid-margin stretch-card">
+    <div class="card card-statistics border-0 shadow-sm">
+      <div class="card-body">
+        <h6 class="text-muted font-weight-normal mb-1">Assurance Findings</h6>
+        <h3 class="mb-0 font-weight-bold text-warning">0 Critical</h3>
+        <p class="text-muted small mt-2 mb-0"><i class="icon-badge text-warning me-1"></i> 2 Low-Risk Observations</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4 col-sm-6 grid-margin stretch-card">
+    <div class="card card-statistics border-0 shadow-sm">
+      <div class="card-body">
+        <h6 class="text-muted font-weight-normal mb-1">Data Mutation Access</h6>
+        <h3 class="mb-0 font-weight-bold text-danger">RESTRICTED</h3>
+        <p class="text-danger small mt-2 mb-0"><i class="icon-lock me-1"></i> Read-Only Assurance Mode</p>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block main_panel %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+      <h6 class="mb-0 font-weight-bold text-dark">
+        <i class="icon-doc me-2 text-warning"></i> Independent ESG Assurance Workspace (Phase 02 Placeholder)
+      </h6>
+      <span class="badge badge-warning text-dark">Read-Only Enforced</span>
+    </div>
+    <div class="card-body">
+      <div class="alert alert-warning small mb-3">
+        <strong>Strict Architectural Constraint:</strong> The <code>AUDITOR</code> role is strictly read-only. Server-side authorization blocks all state mutation, document deletion, or data alterations. Auditors have transparent read access to raw OCR evidence, approval trails, and calculation lineage formulas.
+      </div>
+      <p class="text-muted small mb-0">Phase 06 will integrate the formal audit finding log and assurance workpapers generator.</p>
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,342 @@
+{% extends "layouts/dashboard.html" %}
+{% load static esg_tags %}
+
+{% block title %}UI Component Library &amp; Design System Preview{% endblock %}
+
+{% block page_actions %}
+  <span class="badge bg-success text-white py-2 px-3">
+    <i class="icon-check me-1"></i>Phase 01 UI Foundation Ready
+  </span>
+  <a href="{% url 'core:index' %}" class="btn btn-esg-secondary btn-sm">
+    <i class="icon-arrow-left me-1"></i>Back to Dashboard
+  </a>
+{% endblock %}
+
+{% block breadcrumb %}
+  {% include "components/breadcrumbs/breadcrumb.html" with current_page="UI Preview Gallery" %}
+{% endblock %}
+
+{% block content %}
+<div class="ui-preview-container">
+  <!-- Showcase Introduction Banner -->
+  <div class="alert alert-info d-flex align-items-center justify-content-between mb-4" role="alert">
+    <div class="d-flex align-items-center gap-2">
+      <i class="icon-layers fs-4" aria-hidden="true"></i>
+      <div>
+        <strong>MEIL ESG CONTROL TOWER &mdash; Design System Showcase</strong>
+        <p class="mb-0 small text-muted">Comprehensive preview of all reusable Bootstrap 5.x templates, design tokens, workflow badges, and ESG presentation indicators.</p>
+      </div>
+    </div>
+    <span class="badge bg-white text-info border font-weight-bold">Internal Dev Route</span>
+  </div>
+
+  <!-- =========================================================================
+       SECTION 1: BUTTONS
+       ========================================================================= -->
+  <div class="card card-esg mb-4" id="section-buttons">
+    <div class="card-esg-header">
+      <h3 class="card-esg-title"><i class="icon-cursor text-primary me-2"></i>1. Buttons &amp; Interactive Actions</h3>
+      <span class="badge bg-light text-secondary border">Accessible &amp; Focused</span>
+    </div>
+    <div class="card-esg-body">
+      <p class="text-muted small mb-3">Enterprise buttons tailored with ESG palette tokens and high-contrast visible focus rings.</p>
+      <div class="d-flex flex-wrap align-items-center gap-3">
+        {% include "components/buttons/primary.html" with text="Primary Action" icon="icon-check" %}
+        {% include "components/buttons/secondary.html" with text="Secondary Button" icon="icon-action-undo" %}
+        {% include "components/buttons/danger.html" with text="Destructive Action" icon="icon-trash" %}
+        {% include "components/buttons/icon.html" with icon="icon-options-vertical" title="More Options" %}
+        {% include "components/buttons/icon.html" with icon="icon-pencil" title="Edit Entry" %}
+        {% include "components/buttons/primary.html" with text="Disabled State" disabled=True %}
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SECTION 2: WORKFLOW STATUS BADGES (12 CORE STATES)
+       ========================================================================= -->
+  <div class="card card-esg mb-4" id="section-workflow-badges">
+    <div class="card-esg-header">
+      <h3 class="card-esg-title"><i class="icon-badge text-warning me-2"></i>2. Workflow Lifecycle Status Badges (All 12 States)</h3>
+      <span class="badge bg-light text-secondary border">Consistent Presentation</span>
+    </div>
+    <div class="card-esg-body">
+      <p class="text-muted small mb-3">Standard visual presentation tokens for future governance states without embedded business logic in Phase 01.</p>
+      <div class="row g-3">
+        <div class="col-md-3 col-sm-6">
+          <div class="p-2 border rounded bg-light d-flex align-items-center justify-content-between">
+            <span class="small text-muted font-mono">1. DRAFT</span>
+            {% workflow_badge 'DRAFT' %}
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="p-2 border rounded bg-light d-flex align-items-center justify-content-between">
+            <span class="small text-muted font-mono">2. PENDING</span>
+            {% workflow_badge 'PENDING' %}
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="p-2 border rounded bg-light d-flex align-items-center justify-content-between">
+            <span class="small text-muted font-mono">3. SUBMITTED</span>
+            {% workflow_badge 'SUBMITTED' %}
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="p-2 border rounded bg-light d-flex align-items-center justify-content-between">
+            <span class="small text-muted font-mono">4. UNDER_REVIEW</span>
+            {% workflow_badge 'UNDER_REVIEW' %}
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="p-2 border rounded bg-light d-flex align-items-center justify-content-between">
+            <span class="small text-muted font-mono">5. CORRECTION_REQUIRED</span>
+            {% workflow_badge 'CORRECTION_REQUIRED' %}
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="p-2 border rounded bg-light d-flex align-items-center justify-content-between">
+            <span class="small text-muted font-mono">6. VERIFIED</span>
+            {% workflow_badge 'VERIFIED' %}
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="p-2 border rounded bg-light d-flex align-items-center justify-content-between">
+            <span class="small text-muted font-mono">7. REJECTED</span>
+            {% workflow_badge 'REJECTED' %}
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="p-2 border rounded bg-light d-flex align-items-center justify-content-between">
+            <span class="small text-muted font-mono">8. ESCALATED</span>
+            {% workflow_badge 'ESCALATED' %}
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="p-2 border rounded bg-light d-flex align-items-center justify-content-between">
+            <span class="small text-muted font-mono">9. APPROVED</span>
+            {% workflow_badge 'APPROVED' %}
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="p-2 border rounded bg-light d-flex align-items-center justify-content-between">
+            <span class="small text-muted font-mono">10. FINALIZED</span>
+            {% workflow_badge 'FINALIZED' %}
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="p-2 border rounded bg-light d-flex align-items-center justify-content-between">
+            <span class="small text-muted font-mono">11. LOCKED</span>
+            {% workflow_badge 'LOCKED' %}
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="p-2 border rounded bg-light d-flex align-items-center justify-content-between">
+            <span class="small text-muted font-mono">12. FAILED</span>
+            {% workflow_badge 'FAILED' %}
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4 pt-3 border-top">
+        <h6 class="small font-weight-bold text-muted text-uppercase mb-2">Live Pulsing Indicator Badges</h6>
+        <div class="d-flex flex-wrap gap-2">
+          {% status_badge 'compliant' custom_label='Telemetry Online' %}
+          {% status_badge 'breach' custom_label='Threshold Breach' %}
+          {% status_badge 'warning' custom_label='Calibration Warning' %}
+          {% status_badge 'in_progress' custom_label='Aggregation Syncing' %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SECTION 3: ESG PRESENTATION INDICATORS
+       ========================================================================= -->
+  <div class="card card-esg mb-4" id="section-esg-indicators">
+    <div class="card-esg-header">
+      <h3 class="card-esg-title"><i class="icon-energy text-success me-2"></i>3. ESG Presentation Indicators</h3>
+      <span class="badge bg-light text-secondary border">Audit &amp; Telemetry Traceability</span>
+    </div>
+    <div class="card-esg-body">
+      <div class="row g-3 align-items-center">
+        <div class="col-md-2 col-6">
+          {% include "components/esg/evidence_indicator.html" with count=3 %}
+        </div>
+        <div class="col-md-2 col-6">
+          {% include "components/esg/verification_indicator.html" with verified=True %}
+        </div>
+        <div class="col-md-2 col-6">
+          {% include "components/esg/anomaly_indicator.html" with label="Anomaly" %}
+        </div>
+        <div class="col-md-2 col-6">
+          {% include "components/esg/calculation_indicator.html" with calculated=True %}
+        </div>
+        <div class="col-md-2 col-6">
+          {% include "components/esg/lineage_indicator.html" with traceable=True %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SECTION 4: CARDS (STAT, STANDARD, STATUS, METRIC)
+       ========================================================================= -->
+  <div class="card card-esg mb-4" id="section-cards">
+    <div class="card-esg-header">
+      <h3 class="card-esg-title"><i class="icon-grid text-info me-2"></i>4. Reusable Cards &amp; Metric Containers</h3>
+      <span class="badge bg-light text-secondary border">Data Densified</span>
+    </div>
+    <div class="card-esg-body">
+      <div class="row g-3">
+        <!-- Stat Card -->
+        <div class="col-md-3">
+          {% include "components/cards/stat.html" with title="Active Sensors" value="1,420" unit="IoT nodes" delta="<span class='text-success'><i class='icon-arrow-up'></i>+14.2%</span>" delta_label="vs last month" icon="icon-globe" %}
+        </div>
+        <!-- Status Card -->
+        <div class="col-md-3">
+          {% include "components/cards/status.html" with label="Grid Emission Factor" metric_value="0.716" description="CEA India Baseline CO2 Database v19" border_variant="success" status_text="Active" %}
+        </div>
+        <!-- Metric Card -->
+        <div class="col-md-3">
+          {% include "components/cards/metric.html" with title="Scope 1 Emissions" value="12,450" unit="tCO₂e" delta_type="increase" delta_text="↑ 4.2%" comparison_label="vs previous period" %}
+        </div>
+        <!-- Standard Card -->
+        <div class="col-md-3">
+          {% include "components/cards/standard.html" with title="Governance Policy" subtitle="SEBI Mandated" body_html="<p class='small text-muted mb-0'>BRSR Core assurance required for top 1,000 listed entities by market capitalization.</p>" %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SECTION 5: ALERTS & VALIDATION SUMMARIES
+       ========================================================================= -->
+  <div class="card card-esg mb-4" id="section-alerts">
+    <div class="card-esg-header">
+      <h3 class="card-esg-title"><i class="icon-bell text-danger me-2"></i>5. Feedback &amp; Alert Notifications</h3>
+      <span class="badge bg-light text-secondary border">Accessible Semantics</span>
+    </div>
+    <div class="card-esg-body">
+      {% include "components/alerts/success.html" with title="Assurance Verification Complete" message="All Scope 1 & Scope 2 emission factor formulas verified by Lead ESG Assurer." %}
+      {% include "components/alerts/warning.html" with title="Threshold Exceeded" message="Facility fuel consumption exceeds 10% tolerance limit for current accounting period." %}
+      {% include "components/alerts/error.html" with title="Sensor Disconnection" message="Continuous Emission Monitoring System (CEMS) failed heartbeat ping." %}
+      {% include "components/alerts/info.html" with title="Reporting Cycle Notice" message="SEBI BRSR disclosures filing window opens on 15th April 2026." %}
+      {% include "components/alerts/validation.html" with title="Please correct the form errors below:" errors=validation_demo_errors %}
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SECTION 6: RESPONSIVE TABLES & EMPTY STATES
+       ========================================================================= -->
+  <div class="card card-esg mb-4" id="section-tables">
+    <div class="card-esg-header">
+      <h3 class="card-esg-title"><i class="icon-list text-primary me-2"></i>6. Responsive Tables, Actions &amp; Empty State</h3>
+      <span class="badge bg-light text-secondary border">Data Hierarchy</span>
+    </div>
+    <div class="card-esg-body">
+      <!-- Populated Table -->
+      <h6 class="small font-weight-bold text-muted text-uppercase mb-2">Populated Table with Row Actions</h6>
+      {% include "components/tables/responsive.html" with headers=demo_table_headers rows=demo_table_rows show_actions=True %}
+      {% include "components/pagination/pagination.html" with current_page=1 total_pages=4 has_next=True %}
+
+      <div class="mt-4 pt-4 border-top">
+        <h6 class="small font-weight-bold text-muted text-uppercase mb-2">Empty Table State Representation</h6>
+        <div class="table-esg-container">
+          {% include "components/tables/empty.html" with title="No Audit Discrepancies" message="Zero discrepancies or non-conformances identified in current fiscal period." %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SECTION 7: FORMS & INPUTS
+       ========================================================================= -->
+  <div class="card card-esg mb-4" id="section-forms">
+    <div class="card-esg-header">
+      <h3 class="card-esg-title"><i class="icon-pencil text-secondary me-2"></i>7. Forms, Validations &amp; File Upload</h3>
+      <span class="badge bg-light text-secondary border">Accessible Controls</span>
+    </div>
+    <div class="card-esg-body">
+      <form action="#" method="post" onsubmit="event.preventDefault();">
+        {% csrf_token %}
+        <div class="row">
+          <div class="col-md-6">
+            {% include "components/forms/field.html" with label="Facility / Unit Identifier" name="facility_code" value="MEIL-HYD-04" required=True help_text="Unique MEIL internal plant location identifier." %}
+          </div>
+          <div class="col-md-6">
+            {% include "components/forms/field.html" with label="Fuel Consumption (Litres)" name="fuel_consumed" value="abc" type="text" required=True errors="Please enter a valid numeric value for fuel volume." %}
+          </div>
+          <div class="col-md-6">
+            {% include "components/forms/select.html" with label="Activity Scope Category" name="scope_cat" required=True placeholder="Select GHG Scope..." options=demo_scope_options selected_value="scope1" %}
+          </div>
+          <div class="col-md-6">
+            {% include "components/forms/date.html" with label="Measurement Date" name="log_date" value="2026-10-06" required=True %}
+          </div>
+          <div class="col-12">
+            {% include "components/forms/textarea.html" with label="Verification Audit Notes" name="audit_notes" placeholder="Enter auditor or manager observation details..." rows=2 %}
+          </div>
+          <div class="col-12">
+            {% include "components/forms/file_upload.html" with label="Audit Evidence Document" field_id="showcase_file" name="evidence_file" required=True help_text="Upload meter calibration certificate, diesel utility invoice, or CEMS log report." %}
+          </div>
+        </div>
+
+        {% include "components/forms/actions.html" with submit_label="Submit Audit Record" cancel_label="Reset Form" %}
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SECTION 8: MODALS, LOADING, EMPTY & ERROR STATES
+       ========================================================================= -->
+  <div class="card card-esg mb-4" id="section-feedback-states">
+    <div class="card-esg-header">
+      <h3 class="card-esg-title"><i class="icon-layers text-danger me-2"></i>8. Modals, Loading, Empty &amp; System States</h3>
+      <span class="badge bg-light text-secondary border">Lifecycle Feedback</span>
+    </div>
+    <div class="card-esg-body">
+      <div class="row g-4">
+        <!-- Confirmation Modal Trigger -->
+        <div class="col-md-6">
+          <div class="p-3 border rounded h-100">
+            <h5 class="h6 font-weight-bold text-dark mb-2">Confirmation Modal Dialog</h5>
+            <p class="small text-muted mb-3">Accessible modal confirmation for destructive or workflow transition operations.</p>
+            <button type="button"
+                    class="btn btn-outline-danger btn-sm"
+                    data-esg-confirm="true"
+                    data-esg-confirm-title="Confirm Record Deletion"
+                    data-esg-confirm-message="Are you sure you want to delete this draft emission telemetry reading? This cannot be undone."
+                    data-esg-confirm-btn="Delete Record"
+                    data-esg-confirm-variant="btn-danger">
+              <i class="icon-trash me-1"></i>Open Confirmation Dialog
+            </button>
+          </div>
+        </div>
+
+        <!-- Loading State -->
+        <div class="col-md-6">
+          <div class="p-3 border rounded h-100">
+            <h5 class="h6 font-weight-bold text-dark mb-2">Loading &amp; Spinner State</h5>
+            {% include "components/loading/spinner.html" with message="Aggregating Scope 1, 2, 3 carbon metrics..." %}
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div class="col-md-12">
+          <div class="border rounded bg-light">
+            {% include "components/empty_states/default.html" with title="No Anomalies Flagged" description="All continuous emission telemetry streams operate within defined confidence bands." action_label="View Calibration Parameters" %}
+          </div>
+        </div>
+
+        <!-- Permission Denied State -->
+        <div class="col-md-6">
+          {% include "components/feedback/permission_denied.html" with title="Role Permission Required" message="Auditor sign-off authorization is restricted to designated Lead Assurers." %}
+        </div>
+
+        <!-- Server Error State -->
+        <div class="col-md-6">
+          {% include "components/feedback/server_error.html" with title="Service Exception" message="Unable to reach external CEA emission factor registry. Cached factor active." %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>400 - Bad Request | MEIL ESG CONTROL TOWER</title>
+  <link rel="stylesheet" href="{% static 'vendors/simple-line-icons/css/simple-line-icons.css' %}">
+  <link rel="stylesheet" href="{% static 'vendors/css/vendor.bundle.base.css' %}">
+  <link rel="stylesheet" href="{% static 'css/vertical-light-layout/style.css' %}">
+  <link rel="stylesheet" href="{% static 'css/esg-custom.css' %}">
+</head>
+<body>
+  <div class="container-scroller">
+    <div class="container-fluid page-body-wrapper full-page-wrapper">
+      <div class="content-wrapper d-flex align-items-center text-center error-page" style="background: linear-gradient(135deg, #1e293b, #0f172a); min-height: 100vh;">
+        <div class="row flex-grow">
+          <div class="col-lg-7 mx-auto text-white">
+            <div class="row align-items-center d-flex flex-row">
+              <div class="col-lg-6 text-lg-end pe-lg-4">
+                <h1 class="display-1 mb-0 font-weight-bold text-warning">400</h1>
+              </div>
+              <div class="col-lg-6 text-lg-start ps-lg-4 border-start border-secondary">
+                <h2 class="font-weight-bold">BAD REQUEST</h2>
+                <h4 class="font-weight-light text-muted">The server could not process the ESG request.</h4>
+              </div>
+            </div>
+            <div class="row mt-4">
+              <div class="col-12 text-center">
+                <p class="text-white-50 small mb-4">{{ error_message|default:"The request contains invalid syntax, missing parameters, or corrupted data." }}</p>
+                <a class="btn btn-outline-light btn-sm px-4" href="{% url 'core:index' %}">
+                  <i class="icon-arrow-left me-1"></i> Return to Control Tower
+                </a>
+              </div>
+            </div>
+            <div class="row mt-5">
+              <div class="col-12 text-center">
+                <p class="text-white-50 small">MEIL ESG CONTROL TOWER &copy; {{ CURRENT_YEAR|default:'2026' }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

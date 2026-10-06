@@ -1,0 +1,171 @@
+{% extends "layouts/auth.html" %}
+{% load static %}
+
+{% block auth_title %}Sign In to ESG Control Tower{% endblock %}
+{% block auth_subtitle %}SEBI BRSR Core Governance &amp; Telemetry Command{% endblock %}
+
+{% block auth_content %}
+  <form method="post" action="{% url 'core:login' %}" novalidate id="loginForm">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+
+    {% if form.non_field_errors %}
+      <div class="alert alert-danger d-flex align-items-center small py-2 px-3 mb-3 rounded-2" role="alert">
+        <i class="icon-ban me-2 text-danger" aria-hidden="true"></i>
+        <div>
+          {% for error in form.non_field_errors %}
+            <div>{{ error }}</div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    <!-- Username Field -->
+    <div class="mb-3">
+      <label for="{{ form.username.id_for_label }}" class="form-label text-dark font-weight-medium small d-flex justify-content-between">
+        <span>Username / Enterprise ID <span class="text-danger">*</span></span>
+      </label>
+      <div class="input-group">
+        <span class="input-group-text bg-light text-muted border-end-0">
+          <i class="icon-user" aria-hidden="true"></i>
+        </span>
+        {{ form.username }}
+      </div>
+      {% if form.username.errors %}
+        <div class="text-danger small mt-1">
+          {% for error in form.username.errors %}{{ error }}{% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Password Field -->
+    <div class="mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <label for="{{ form.password.id_for_label }}" class="form-label text-dark font-weight-medium small mb-0">
+          Password <span class="text-danger">*</span>
+        </label>
+        <a href="{% url 'core:password_reset' %}" class="small text-primary text-decoration-none">Forgot password?</a>
+      </div>
+      <div class="input-group">
+        <span class="input-group-text bg-light text-muted border-end-0">
+          <i class="icon-lock" aria-hidden="true"></i>
+        </span>
+        {{ form.password }}
+        <button class="btn btn-outline-secondary border-start-0" type="button" id="togglePasswordBtn" title="Toggle password visibility" aria-label="Toggle password visibility">
+          <i class="icon-eye" id="togglePasswordIcon" aria-hidden="true"></i>
+        </button>
+      </div>
+      {% if form.password.errors %}
+        <div class="text-danger small mt-1">
+          {% for error in form.password.errors %}{{ error }}{% endfor %}
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Remember Me Checkbox -->
+    <div class="form-check mb-3">
+      {{ form.remember_me }}
+      <label class="form-check-label small text-muted" for="{{ form.remember_me.id_for_label }}">
+        Remember this session for 8 hours
+      </label>
+    </div>
+
+    <!-- Submit Action -->
+    <div class="d-grid mb-3">
+      <button type="submit" class="btn btn-esg-primary py-2 d-flex align-items-center justify-content-center gap-2" id="loginSubmitBtn">
+        <i class="icon-login" aria-hidden="true"></i>
+        <span class="font-weight-bold">Sign In to Dashboard</span>
+      </button>
+    </div>
+
+    <!-- Test User Quick Credential Guidance Box -->
+    <div class="mt-4 pt-3 border-top">
+      <div class="accordion accordion-flush" id="devCredentialsAccordion">
+        <div class="accordion-item border-0 bg-light rounded-2">
+          <h2 class="accordion-header" id="headingCredentials">
+            <button class="accordion-button collapsed py-2 px-3 bg-light small text-muted font-weight-medium rounded-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCredentials" aria-expanded="false" aria-controls="collapseCredentials">
+              <i class="icon-info me-2 text-primary"></i> RBAC Test Accounts &amp; Quick Credentials
+            </button>
+          </h2>
+          <div id="collapseCredentials" class="accordion-collapse collapse" aria-labelledby="headingCredentials" data-bs-parent="#devCredentialsAccordion">
+            <div class="accordion-body py-2 px-3 small">
+              <p class="text-muted mb-2">Click any account below to autofill:</p>
+              <div class="table-responsive">
+                <table class="table table-sm table-borderless mb-0">
+                  <thead>
+                    <tr class="text-muted" style="font-size: 0.75rem;">
+                      <th>ROLE</th>
+                      <th>USERNAME</th>
+                      <th>SCOPE</th>
+                      <th>ACTION</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><span class="badge badge-success">SITE</span></td>
+                      <td><code>site_manager</code></td>
+                      <td class="text-muted">Site 101</td>
+                      <td><button type="button" class="btn btn-link btn-sm p-0 text-decoration-none autofill-btn" data-user="site_manager" data-pass="SiteManagerPass123!">Use</button></td>
+                    </tr>
+                    <tr>
+                      <td><span class="badge badge-primary">SUB</span></td>
+                      <td><code>subsidiary_manager</code></td>
+                      <td class="text-muted">Hydro Division</td>
+                      <td><button type="button" class="btn btn-link btn-sm p-0 text-decoration-none autofill-btn" data-user="subsidiary_manager" data-pass="SubManagerPass123!">Use</button></td>
+                    </tr>
+                    <tr>
+                      <td><span class="badge badge-info">ESG</span></td>
+                      <td><code>esg_manager</code></td>
+                      <td class="text-muted">Enterprise</td>
+                      <td><button type="button" class="btn btn-link btn-sm p-0 text-decoration-none autofill-btn" data-user="esg_manager" data-pass="ESGManagerPass123!">Use</button></td>
+                    </tr>
+                    <tr>
+                      <td><span class="badge badge-warning text-dark">AUD</span></td>
+                      <td><code>auditor</code></td>
+                      <td class="text-muted">Assurance</td>
+                      <td><button type="button" class="btn btn-link btn-sm p-0 text-decoration-none autofill-btn" data-user="auditor" data-pass="AuditorPass123!">Use</button></td>
+                    </tr>
+                    <tr>
+                      <td><span class="badge badge-danger">OP</span></td>
+                      <td><code>meil_operator</code></td>
+                      <td class="text-muted">Command</td>
+                      <td><button type="button" class="btn btn-link btn-sm p-0 text-decoration-none autofill-btn" data-user="meil_operator" data-pass="OperatorPass123!">Use</button></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      // Password toggle
+      var toggleBtn = document.getElementById("togglePasswordBtn");
+      var passInput = document.getElementById("{{ form.password.id_for_label }}");
+      var passIcon = document.getElementById("togglePasswordIcon");
+      if (toggleBtn && passInput) {
+        toggleBtn.addEventListener("click", function () {
+          var isPass = passInput.getAttribute("type") === "password";
+          passInput.setAttribute("type", isPass ? "text" : "password");
+          if (passIcon) {
+            passIcon.className = isPass ? "icon-eye-off" : "icon-eye";
+          }
+        });
+      }
+
+      // Autofill buttons for testing
+      var autofillButtons = document.querySelectorAll(".autofill-btn");
+      var userInput = document.getElementById("{{ form.username.id_for_label }}");
+      autofillButtons.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          if (userInput) userInput.value = btn.getAttribute("data-user");
+          if (passInput) passInput.value = btn.getAttribute("data-pass");
+        });
+      });
+    });
+  </script>
+{% endblock %}

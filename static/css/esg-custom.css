@@ -1,0 +1,210 @@
+/* ==========================================================================
+   MEIL ESG CONTROL TOWER - Custom Platform Enhancements
+   Extends Stellar Admin Bootstrap 5.3 Theme
+   ========================================================================== */
+
+:root {
+    --esg-primary: #1b8a5a;
+    --esg-primary-hover: #157347;
+    --esg-primary-light: #e8f5ee;
+    --esg-social: #1f6feb;
+    --esg-governance: #7928ca;
+    --esg-warning: #e09f3e;
+    --esg-danger: #d90429;
+    --esg-dark: #1b1e24;
+    --esg-bg-card: #ffffff;
+    --esg-border: #e9edf4;
+}
+
+/* Brand styling */
+.brand-esg-title {
+    font-weight: 700;
+    font-size: 1.15rem;
+    letter-spacing: -0.02em;
+    color: #111827;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+}
+.brand-esg-title:hover {
+    color: var(--esg-primary);
+    text-decoration: none;
+}
+.brand-esg-badge {
+    background: linear-gradient(135deg, #1b8a5a, #059669);
+    color: #ffffff;
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 0.2rem 0.45rem;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+/* Pulsing Status Dot Indicators */
+.status-indicator-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    position: relative;
+    vertical-align: middle;
+}
+.status-indicator-dot.bg-success {
+    background-color: #28a745;
+    box-shadow: 0 0 0 rgba(40, 167, 69, 0.4);
+    animation: status-pulse-green 2s infinite;
+}
+.status-indicator-dot.bg-danger {
+    background-color: #dc3545;
+    box-shadow: 0 0 0 rgba(220, 53, 69, 0.4);
+    animation: status-pulse-red 1.5s infinite;
+}
+.status-indicator-dot.bg-warning {
+    background-color: #ffc107;
+    box-shadow: 0 0 0 rgba(255, 193, 7, 0.4);
+    animation: status-pulse-yellow 2s infinite;
+}
+.status-indicator-dot.bg-info {
+    background-color: #17a2b8;
+}
+.status-indicator-dot.bg-primary {
+    background-color: #007bff;
+}
+.status-indicator-dot.bg-secondary {
+    background-color: #6c757d;
+}
+
+@keyframes status-pulse-green {
+    0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7); }
+    70% { box-shadow: 0 0 0 6px rgba(40, 167, 69, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+}
+
+@keyframes status-pulse-red {
+    0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.8); }
+    70% { box-shadow: 0 0 0 6px rgba(220, 53, 69, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+}
+
+@keyframes status-pulse-yellow {
+    0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.8); }
+    70% { box-shadow: 0 0 0 6px rgba(255, 193, 7, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
+}
+
+/* File Upload Drag & Drop Area */
+.esg-file-dropzone {
+    border: 2px dashed #cfd9e8;
+    background-color: #f8fafc;
+    border-radius: 8px;
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    position: relative;
+}
+.esg-file-dropzone:hover,
+.esg-file-dropzone.dragover {
+    border-color: var(--esg-primary);
+    background-color: #f0fdf4;
+}
+.esg-file-dropzone .dropzone-icon {
+    font-size: 2.5rem;
+    color: var(--esg-primary);
+    margin-bottom: 0.75rem;
+    display: inline-block;
+}
+.esg-file-dropzone input[type="file"] {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+/* Empty State Component */
+.esg-empty-state {
+    padding: 3rem 1.5rem;
+    text-align: center;
+}
+.esg-empty-state-icon {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background-color: #f1f5f9;
+    color: #64748b;
+    font-size: 2rem;
+}
+
+/* Loading State Component */
+.esg-loading-container {
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+}
+.esg-spinner-glow {
+    width: 3rem;
+    height: 3rem;
+    border-width: 0.25em;
+}
+
+/* Card Improvements */
+.card-header-flex {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 0.75rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid #f1f3f6;
+}
+
+/* Table Enhancements */
+.table th {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    color: #4b5563;
+    background-color: #f9fafb;
+}
+
+/* KPI metric cards */
+.esg-kpi-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.esg-kpi-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.06);
+}
+.esg-icon-box {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+}
+.esg-icon-box.env {
+    background-color: #e6f7ec;
+    color: #0d8a43;
+}
+.esg-icon-box.soc {
+    background-color: #e6f0fa;
+    color: #1f6feb;
+}
+.esg-icon-box.gov {
+    background-color: #f5edfa;
+    color: #8b3fd9;
+}
+.esg-icon-box.gen {
+    background-color: #fef4e6;
+    color: #d97706;
+}

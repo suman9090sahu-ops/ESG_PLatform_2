@@ -1,0 +1,86 @@
+{% extends "layouts/dashboard.html" %}
+{% load static esg_tags %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block header_actions %}
+  <a href="{% url 'core:subsidiary_manager_dashboard' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="icon-arrow-left me-1"></i> Back to Dashboard
+  </a>
+{% endblock %}
+
+{% block kpi_section %}
+  <div class="col-md-6 grid-margin stretch-card">
+    <div class="card card-statistics border-0 shadow-sm">
+      <div class="card-body">
+        <h6 class="text-muted font-weight-normal mb-1">Subsidiary Code</h6>
+        <h4 class="mb-0 font-weight-bold text-dark"><code>{{ subsidiary.code }}</code></h4>
+        <p class="text-success small mt-2 mb-0"><i class="icon-check me-1"></i> Authorized Governance Scope</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6 grid-margin stretch-card">
+    <div class="card card-statistics border-0 shadow-sm">
+      <div class="card-body">
+        <h6 class="text-muted font-weight-normal mb-1">Total Active Projects</h6>
+        <h4 class="mb-0 font-weight-bold text-dark">{{ projects.count }}</h4>
+        <p class="text-muted small mt-2 mb-0">Under {{ subsidiary.name }}</p>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block main_panel %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+      <h6 class="mb-0 font-weight-bold text-dark">
+        <i class="icon-layers me-2 text-primary"></i> Infrastructure Projects &amp; Operational Sites
+      </h6>
+    </div>
+    <div class="card-body p-0">
+      {% for proj in projects %}
+        <div class="p-3 border-bottom bg-light">
+          <div class="d-flex align-items-center justify-content-between">
+            <h6 class="mb-0 font-weight-bold text-dark">
+              <i class="icon-folder me-2 text-warning"></i> {{ proj.name }} (<code>{{ proj.code }}</code>)
+            </h6>
+            <span class="badge badge-primary">{{ proj.sites.count }} Sites</span>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead class="bg-white">
+              <tr class="small text-muted">
+                <th>SITE CODE</th>
+                <th>SITE NAME</th>
+                <th>LOCATION</th>
+                <th class="text-end">ACTION</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for site in proj.sites.all %}
+                <tr>
+                  <td><code>{{ site.code }}</code></td>
+                  <td>{{ site.name }}</td>
+                  <td><small class="text-muted">{{ site.location }}</small></td>
+                  <td class="text-end">
+                    <a href="{% url 'core:site_detail' site_id=site.id %}" class="btn btn-xs btn-outline-primary">
+                      Inspect
+                    </a>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="4" class="text-muted p-2">No operational sites registered under this project.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% empty %}
+        <div class="p-4 text-center text-muted">No infrastructure projects found under this subsidiary.</div>
+      {% endfor %}
+    </div>
+  </div>
+{% endblock %}

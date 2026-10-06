@@ -1,0 +1,9 @@
+<!-- Secondary Button Component -->
+<button type="{{ type|default:'button' }}"
+        class="btn btn-esg-secondary {{ extra_class }}"
+        {% if id %}id="{{ id }}"{% endif %}
+        {% if disabled %}disabled{% endif %}
+        {% if aria_label %}aria-label="{{ aria_label }}"{% endif %}>
+  {% if icon %}<i class="{{ icon }} me-1" aria-hidden="true"></i>{% endif %}
+  <span>{{ text|default:"Cancel" }}</span>
+</button>

@@ -1,0 +1,33 @@
+{# Reusable Component: Table #}
+{# Usage: include "components/table.html" with headers=headers rows=rows striped=True hoverable=True empty_message="No ESG records found" #}
+<div class="table-responsive">
+  <table class="table {% if striped|default:True %}table-striped{% endif %} {% if hoverable|default:True %}table-hover{% endif %} align-middle mb-0" id="{{ table_id|default:'' }}">
+    {% if headers %}
+      <thead>
+        <tr>
+          {% for header in headers %}
+            <th scope="col" class="py-3 px-3">{{ header }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+    {% endif %}
+    <tbody>
+      {% if rows %}
+        {% for row in rows %}
+          <tr>
+            {% for cell in row %}
+              <td class="py-2 px-3">{{ cell|safe }}</td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="{{ headers|length|default:6 }}" class="text-center py-4 text-muted">
+            <i class="icon-drawer fs-3 d-block mb-2 text-muted"></i>
+            <span>{{ empty_message|default:"No records available to display." }}</span>
+          </td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>

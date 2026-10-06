@@ -1,0 +1,103 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block page_actions %}
+  <a href="{% url 'core:org_subsidiary_list' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="icon-arrow-left me-1"></i> Back to Divisions
+  </a>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-briefcase text-info me-2"></i>
+            {% if is_create %}Register New Subsidiary Company{% else %}Edit Subsidiary: {{ subsidiary.name }}{% endif %}
+          </h6>
+        </div>
+        <div class="card-body p-4">
+          <form method="post" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger" role="alert">
+                {% for err in form.non_field_errors %}{{ err }}<br>{% endfor %}
+              </div>
+            {% endif %}
+
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold text-dark">Parent Enterprise Company <span class="text-danger">*</span></label>
+                {{ form.company }}
+                {% if form.company.errors %}<div class="text-danger small mt-1">{{ form.company.errors.0 }}</div>{% endif %}
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label fw-semibold text-dark">Unique Subsidiary Code <span class="text-danger">*</span></label>
+                {{ form.code }}
+                <div class="form-text small">e.g. MEIL-HYDRO, MEIL-SOLAR</div>
+                {% if form.code.errors %}<div class="text-danger small mt-1">{{ form.code.errors.0 }}</div>{% endif %}
+              </div>
+
+              <div class="col-md-12">
+                <label class="form-label fw-semibold text-dark">Division / Business Unit Title <span class="text-danger">*</span></label>
+                {{ form.name }}
+                {% if form.name.errors %}<div class="text-danger small mt-1">{{ form.name.errors.0 }}</div>{% endif %}
+              </div>
+
+              <div class="col-md-8">
+                <label class="form-label fw-semibold text-dark">Official Corporate Legal Name</label>
+                {{ form.legal_name }}
+                {% if form.legal_name.errors %}<div class="text-danger small mt-1">{{ form.legal_name.errors.0 }}</div>{% endif %}
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label fw-semibold text-dark">Short Moniker</label>
+                {{ form.short_name }}
+                {% if form.short_name.errors %}<div class="text-danger small mt-1">{{ form.short_name.errors.0 }}</div>{% endif %}
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label fw-semibold text-dark">Industry Sector</label>
+                {{ form.industry }}
+                {% if form.industry.errors %}<div class="text-danger small mt-1">{{ form.industry.errors.0 }}</div>{% endif %}
+              </div>
+
+              <div class="col-md-3">
+                <label class="form-label fw-semibold text-dark">Operating Country</label>
+                {{ form.country }}
+                {% if form.country.errors %}<div class="text-danger small mt-1">{{ form.country.errors.0 }}</div>{% endif %}
+              </div>
+
+              <div class="col-md-3">
+                <label class="form-label fw-semibold text-dark">Operational Status</label>
+                {{ form.status }}
+                {% if form.status.errors %}<div class="text-danger small mt-1">{{ form.status.errors.0 }}</div>{% endif %}
+              </div>
+
+              <div class="col-md-12">
+                <label class="form-label fw-semibold text-dark">Registered Corporate Address</label>
+                {{ form.registered_address }}
+                {% if form.registered_address.errors %}<div class="text-danger small mt-1">{{ form.registered_address.errors.0 }}</div>{% endif %}
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+              <a href="{% url 'core:org_subsidiary_list' %}" class="btn btn-outline-secondary">Cancel</a>
+              <button type="submit" class="btn btn-primary">
+                {% if is_create %}Register Division{% else %}Save Changes{% endif %}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

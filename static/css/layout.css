@@ -1,0 +1,165 @@
+/* ==========================================================================
+   MEIL ESG CONTROL TOWER - Layout Foundation & Shell Tokens
+   ========================================================================== */
+
+:root {
+  /* Layout Dimensions */
+  --esg-sidebar-width: 260px;
+  --esg-sidebar-collapsed-width: 70px;
+  --esg-navbar-height: 64px;
+  --esg-footer-height: 56px;
+  --esg-content-padding: 1.5rem;
+  --esg-content-max-width: 1600px;
+
+  /* Z-Index Hierarchy */
+  --esg-z-dropdown: 1000;
+  --esg-z-sticky: 1020;
+  --esg-z-fixed: 1030;
+  --esg-z-modal-backdrop: 1040;
+  --esg-z-modal: 1050;
+  --esg-z-popover: 1060;
+  --esg-z-tooltip: 1070;
+
+  /* Elevation & Shadows */
+  --esg-shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --esg-shadow-sm: 0 1px 3px rgba(16, 24, 40, 0.1), 0 1px 2px rgba(16, 24, 40, 0.06);
+  --esg-shadow-md: 0 4px 8px -2px rgba(16, 24, 40, 0.1), 0 2px 4px -2px rgba(16, 24, 40, 0.06);
+  --esg-shadow-lg: 0 12px 16px -4px rgba(16, 24, 40, 0.08), 0 4px 6px -2px rgba(16, 24, 40, 0.03);
+  --esg-shadow-xl: 0 20px 24px -4px rgba(16, 24, 40, 0.08), 0 8px 8px -4px rgba(16, 24, 40, 0.03);
+
+  /* Border Radii */
+  --esg-radius-sm: 4px;
+  --esg-radius-md: 6px;
+  --esg-radius-lg: 8px;
+  --esg-radius-xl: 12px;
+  --esg-radius-full: 9999px;
+
+  /* Transitions */
+  --esg-transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --esg-transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --esg-transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Shell Layout Containers */
+.esg-shell-container {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  background-color: #f4f6f9;
+}
+
+.esg-shell-body {
+  display: flex;
+  flex: 1 1 auto;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.esg-main-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  transition: margin-left var(--esg-transition-normal);
+}
+
+.esg-content-container {
+  flex: 1 0 auto;
+  padding: var(--esg-content-padding);
+  max-width: 100%;
+}
+
+@media (min-width: 1200px) {
+  .esg-content-container {
+    padding: 2rem 2.25rem;
+  }
+}
+
+/* Page Header Structure */
+.esg-page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e5e9f0;
+}
+
+.esg-page-title-group h1,
+.esg-page-title-group h2,
+.esg-page-title-group .h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #1e293b;
+  margin-bottom: 0.25rem;
+}
+
+.esg-page-title-group p {
+  color: #64748b;
+  font-size: 0.875rem;
+  margin-bottom: 0;
+}
+
+.esg-page-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* Section Header Structure */
+.esg-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.esg-section-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 0;
+}
+
+/* Responsive Sticky Top Header */
+.esg-navbar-sticky {
+  position: sticky;
+  top: 0;
+  z-index: var(--esg-z-fixed);
+  background-color: #ffffff;
+  border-bottom: 1px solid #e9edf4;
+  height: var(--esg-navbar-height);
+}
+
+/* Responsive Footer */
+.esg-footer {
+  background-color: #ffffff;
+  border-top: 1px solid #e9edf4;
+  padding: 1rem 1.5rem;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+/* Responsive Breakpoints & Mobile Overlay */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(15, 23, 42, 0.45);
+  z-index: 1019;
+  backdrop-filter: blur(2px);
+}
+
+@media (max-width: 991.98px) {
+  .sidebar-overlay.active {
+    display: block;
+  }
+}

@@ -1,0 +1,39 @@
+<!-- ESG Metric Card Component -->
+<div class="metric-card h-100 {{ extra_class }}">
+  <div class="d-flex justify-content-between align-items-center mb-1">
+    <div class="metric-card-label mb-0">{{ title|default:"Scope 1 Emissions" }}</div>
+    {% if badge %}
+      <span class="badge {{ badge.class|default:'bg-light text-dark border' }} fs-xs">{{ badge.text }}</span>
+    {% endif %}
+  </div>
+
+  <div class="metric-card-value my-2">
+    <span>{{ value|default:"0" }}</span>
+    {% if unit %}<span class="fs-6 text-muted font-weight-normal ms-1">{{ unit }}</span>{% endif %}
+  </div>
+
+  <div class="metric-card-delta">
+    {% if delta_type == "increase" %}
+      <span class="text-danger fw-semibold d-inline-flex align-items-center">
+        <i class="icon-arrow-up me-1" aria-hidden="true"></i>&uarr; {{ delta_text|default:"0.0%" }}
+      </span>
+    {% elif delta_type == "decrease" %}
+      <span class="text-success fw-semibold d-inline-flex align-items-center">
+        <i class="icon-arrow-down me-1" aria-hidden="true"></i>&darr; {{ delta_text|default:"0.0%" }}
+      </span>
+    {% elif delta_text %}
+      <span class="text-muted d-inline-flex align-items-center">
+        &bull; {{ delta_text }}
+      </span>
+    {% else %}
+      <span class="text-muted d-inline-flex align-items-center">
+        &bull; 0.0%
+      </span>
+    {% endif %}
+    {% if comparison_label %}
+      <span class="text-muted ms-1 small">{{ comparison_label }}</span>
+    {% else %}
+      <span class="text-muted ms-1 small">vs previous period</span>
+    {% endif %}
+  </div>
+</div>
