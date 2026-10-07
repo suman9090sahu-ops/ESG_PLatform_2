@@ -262,14 +262,26 @@ def get_role_sidebar_menu(user):
                     {
                         "nav_id": "site_list",
                         "label": "My Assigned Sites",
-                        "url": reverse("core:site_manager_dashboard"),
+                        "url": reverse("core:org_site_list"),
                         "icon": "icon-location-pin text-primary",
+                    },
+                    {
+                        "nav_id": "projects",
+                        "label": "My Projects",
+                        "url": reverse("core:org_project_list"),
+                        "icon": "icon-layers text-warning",
                     },
                     {
                         "nav_id": "reporting_periods",
                         "label": "Reporting Periods",
                         "url": reverse("core:period_list"),
                         "icon": "icon-calendar text-info",
+                    },
+                    {
+                        "nav_id": "activity_master",
+                        "label": "Activity Catalog",
+                        "url": reverse("core:activity_list"),
+                        "icon": "icon-list text-success",
                     },
                     {
                         "nav_id": "data_entry",
@@ -328,6 +340,18 @@ def get_role_sidebar_menu(user):
                         "icon": "icon-briefcase text-info",
                     },
                     {
+                        "nav_id": "projects",
+                        "label": "Infrastructure Projects",
+                        "url": reverse("core:org_project_list"),
+                        "icon": "icon-layers text-warning",
+                    },
+                    {
+                        "nav_id": "sites",
+                        "label": "Operational Sites",
+                        "url": reverse("core:org_site_list"),
+                        "icon": "icon-location-pin text-success",
+                    },
+                    {
                         "nav_id": "org_tree",
                         "label": "Hierarchy Explorer",
                         "url": reverse("core:org_overview"),
@@ -338,6 +362,12 @@ def get_role_sidebar_menu(user):
                         "label": "Reporting Periods",
                         "url": reverse("core:period_list"),
                         "icon": "icon-calendar text-info",
+                    },
+                    {
+                        "nav_id": "activity_master",
+                        "label": "Activity Catalog",
+                        "url": reverse("core:activity_list"),
+                        "icon": "icon-list text-success",
                     },
                     {
                         "nav_id": "submission_inbox",
@@ -397,10 +427,28 @@ def get_role_sidebar_menu(user):
                         "icon": "icon-organization text-info",
                     },
                     {
+                        "nav_id": "projects",
+                        "label": "Infrastructure Projects",
+                        "url": reverse("core:org_project_list"),
+                        "icon": "icon-layers text-warning",
+                    },
+                    {
+                        "nav_id": "sites",
+                        "label": "Operational Sites",
+                        "url": reverse("core:org_site_list"),
+                        "icon": "icon-location-pin text-success",
+                    },
+                    {
                         "nav_id": "reporting_periods",
                         "label": "Reporting Periods",
                         "url": reverse("core:period_list"),
                         "icon": "icon-calendar text-info",
+                    },
+                    {
+                        "nav_id": "activity_master",
+                        "label": "Activity Master",
+                        "url": reverse("core:activity_list"),
+                        "icon": "icon-list text-success",
                     },
                     {
                         "nav_id": "ghg_accounting",
@@ -465,10 +513,28 @@ def get_role_sidebar_menu(user):
                         "icon": "icon-organization text-primary",
                     },
                     {
+                        "nav_id": "projects",
+                        "label": "Governed Projects",
+                        "url": reverse("core:org_project_list"),
+                        "icon": "icon-layers text-warning",
+                    },
+                    {
+                        "nav_id": "sites",
+                        "label": "Operational Sites",
+                        "url": reverse("core:org_site_list"),
+                        "icon": "icon-location-pin text-success",
+                    },
+                    {
                         "nav_id": "reporting_periods",
                         "label": "Reporting Periods",
                         "url": reverse("core:period_list"),
                         "icon": "icon-calendar text-warning",
+                    },
+                    {
+                        "nav_id": "activity_master",
+                        "label": "Activity Master",
+                        "url": reverse("core:activity_list"),
+                        "icon": "icon-list text-success",
                     },
                     {
                         "nav_id": "governed_reports",
@@ -527,10 +593,28 @@ def get_role_sidebar_menu(user):
                         "icon": "icon-organization text-info",
                     },
                     {
+                        "nav_id": "projects",
+                        "label": "Infrastructure Projects",
+                        "url": reverse("core:org_project_list"),
+                        "icon": "icon-layers text-warning",
+                    },
+                    {
+                        "nav_id": "sites",
+                        "label": "Operational Sites",
+                        "url": reverse("core:org_site_list"),
+                        "icon": "icon-location-pin text-success",
+                    },
+                    {
                         "nav_id": "reporting_periods",
                         "label": "Reporting Periods",
                         "url": reverse("core:period_list"),
                         "icon": "icon-calendar text-success",
+                    },
+                    {
+                        "nav_id": "activity_master",
+                        "label": "Activity Master",
+                        "url": reverse("core:activity_list"),
+                        "icon": "icon-list text-success",
                     },
                     {
                         "nav_id": "telemetry_sync",

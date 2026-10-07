@@ -1,0 +1,76 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block page_actions %}
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'core:activity_list' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="icon-arrow-left me-1"></i> Activity Catalog
+    </a>
+    {% if can_manage %}
+      <a href="{% url 'core:unit_create' %}" class="btn btn-sm btn-primary">
+        <i class="icon-plus me-1"></i> Define Unit of Measure
+      </a>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+      <h6 class="mb-0 fw-bold text-dark"><i class="icon-speedometer text-primary me-2"></i> Standard Measurement Units</h6>
+      <span class="badge bg-light text-muted">{{ units.count }} unit(s)</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr class="small text-muted">
+            <th>CODE</th>
+            <th>UNIT NAME</th>
+            <th>SYMBOL</th>
+            <th>DIMENSION</th>
+            <th>PRIMARY USE COUNT</th>
+            <th>STATUS</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for unit in units %}
+            <tr>
+              <td>
+                <span class="badge bg-light text-dark border font-monospace fw-bold">{{ unit.code }}</span>
+              </td>
+              <td>
+                <span class="fw-bold text-dark">{{ unit.name }}</span>
+                {% if unit.description %}
+                  <div class="text-muted small">{{ unit.description }}</div>
+                {% endif %}
+              </td>
+              <td>
+                <span class="badge bg-primary text-white fs-6 font-monospace">{{ unit.symbol }}</span>
+              </td>
+              <td>
+                <span class="badge bg-secondary">{{ unit.get_dimension_display }}</span>
+              </td>
+              <td>
+                <span class="badge bg-light text-dark border">{{ unit.base_activities_count }} master activities</span>
+              </td>
+              <td>
+                <span class="badge {{ unit.status_badge_class }}">{{ unit.get_status_display }}</span>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="6" class="text-center py-4 text-muted">No units of measure configured.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

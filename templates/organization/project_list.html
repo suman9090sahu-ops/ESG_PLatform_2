@@ -103,7 +103,7 @@
                 {% endif %}
               </td>
               <td>
-                <span class="badge bg-primary text-white">{{ proj.sites.count }} Sites</span>
+                <span class="badge bg-primary text-white">{% if proj.annotated_sites_count is not None %}{{ proj.annotated_sites_count }}{% else %}{{ proj.sites_count }}{% endif %} Sites</span>
               </td>
               <td class="text-end">
                 <a href="{% url 'core:org_project_detail' project_id=proj.id %}" class="btn btn-xs btn-outline-primary">

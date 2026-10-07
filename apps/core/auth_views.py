@@ -33,6 +33,7 @@ from apps.core.auth_services import (
     user_can_access_site,
     user_can_access_subsidiary,
 )
+from apps.core.dashboard_services import get_site_manager_dashboard_context
 from apps.core.forms import (
     CustomPasswordChangeForm,
     CustomPasswordResetForm,
@@ -228,16 +229,19 @@ def site_manager_dashboard(request):
     Site Manager operational dashboard.
     Restricted to SITE_MANAGER and MEIL_OPERATOR.
     Displays operational sites explicitly assigned to the authenticated user.
+    Aggregates authoritative operational context via dashboard_services.
     """
-    assigned_sites = get_user_accessible_sites(request.user)
-    context = {
-        "page_title": "Site Manager Operational Dashboard",
-        "page_subtitle": "Operational Telemetry, ESG Data Ingestion & Site Compliance",
-        "active_nav": "site_dashboard",
-        "assigned_sites": assigned_sites,
-        "role_code": Role.Code.SITE_MANAGER,
-    }
+    context = get_site_manager_dashboard_context(request.user)
     return render(request, "dashboards/site_manager.html", context)
+
+
+@login_required
+def site_manager_dashboard_redirect(request):
+    """
+    Canonical redirect from /dashboard/site-manager/ to /site-manager/dashboard/.
+    Ensures URL structure consistency across legacy and standard route patterns.
+    """
+    return redirect("core:site_manager_dashboard")
 
 
 @role_required(

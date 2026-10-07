@@ -1,0 +1,287 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}{{ activity.name }}{% endblock %}
+{% block page_subtitle %}Master Code: {{ activity.code }} | Category: {{ activity.category.name }}{% endblock %}
+
+{% block page_actions %}
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'core:activity_list' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="icon-arrow-left me-1"></i> Back to Catalog
+    </a>
+    {% if can_manage %}
+      <a href="{% url 'core:activity_edit' activity.id %}" class="btn btn-sm btn-primary">
+        <i class="icon-pencil me-1"></i> Edit Definition
+      </a>
+      <form method="post" action="{% url 'core:activity_deactivate' activity.id %}" class="d-inline" onsubmit="return confirm('Are you sure you want to {% if activity.is_active %}deactivate{% else %}activate{% endif %} this Activity Master? Historical records will be preserved.');">
+        {% csrf_token %}
+        {% if activity.is_active %}
+          <button type="submit" class="btn btn-sm btn-outline-warning">
+            <i class="icon-ban me-1"></i> Deactivate
+          </button>
+        {% else %}
+          <button type="submit" class="btn btn-sm btn-outline-success">
+            <i class="icon-check me-1"></i> Activate
+          </button>
+        {% endif %}
+      </form>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+  <!-- Master Data Banner -->
+  <div class="alert alert-light border shadow-sm mb-4 d-flex align-items-center justify-content-between">
+    <div class="d-flex align-items-center">
+      <div class="me-3 text-primary fs-3"><i class="icon-info"></i></div>
+      <div>
+        <div class="fw-bold text-dark">Centralized Master Data Specification</div>
+        <div class="text-muted small">
+          This record governs the approved activity taxonomy, permitted measurement units, and Scope 1/2/3 metadata.
+          It does <strong>not</strong> represent operational site telemetry. Operational records will reference this specification during data entry.
+        </div>
+      </div>
+    </div>
+    <span class="badge {{ activity.status_badge_class }} px-3 py-2 fs-6">
+      {{ activity.get_status_display }}
+    </span>
+  </div>
+
+  <div class="row g-4">
+    <!-- Left Column: Master Specifications -->
+    <div class="col-lg-8">
+
+      <!-- Identification Card -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <h6 class="mb-0 fw-bold text-dark"><i class="icon-doc text-primary me-2"></i> Activity Specification</h6>
+          <span class="badge bg-light text-dark font-monospace border">{{ activity.code }}</span>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="text-muted small text-uppercase fw-semibold d-block">Activity Name</label>
+              <div class="h5 fw-bold text-dark mb-0">{{ activity.name }}</div>
+            </div>
+            <div class="col-md-6">
+              <label class="text-muted small text-uppercase fw-semibold d-block">Operational Classification</label>
+              <div class="fw-semibold text-dark">{{ activity.activity_type }}</div>
+            </div>
+            <div class="col-md-6">
+              <label class="text-muted small text-uppercase fw-semibold d-block">Governing Category</label>
+              <span class="badge bg-light text-primary border fs-6">
+                <i class="icon-folder me-1"></i> {{ activity.category.name }} ({{ activity.category.code }})
+              </span>
+            </div>
+            <div class="col-md-6">
+              <label class="text-muted small text-uppercase fw-semibold d-block">Scope Classification</label>
+              <span class="badge {{ activity.scope_badge_class }} fs-6">
+                {{ activity.get_scope_classification_display }}
+              </span>
+            </div>
+          </div>
+
+          {% if activity.description %}
+            <hr class="my-3">
+            <label class="text-muted small text-uppercase fw-semibold d-block">Operational Definition &amp; Boundary Rules</label>
+            <p class="text-dark small mb-0">{{ activity.description }}</p>
+          {% endif %}
+
+          {% if activity.applicability_notes %}
+            <hr class="my-3">
+            <label class="text-muted small text-uppercase fw-semibold d-block">Site Applicability Guidance</label>
+            <p class="text-dark small mb-0">{{ activity.applicability_notes }}</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Measurement Units & Validation Card -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <h6 class="mb-0 fw-bold text-dark"><i class="icon-speedometer text-info me-2"></i> Measurement &amp; Unit Validation Rules</h6>
+          <span class="badge bg-light text-muted">Controlled Unit Master</span>
+        </div>
+        <div class="card-body">
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <div class="p-3 bg-light rounded border">
+                <label class="text-muted small text-uppercase fw-semibold d-block">Primary Base Reporting Unit</label>
+                <div class="h4 fw-bold text-primary mb-0 mt-1">
+                  {{ activity.base_unit.symbol }}
+                  <small class="text-dark fs-6 fw-normal">({{ activity.base_unit.name }})</small>
+                </div>
+                <div class="text-muted small mt-1">
+                  Dimension: <span class="badge bg-secondary text-white">{{ activity.base_unit.get_dimension_display }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="p-3 bg-light rounded border">
+                <label class="text-muted small text-uppercase fw-semibold d-block">Expected Reporting Cadence</label>
+                <div class="h4 fw-bold text-dark mb-0 mt-1">
+                  {{ activity.get_collection_frequency_display }}
+                </div>
+                <div class="text-muted small mt-1">Telemetry submission cadence</div>
+              </div>
+            </div>
+          </div>
+
+          <label class="text-muted small text-uppercase fw-semibold d-block mb-2">Permissible Entry Units (Allowed Units)</label>
+          <div class="d-flex flex-wrap gap-2">
+            {% for unit in activity.allowed_units.all %}
+              <div class="border rounded px-3 py-2 bg-white d-flex align-items-center gap-2">
+                <span class="badge bg-primary">{{ unit.symbol }}</span>
+                <span class="fw-semibold text-dark small">{{ unit.name }}</span>
+                <span class="text-muted small">({{ unit.get_dimension_display }})</span>
+              </div>
+            {% empty %}
+              <div class="border rounded px-3 py-2 bg-white d-flex align-items-center gap-2">
+                <span class="badge bg-primary">{{ activity.base_unit.symbol }}</span>
+                <span class="fw-semibold text-dark small">{{ activity.base_unit.name }}</span>
+                <span class="text-muted small">({{ activity.base_unit.get_dimension_display }})</span>
+              </div>
+            {% endfor %}
+          </div>
+          <small class="text-muted d-block mt-2">
+            <i class="icon-shield me-1"></i> Data entry forms will restrict site entries strictly to this approved unit set. Arbitrary text units are prohibited.
+          </small>
+        </div>
+      </div>
+
+      <!-- Regulatory Evidence Expectations -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark"><i class="icon-paper-clip text-warning me-2"></i> Audit Evidence Requirements</h6>
+        </div>
+        <div class="card-body">
+          <div class="d-flex align-items-start">
+            <div class="me-3 text-warning fs-3"><i class="icon-docs"></i></div>
+            <div>
+              <div class="fw-bold text-dark">Required Documentary Evidence</div>
+              <p class="text-muted small mb-2">
+                {% if activity.evidence_requirement_hint %}
+                  {{ activity.evidence_requirement_hint }}
+                {% else %}
+                  Standard vendor invoice, measurement meter log, or weight bridge delivery receipt.
+                {% endif %}
+              </p>
+              <div class="text-muted small">
+                <i class="icon-info me-1"></i> Downstream OCR ingestion will validate uploaded document metadata against this activity specification.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Governance, Downstream Hooks & Audit -->
+    <div class="col-lg-4">
+
+      <!-- Lifecycle Governance Card -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark"><i class="icon-lock text-primary me-2"></i> Master Governance</h6>
+        </div>
+        <div class="card-body p-0">
+          <ul class="list-group list-group-flush small">
+            <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+              <span class="text-muted">Lifecycle State</span>
+              <span class="badge {{ activity.status_badge_class }}">{{ activity.get_status_display }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+              <span class="text-muted">Approved for Data Entry</span>
+              {% if activity.is_active %}
+                <span class="badge bg-success"><i class="icon-check me-1"></i>Active</span>
+              {% else %}
+                <span class="badge bg-secondary">Deactivated</span>
+              {% endif %}
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+              <span class="text-muted">Created By</span>
+              <span class="fw-semibold text-dark">{{ activity.created_by.get_full_name|default:activity.created_by.username|default:"System Master" }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+              <span class="text-muted">Created At</span>
+              <span class="text-dark">{{ activity.created_at|date:"d M Y H:i" }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+              <span class="text-muted">Last Updated By</span>
+              <span class="fw-semibold text-dark">{{ activity.updated_by.get_full_name|default:activity.updated_by.username|default:"System Master" }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+              <span class="text-muted">Last Updated</span>
+              <span class="text-dark">{{ activity.updated_at|date:"d M Y H:i" }}</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Downstream Integration Readiness -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark"><i class="icon-energy text-success me-2"></i> Downstream Integration Readiness</h6>
+        </div>
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-3">
+            <div class="badge bg-success-subtle text-success p-2 rounded-circle me-3"><i class="icon-check fs-6"></i></div>
+            <div>
+              <div class="fw-semibold text-dark small">Phase 07 Site Entry Integration</div>
+              <small class="text-muted">Selectable in Site Manager activity forms</small>
+            </div>
+          </div>
+          <div class="d-flex align-items-center mb-3">
+            <div class="badge bg-success-subtle text-success p-2 rounded-circle me-3"><i class="icon-check fs-6"></i></div>
+            <div>
+              <div class="fw-semibold text-dark small">Unit Validation Engine</div>
+              <small class="text-muted">Strict allowed unit mapping enforced</small>
+            </div>
+          </div>
+          <div class="d-flex align-items-center mb-3">
+            <div class="badge bg-info-subtle text-info p-2 rounded-circle me-3"><i class="icon-clock fs-6"></i></div>
+            <div>
+              <div class="fw-semibold text-dark small">Emission Factor Hook</div>
+              <small class="text-muted">Ready for Phase 20 GHG calculation engine</small>
+            </div>
+          </div>
+          <div class="d-flex align-items-center">
+            <div class="badge bg-info-subtle text-info p-2 rounded-circle me-3"><i class="icon-clock fs-6"></i></div>
+            <div>
+              <div class="fw-semibold text-dark small">SEBI BRSR Core Mapping</div>
+              <small class="text-muted">Classification aligned with Principle 6</small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Security Audit Log Card -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark"><i class="icon-shield text-danger me-2"></i> Master Audit Trail</h6>
+        </div>
+        <div class="card-body p-0">
+          <ul class="list-group list-group-flush small">
+            {% for log in audit_events %}
+              <li class="list-group-item py-2 px-3">
+                <div class="d-flex justify-content-between">
+                  <span class="badge bg-light text-dark border">{{ log.get_event_type_display }}</span>
+                  <span class="text-muted">{{ log.created_at|date:"d M H:i" }}</span>
+                </div>
+                <div class="text-muted mt-1">{{ log.details }}</div>
+              </li>
+            {% empty %}
+              <li class="list-group-item py-3 text-center text-muted">
+                No recent audit modifications recorded.
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}

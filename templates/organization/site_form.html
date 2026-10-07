@@ -93,6 +93,18 @@
                 {% if form.contact_email.errors %}<div class="text-danger small mt-1">{{ form.contact_email.errors.0 }}</div>{% endif %}
               </div>
 
+              <div class="col-md-6">
+                <label class="form-label fw-semibold text-dark">Commissioning / Start Date</label>
+                {{ form.operational_start_date }}
+                {% if form.operational_start_date.errors %}<div class="text-danger small mt-1">{{ form.operational_start_date.errors.0 }}</div>{% endif %}
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label fw-semibold text-dark">Decommissioning / End Date</label>
+                {{ form.operational_end_date }}
+                {% if form.operational_end_date.errors %}<div class="text-danger small mt-1">{{ form.operational_end_date.errors.0 }}</div>{% endif %}
+              </div>
+
               <div class="col-md-12">
                 <label class="form-label fw-semibold text-dark">ESG Boundary Description</label>
                 {{ form.description }}

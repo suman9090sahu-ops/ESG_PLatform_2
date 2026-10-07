@@ -19,6 +19,13 @@ from apps.core.models import (
     UserRole,
     PeriodStatus,
     ReportingPeriod,
+    ActivityCategory,
+    UnitOfMeasure,
+    ActivityMaster,
+    MasterStatus,
+    UnitDimension,
+    ScopeClassification,
+    CollectionFrequency,
 )
 
 
@@ -348,5 +355,214 @@ class Command(BaseCommand):
             p_status = "Created" if created else "Exists"
             self.stdout.write(f"  Reporting Period [{pdata['code']}]: {p_status} ({pdata['status']})")
 
-        self.stdout.write(self.style.SUCCESS("MEIL ESG RBAC Seeding successfully completed."))
+        # 5. Seed Activity Master Catalog (Phase 06)
+        self.stdout.write(self.style.NOTICE("Seeding Phase 06 Activity Master Catalog..."))
+
+        # 5a. Categories
+        categories_data = [
+            ("FUEL", "Fuel & Combustion", "Direct fossil fuel combustion for stationary generators, boilers, and machinery.", 1),
+            ("ENERGY", "Electricity & Energy", "Grid electricity, renewable energy, and purchased thermal energy.", 2),
+            ("WATER", "Water Resources", "Groundwater withdrawal, municipal supplies, and wastewater recycling.", 3),
+            ("WASTE", "Waste Management", "Hazardous, non-hazardous, and construction scrap waste handling.", 4),
+            ("TRANSPORT", "Vehicle & Transport", "Company logistics, heavy earth-moving fleet, and transport freight.", 5),
+            ("TRAVEL", "Business Travel", "Commercial flights, rail, and employee business travel emissions.", 6),
+            ("OTHER", "Other ESG Activities", "Safety incidents, CSR operational metrics, and governance indicators.", 7),
+        ]
+        categories = {}
+        for c_code, c_name, c_desc, c_order in categories_data:
+            cat, created = ActivityCategory.objects.get_or_create(
+                code=c_code,
+                defaults={
+                    "name": c_name,
+                    "description": c_desc,
+                    "display_order": c_order,
+                    "status": MasterStatus.ACTIVE,
+                    "created_by": operator_user,
+                    "updated_by": operator_user,
+                },
+            )
+            categories[c_code] = cat
+            c_status = "Created" if created else "Exists"
+            self.stdout.write(f"  Activity Category [{c_code}]: {c_status}")
+
+        # 5b. Units of Measure
+        units_data = [
+            ("LITRE", "Litre", "L", UnitDimension.VOLUME, "Standard liquid fuel volume."),
+            ("KWH", "Kilowatt Hour", "kWh", UnitDimension.ENERGY, "Electrical energy unit."),
+            ("MWH", "Megawatt Hour", "MWh", UnitDimension.ENERGY, "Bulk grid electrical energy unit."),
+            ("KL", "Kilolitre", "kL", UnitDimension.VOLUME, "Water extraction and storage volume."),
+            ("M3", "Cubic Metre", "m³", UnitDimension.VOLUME, "Bulk water or gas volume."),
+            ("KG", "Kilogram", "kg", UnitDimension.MASS, "Standard weight and hazardous waste unit."),
+            ("TONNE", "Metric Tonne", "t", UnitDimension.MASS, "Bulk materials and construction waste."),
+            ("KM", "Kilometre", "km", UnitDimension.DISTANCE, "Fleet travel and freight transport distance."),
+            ("PASSENGER_KM", "Passenger-Kilometre", "p-km", UnitDimension.DISTANCE, "Business travel commercial flights."),
+        ]
+        units = {}
+        for u_code, u_name, u_sym, u_dim, u_desc in units_data:
+            uom, created = UnitOfMeasure.objects.get_or_create(
+                code=u_code,
+                defaults={
+                    "name": u_name,
+                    "symbol": u_sym,
+                    "dimension": u_dim,
+                    "description": u_desc,
+                    "status": MasterStatus.ACTIVE,
+                    "created_by": operator_user,
+                    "updated_by": operator_user,
+                },
+            )
+            units[u_code] = uom
+            u_status = "Created" if created else "Exists"
+            self.stdout.write(f"  Unit [{u_code}]: {u_status} ({u_sym})")
+
+        # 5c. Master Activities
+        activities_data = [
+            {
+                "code": "FUEL-DIESEL-STAT",
+                "name": "Diesel Consumption (Stationary Generators & Equipment)",
+                "category": categories["FUEL"],
+                "activity_type": "Stationary Combustion",
+                "base_unit": units["LITRE"],
+                "allowed_units": [units["LITRE"], units["KL"]],
+                "scope_classification": ScopeClassification.SCOPE_1,
+                "collection_frequency": CollectionFrequency.MONTHLY,
+                "evidence_requirement_hint": "Fuel Delivery Challan / DG Log Book / Tax Invoice",
+                "description": "Diesel fuel consumed by on-site diesel generators, static concrete batching equipment, and pumps.",
+                "applicability_notes": "Applicable across all construction, dam, and headwork sites operating diesel generators.",
+            },
+            {
+                "code": "FUEL-PETROL-MOB",
+                "name": "Petrol Consumption (Company Fleet & Site Vehicles)",
+                "category": categories["FUEL"],
+                "activity_type": "Mobile Combustion",
+                "base_unit": units["LITRE"],
+                "allowed_units": [units["LITRE"]],
+                "scope_classification": ScopeClassification.SCOPE_1,
+                "collection_frequency": CollectionFrequency.MONTHLY,
+                "evidence_requirement_hint": "Fuel Purchase Card Receipt / Vehicle Log Book / Tax Invoice",
+                "description": "Petrol fuel consumed by project inspection utility vehicles and site management cars.",
+                "applicability_notes": "Applicable to site management vehicle fleets.",
+            },
+            {
+                "code": "ELEC-GRID",
+                "name": "Grid Electricity Consumption (State Discom Supply)",
+                "category": categories["ENERGY"],
+                "activity_type": "Purchased Electricity",
+                "base_unit": units["KWH"],
+                "allowed_units": [units["KWH"], units["MWH"]],
+                "scope_classification": ScopeClassification.SCOPE_2,
+                "collection_frequency": CollectionFrequency.MONTHLY,
+                "evidence_requirement_hint": "Monthly Electricity Discom Utility Bill / HT Meter Reading Record",
+                "description": "Grid electricity supplied by state power distribution utilities for camp offices, powerhouse, and site yards.",
+                "applicability_notes": "All sites with dedicated HT or LT electrical utility connections.",
+            },
+            {
+                "code": "ELEC-RENEWABLE-CAPTIVE",
+                "name": "Captive Solar / Renewable Power Generation & Consumption",
+                "category": categories["ENERGY"],
+                "activity_type": "Renewable Energy",
+                "base_unit": units["KWH"],
+                "allowed_units": [units["KWH"], units["MWH"]],
+                "scope_classification": ScopeClassification.SCOPE_2,
+                "collection_frequency": CollectionFrequency.MONTHLY,
+                "evidence_requirement_hint": "Solar Inverter SCADA Log / Generation Meter Reading Record",
+                "description": "On-site solar PV generation consumed for site operations and auxiliary loads.",
+                "applicability_notes": "Solar project sites and facilities with rooftop or ground-mount captive solar.",
+            },
+            {
+                "code": "WATER-GROUND",
+                "name": "Groundwater Extraction (Borewell Telemetry)",
+                "category": categories["WATER"],
+                "activity_type": "Water Withdrawal",
+                "base_unit": units["KL"],
+                "allowed_units": [units["KL"], units["M3"]],
+                "scope_classification": ScopeClassification.NON_GHG,
+                "collection_frequency": CollectionFrequency.MONTHLY,
+                "evidence_requirement_hint": "Borewell Flow Meter Digital Log / Water Extraction Register",
+                "description": "Groundwater extracted from licensed on-site borewells for batching, curing, and worker camp utilities.",
+                "applicability_notes": "Construction sites with operational groundwater abstraction permissions.",
+            },
+            {
+                "code": "WATER-MUNICIPAL",
+                "name": "Purchased / Municipal Water Supply",
+                "category": categories["WATER"],
+                "activity_type": "Purchased Water",
+                "base_unit": units["KL"],
+                "allowed_units": [units["KL"], units["M3"]],
+                "scope_classification": ScopeClassification.NON_GHG,
+                "collection_frequency": CollectionFrequency.MONTHLY,
+                "evidence_requirement_hint": "Municipal Water Tanker Challan / Water Utility Tax Invoice",
+                "description": "Water delivered via municipal supply pipelines or verified water tanker contracts.",
+                "applicability_notes": "Sites purchasing bulk water for operations or drinking water treatment.",
+            },
+            {
+                "code": "WASTE-HAZARDOUS",
+                "name": "Hazardous Industrial & Chemical Waste Generation",
+                "category": categories["WASTE"],
+                "activity_type": "Hazardous Waste",
+                "base_unit": units["KG"],
+                "allowed_units": [units["KG"], units["TONNE"]],
+                "scope_classification": ScopeClassification.SCOPE_3,
+                "collection_frequency": CollectionFrequency.MONTHLY,
+                "evidence_requirement_hint": "State Pollution Control Board Manifest (Form 10) / Authorized Recycler Receipt",
+                "description": "Used machinery lube oil, oily rags, chemical drums, and hazardous maintenance residues.",
+                "applicability_notes": "All mechanical workshop and heavy equipment maintenance bays.",
+            },
+            {
+                "code": "WASTE-NON-HAZARDOUS",
+                "name": "Non-Hazardous Solid Waste / Construction Scrap",
+                "category": categories["WASTE"],
+                "activity_type": "Solid Waste",
+                "base_unit": units["TONNE"],
+                "allowed_units": [units["TONNE"], units["KG"]],
+                "scope_classification": ScopeClassification.SCOPE_3,
+                "collection_frequency": CollectionFrequency.MONTHLY,
+                "evidence_requirement_hint": "Weighbridge Manifest / Scrap Disposal Gate Pass / Recycling Certificate",
+                "description": "Construction debris, rebar scrap, packaging timber, and municipal solid waste from labor colonies.",
+                "applicability_notes": "All civil construction, dam, and solar park sites.",
+            },
+            {
+                "code": "TRAVEL-AIR-DOMESTIC",
+                "name": "Domestic Commercial Air Travel",
+                "category": categories["TRAVEL"],
+                "activity_type": "Business Travel",
+                "base_unit": units["PASSENGER_KM"],
+                "allowed_units": [units["PASSENGER_KM"], units["KM"]],
+                "scope_classification": ScopeClassification.SCOPE_3,
+                "collection_frequency": CollectionFrequency.MONTHLY,
+                "evidence_requirement_hint": "Corporate Travel Desk Report / Flight E-Ticket / Invoice",
+                "description": "Domestic airline flights undertaken by engineers, project managers, and executives for project business.",
+                "applicability_notes": "Corporate and divisional project management personnel.",
+            },
+            {
+                "code": "TRANSPORT-COMMERCIAL-FREIGHT",
+                "name": "Upstream / Downstream Heavy Freight Transport",
+                "category": categories["TRANSPORT"],
+                "activity_type": "Third-Party Logistics",
+                "base_unit": units["TONNE"],
+                "allowed_units": [units["TONNE"], units["KG"]],
+                "scope_classification": ScopeClassification.SCOPE_3,
+                "collection_frequency": CollectionFrequency.MONTHLY,
+                "evidence_requirement_hint": "Transporter Lorry Receipt (LR) / Weighbridge Slip / Delivery Challan",
+                "description": "Heavy freight hauling of steel, cement, turbine components, and PV modules by third-party logistics.",
+                "applicability_notes": "Project material inward logistics.",
+            },
+        ]
+
+        for adata in activities_data:
+            allowed = adata.pop("allowed_units")
+            act, created = ActivityMaster.objects.get_or_create(
+                code=adata["code"],
+                defaults={
+                    **adata,
+                    "status": MasterStatus.ACTIVE,
+                    "created_by": operator_user,
+                    "updated_by": operator_user,
+                },
+            )
+            act.allowed_units.set(allowed)
+            a_status = "Created" if created else "Exists"
+            self.stdout.write(f"  Activity Master [{adata['code']}]: {a_status}")
+
+        self.stdout.write(self.style.SUCCESS("MEIL ESG RBAC and Activity Master Seeding successfully completed."))
 

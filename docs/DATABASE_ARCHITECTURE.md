@@ -199,3 +199,63 @@ Reporting periods define the authoritative temporal boundaries for ESG activitie
 - **Data Protection**:
   Operational data entry (`allows_data_entry`) is permitted ONLY when `status == OPEN`.
 
+---
+
+## 8. Projects & Operational Sites Foundation (Phase 05)
+
+Phase 05 establishes the operational boundary foundation where future ESG activity entry, evidence attachments, and telemetry measurements occur.
+
+```text
++-------------------------------------------------------+
+|                        Project                        |
+|  - id (BigAutoField, PK)                              |
+|  - subsidiary_id (FK -> Subsidiary.id, PROTECT)       |
+|  - code (VARCHAR(50), UNIQUE, INDEX)                 |
+|  - name (VARCHAR(255))                                |
+|  - description (TEXT)                                 |
+|  - location (VARCHAR(255))                            |
+|  - status (VARCHAR(20), ACTIVE/INACTIVE/CLOSED, INDEX)|
+|  - start_date, end_date (DATE, NULL)                  |
+|  - is_active (BOOLEAN, default=True)                  |
+|  - created_by (FK -> User.id, SET_NULL, NULL)         |
+|  - updated_by (FK -> User.id, SET_NULL, NULL)         |
+|  - created_at, updated_at (TIMESTAMPTZ)               |
++-------------------------------------------------------+
+                           │ 1
+                           │ has many
+                           ▼ N (on_delete=models.PROTECT)
++-------------------------------------------------------+
+|                         Site                          |
+|  - id (BigAutoField, PK)                              |
+|  - project_id (FK -> Project.id, PROTECT)             |
+|  - code (VARCHAR(50), UNIQUE, INDEX)                 |
+|  - name (VARCHAR(255))                                |
+|  - facility_type (VARCHAR(100))                       |
+|  - location (VARCHAR(255))                            |
+|  - latitude, longitude (DECIMAL(9,6), NULL)           |
+|  - operational_start_date (DATE, NULL)                |
+|  - operational_end_date (DATE, NULL)                  |
+|  - contact_person (VARCHAR(150))                      |
+|  - contact_email (VARCHAR(254))                       |
+|  - description (TEXT)                                 |
+|  - status (VARCHAR(20), ACTIVE/INACTIVE/CLOSED, INDEX)|
+|  - is_active (BOOLEAN, default=True)                  |
+|  - created_by (FK -> User.id, SET_NULL, NULL)         |
+|  - updated_by (FK -> User.id, SET_NULL, NULL)         |
+|  - created_at, updated_at (TIMESTAMPTZ)               |
++-------------------------------------------------------+
+```
+
+### Constraints & Integrity Rules (Phase 05)
+- **CheckConstraint (`check_project_start_before_end`)**: `check=Q(start_date__isnull=True) | Q(end_date__isnull=True) | Q(start_date__lte=F('end_date'))` ensures Project start date does not exceed end date.
+- **CheckConstraint (`check_site_start_before_end`)**: `check=Q(operational_start_date__isnull=True) | Q(operational_end_date__isnull=True) | Q(operational_start_date__lte=F('operational_end_date'))` ensures Site operational start date does not exceed end date.
+- **Composite Indexes**:
+  - Project: `Index(fields=['subsidiary', 'status'])`, `Index(fields=['code'])`
+  - Site: `Index(fields=['project', 'status'])`, `Index(fields=['code'])`
+- **Audit Lineage**:
+  - `AuthAuditLog.EventType.PROJECT_CREATED`, `PROJECT_UPDATED`, `PROJECT_DEACTIVATED`
+  - `AuthAuditLog.EventType.SITE_CREATED`, `SITE_UPDATED`, `SITE_DEACTIVATED`
+- **Migration**:
+  - `apps/core/migrations/0004_project_created_by_project_updated_by_and_more.py`
+
+

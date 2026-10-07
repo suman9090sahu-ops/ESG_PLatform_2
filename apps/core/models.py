@@ -354,6 +354,22 @@ class Project(models.Model):
     start_date = models.DateField(null=True, blank=True, help_text="Official construction or commissioning date.")
     end_date = models.DateField(null=True, blank=True, help_text="Estimated or actual completion date.")
     is_active = models.BooleanField(default=True, help_text="Quick boolean status indicator.")
+    created_by = models.ForeignKey(
+        "User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_projects",
+        help_text="User who registered this infrastructure project.",
+    )
+    updated_by = models.ForeignKey(
+        "User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="updated_projects",
+        help_text="User who last updated this infrastructure project.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -361,11 +377,33 @@ class Project(models.Model):
         verbose_name = "Project"
         verbose_name_plural = "Projects"
         ordering = ["name"]
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(start_date__isnull=True)
+                | models.Q(end_date__isnull=True)
+                | models.Q(start_date__lte=models.F("end_date")),
+                name="check_project_start_before_end",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["subsidiary", "status"], name="idx_proj_sub_status"),
+            models.Index(fields=["code"], name="idx_proj_code"),
+        ]
 
     def __str__(self):
         return f"{self.name} ({self.code})"
 
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        super().clean()
+        if self.start_date and self.end_date:
+            if self.start_date > self.end_date:
+                raise ValidationError({
+                    "end_date": "Project end date must be on or after start date."
+                })
+
     def save(self, *args, **kwargs):
+        self.clean()
         self.is_active = (self.status == OrganizationStatus.ACTIVE)
         super().save(*args, **kwargs)
 
@@ -413,7 +451,29 @@ class Site(models.Model):
         db_index=True,
         help_text="Site operational state.",
     )
+    operational_start_date = models.DateField(
+        null=True, blank=True, help_text="Commissioning or operational start date."
+    )
+    operational_end_date = models.DateField(
+        null=True, blank=True, help_text="Decommissioning or operational closure date."
+    )
     is_active = models.BooleanField(default=True, help_text="Quick boolean status indicator.")
+    created_by = models.ForeignKey(
+        "User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_sites",
+        help_text="User who registered this operational site.",
+    )
+    updated_by = models.ForeignKey(
+        "User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="updated_sites",
+        help_text="User who last updated this operational site.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -421,11 +481,33 @@ class Site(models.Model):
         verbose_name = "Operational Site"
         verbose_name_plural = "Operational Sites"
         ordering = ["name"]
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(operational_start_date__isnull=True)
+                | models.Q(operational_end_date__isnull=True)
+                | models.Q(operational_start_date__lte=models.F("operational_end_date")),
+                name="check_site_start_before_end",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["project", "status"], name="idx_site_proj_status"),
+            models.Index(fields=["code"], name="idx_site_code"),
+        ]
 
     def __str__(self):
         return f"{self.name} ({self.code})"
 
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        super().clean()
+        if self.operational_start_date and self.operational_end_date:
+            if self.operational_start_date > self.operational_end_date:
+                raise ValidationError({
+                    "operational_end_date": "Operational end date must be on or after start date."
+                })
+
     def save(self, *args, **kwargs):
+        self.clean()
         self.is_active = (self.status == OrganizationStatus.ACTIVE)
         super().save(*args, **kwargs)
 
@@ -546,9 +628,22 @@ class AuthAuditLog(models.Model):
         ORGANIZATION_CREATED = "ORGANIZATION_CREATED", "Organization Entity Created"
         ORGANIZATION_UPDATED = "ORGANIZATION_UPDATED", "Organization Entity Updated"
         ORGANIZATION_DEACTIVATED = "ORGANIZATION_DEACTIVATED", "Organization Entity Deactivated"
+        PROJECT_CREATED = "PROJECT_CREATED", "Project Created"
+        PROJECT_UPDATED = "PROJECT_UPDATED", "Project Updated"
+        PROJECT_DEACTIVATED = "PROJECT_DEACTIVATED", "Project Deactivated"
+        SITE_CREATED = "SITE_CREATED", "Site Created"
+        SITE_UPDATED = "SITE_UPDATED", "Site Updated"
+        SITE_DEACTIVATED = "SITE_DEACTIVATED", "Site Deactivated"
         PERIOD_CREATED = "PERIOD_CREATED", "Reporting Period Created"
         PERIOD_UPDATED = "PERIOD_UPDATED", "Reporting Period Updated"
         PERIOD_STATUS_CHANGED = "PERIOD_STATUS_CHANGED", "Reporting Period Status Changed"
+        ACTIVITY_MASTER_CREATED = "ACTIVITY_MASTER_CREATED", "Activity Master Created"
+        ACTIVITY_MASTER_UPDATED = "ACTIVITY_MASTER_UPDATED", "Activity Master Updated"
+        ACTIVITY_MASTER_DEACTIVATED = "ACTIVITY_MASTER_DEACTIVATED", "Activity Master Deactivated"
+        ACTIVITY_CATEGORY_CREATED = "ACTIVITY_CATEGORY_CREATED", "Activity Category Created"
+        ACTIVITY_CATEGORY_UPDATED = "ACTIVITY_CATEGORY_UPDATED", "Activity Category Updated"
+        UNIT_CREATED = "UNIT_CREATED", "Unit of Measure Created"
+        UNIT_UPDATED = "UNIT_UPDATED", "Unit of Measure Updated"
 
     user = models.ForeignKey(
         User,
@@ -783,4 +878,354 @@ class ReportingPeriod(models.Model):
             PeriodStatus.FINALIZED: "badge-info",
         }
         return badge_map.get(self.status, "badge-secondary")
+
+
+# -----------------------------------------------------------------------------
+# PHASE 06: ACTIVITY MASTER & ESG DATA CATALOG FOUNDATION
+# -----------------------------------------------------------------------------
+
+class MasterStatus(models.TextChoices):
+    ACTIVE = "ACTIVE", "Active"
+    INACTIVE = "INACTIVE", "Inactive"
+
+
+class UnitDimension(models.TextChoices):
+    VOLUME = "VOLUME", "Volume"
+    ENERGY = "ENERGY", "Energy"
+    MASS = "MASS", "Mass"
+    DISTANCE = "DISTANCE", "Distance"
+    TIME = "TIME", "Time"
+    AREA = "AREA", "Area"
+    COUNT = "COUNT", "Count / Unit"
+    OTHER = "OTHER", "Other"
+
+
+class ScopeClassification(models.TextChoices):
+    SCOPE_1 = "SCOPE_1", "Scope 1 (Direct Emissions)"
+    SCOPE_2 = "SCOPE_2", "Scope 2 (Indirect - Purchased Energy)"
+    SCOPE_3 = "SCOPE_3", "Scope 3 (Value Chain / Other Indirect)"
+    NON_GHG = "NON_GHG", "Non-GHG / ESG Only"
+    CONTEXT_DEPENDENT = "CONTEXT_DEPENDENT", "Context Dependent"
+
+
+class CollectionFrequency(models.TextChoices):
+    DAILY = "DAILY", "Daily"
+    WEEKLY = "WEEKLY", "Weekly"
+    MONTHLY = "MONTHLY", "Monthly"
+    QUARTERLY = "QUARTERLY", "Quarterly"
+    ANNUAL = "ANNUAL", "Annual"
+    AS_REQUIRED = "AS_REQUIRED", "As Required"
+
+
+class ActivityCategory(models.Model):
+    """
+    Centralized ESG Activity Category grouping.
+    Defines logical ESG operational groupings:
+    - Fuel
+    - Electricity & Energy
+    - Water
+    - Waste
+    - Vehicle / Transport
+    - Travel
+    - Other ESG Activities
+    """
+
+    code = models.CharField(
+        max_length=50,
+        unique=True,
+        db_index=True,
+        help_text="Machine-readable unique category identifier (e.g. FUEL, ENERGY, WATER).",
+    )
+    name = models.CharField(
+        max_length=150,
+        help_text="Human-readable category title.",
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="Detailed category description and boundary guidelines.",
+    )
+    display_order = models.PositiveIntegerField(
+        default=0,
+        help_text="Sorting sequence for UI catalog presentation.",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=MasterStatus.choices,
+        default=MasterStatus.ACTIVE,
+        db_index=True,
+        help_text="Lifecycle state of the category.",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Fast lookup flag matching status == ACTIVE.",
+    )
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_activity_categories",
+    )
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="updated_activity_categories",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Activity Category"
+        verbose_name_plural = "Activity Categories"
+        ordering = ["display_order", "name"]
+
+    def __str__(self):
+        return f"{self.name} ({self.code})"
+
+    def clean(self):
+        super().clean()
+        if self.code:
+            self.code = self.code.strip().upper()
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        self.is_active = (self.status == MasterStatus.ACTIVE)
+        super().save(*args, **kwargs)
+
+    @property
+    def status_badge_class(self):
+        return "badge-success" if self.status == MasterStatus.ACTIVE else "badge-secondary"
+
+
+class UnitOfMeasure(models.Model):
+    """
+    Controlled Measurement Unit definition for MEIL ESG CONTROL TOWER.
+    Provides the standardized basis for future telemetry validation, conversion, and calculations.
+    """
+
+    code = models.CharField(
+        max_length=50,
+        unique=True,
+        db_index=True,
+        help_text="Machine-readable standard unit identifier (e.g. LITRE, KWH, MWH, KL, KG, TONNE, KM).",
+    )
+    name = models.CharField(
+        max_length=100,
+        help_text="Human-readable unit title (e.g. Litre, Kilowatt Hour, Kilolitre).",
+    )
+    symbol = models.CharField(
+        max_length=20,
+        help_text="Short unit symbol (e.g. L, kWh, kL, t, km).",
+    )
+    dimension = models.CharField(
+        max_length=30,
+        choices=UnitDimension.choices,
+        default=UnitDimension.VOLUME,
+        help_text="Physical dimension/type of measurement.",
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="Standard measurement notes or conversion references.",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=MasterStatus.choices,
+        default=MasterStatus.ACTIVE,
+        db_index=True,
+        help_text="Lifecycle state of the unit.",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Fast lookup flag matching status == ACTIVE.",
+    )
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_units",
+    )
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="updated_units",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Unit of Measure"
+        verbose_name_plural = "Units of Measure"
+        ordering = ["dimension", "name"]
+
+    def __str__(self):
+        return f"{self.name} ({self.symbol})"
+
+    def clean(self):
+        super().clean()
+        if self.code:
+            self.code = self.code.strip().upper()
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        self.is_active = (self.status == MasterStatus.ACTIVE)
+        super().save(*args, **kwargs)
+
+    @property
+    def status_badge_class(self):
+        return "badge-success" if self.status == MasterStatus.ACTIVE else "badge-secondary"
+
+
+class ActivityMaster(models.Model):
+    """
+    Authoritative ESG Activity Master Catalog for MEIL ESG CONTROL TOWER.
+
+    Defines WHAT ESG activity types can be recorded across the enterprise:
+    - Fuel consumption, electricity, water extraction, waste disposal, transport, travel.
+    - Controlled units, allowed unit sets.
+    - Scope classification metadata (Scope 1, 2, 3, Non-GHG, Context-Dependent).
+    - Evidence attachment requirements guidance.
+    - Validation and calculation metadata integration points for downstream modules.
+
+    CRITICAL: This is master reference data, NOT an operational observation record.
+    """
+
+    code = models.CharField(
+        max_length=50,
+        unique=True,
+        db_index=True,
+        help_text="Stable unique activity identifier (e.g. FUEL-DIESEL, ELEC-GRID, WATER-MUNICIPAL).",
+    )
+    name = models.CharField(
+        max_length=200,
+        help_text="Human-readable activity name (e.g. Diesel Consumption - Stationary & Equipment).",
+    )
+    category = models.ForeignKey(
+        ActivityCategory,
+        on_delete=models.PROTECT,
+        related_name="activities",
+        help_text="Governing ESG activity category.",
+    )
+    activity_type = models.CharField(
+        max_length=100,
+        help_text="Specific operational classification (e.g. Stationary Combustion, Mobile Combustion, Purchased Electricity).",
+    )
+    base_unit = models.ForeignKey(
+        UnitOfMeasure,
+        on_delete=models.PROTECT,
+        related_name="base_activities",
+        help_text="Standard primary reporting unit of measure.",
+    )
+    allowed_units = models.ManyToManyField(
+        UnitOfMeasure,
+        blank=True,
+        related_name="allowed_activities",
+        help_text="Permissible units allowed for operational telemetry data entry.",
+    )
+    scope_classification = models.CharField(
+        max_length=30,
+        choices=ScopeClassification.choices,
+        default=ScopeClassification.SCOPE_1,
+        db_index=True,
+        help_text="Regulatory GHG Scope classification metadata.",
+    )
+    collection_frequency = models.CharField(
+        max_length=30,
+        choices=CollectionFrequency.choices,
+        default=CollectionFrequency.MONTHLY,
+        help_text="Standard expected data reporting cadence.",
+    )
+    evidence_requirement_hint = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Regulatory audit evidence expectation (e.g. Fuel Log / Tax Invoice / Meter Reading).",
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="Operational definition, boundary rules, and guidance for site managers.",
+    )
+    applicability_notes = models.TextField(
+        blank=True,
+        help_text="Site applicability guidance (e.g. Applicable to all civil and plant sites with diesel generators).",
+    )
+    validation_rules = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Future validation rule definitions (e.g. positive quantity, evidence mandatory, thresholds).",
+    )
+    calculation_metadata = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Future GHG calculation and emission factor lineage metadata.",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=MasterStatus.choices,
+        default=MasterStatus.ACTIVE,
+        db_index=True,
+        help_text="Lifecycle state (ACTIVE/INACTIVE). Deactivation preserves historical references.",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Fast lookup flag matching status == ACTIVE.",
+    )
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_activities",
+    )
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="updated_activities",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Activity Master"
+        verbose_name_plural = "Activity Master Entries"
+        ordering = ["category__display_order", "category__name", "name"]
+        indexes = [
+            models.Index(fields=["category", "status"], name="idx_act_cat_status"),
+            models.Index(fields=["code"], name="idx_act_code"),
+            models.Index(fields=["scope_classification"], name="idx_act_scope"),
+        ]
+
+    def __str__(self):
+        return f"{self.name} [{self.code}]"
+
+    def clean(self):
+        super().clean()
+        if self.code:
+            self.code = self.code.strip().upper()
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        self.is_active = (self.status == MasterStatus.ACTIVE)
+        super().save(*args, **kwargs)
+
+    @property
+    def status_badge_class(self):
+        return "badge-success" if self.status == MasterStatus.ACTIVE else "badge-secondary"
+
+    @property
+    def scope_badge_class(self):
+        scope_map = {
+            ScopeClassification.SCOPE_1: "badge-danger",
+            ScopeClassification.SCOPE_2: "badge-warning",
+            ScopeClassification.SCOPE_3: "badge-info",
+            ScopeClassification.NON_GHG: "badge-success",
+            ScopeClassification.CONTEXT_DEPENDENT: "badge-secondary",
+        }
+        return scope_map.get(self.scope_classification, "badge-secondary")
+
 

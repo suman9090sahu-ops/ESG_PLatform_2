@@ -336,8 +336,9 @@ def user_can_manage_site(user, site=None, project=None):
 
 def safe_deactivate_entity(entity, user=None, request=None):
     """
-    Implements Section 22: Safe Deactivation Policy.
+    Safe Deactivation Policy:
     Sets status to INACTIVE and is_active to False.
+    Preserves historical ESG records without destructive deletion.
     Records AuthAuditLog event.
     """
     entity_type = entity.__class__.__name__
@@ -345,16 +346,36 @@ def safe_deactivate_entity(entity, user=None, request=None):
     entity.is_active = False
     entity.save()
 
-    # Log audit event
+    # Log base organization deactivation event
     from apps.core.auth_services import log_auth_event
     log_auth_event(
         AuthAuditLog.EventType.ORGANIZATION_DEACTIVATED,
         request=request,
         user=user,
         resource_accessed=f"{entity_type}:{entity.id} ({entity.code})",
-        details=f"{entity_type} '{entity.name}' ({entity.code}) was archived/deactivated.",
+        details=f"{entity_type} '{entity.name}' ({entity.code}) was archived and marked Inactive.",
         success=True,
     )
+
+    # Also log granular project/site deactivation events for Phase 05 audit lineage
+    if entity_type == "Project":
+        log_auth_event(
+            AuthAuditLog.EventType.PROJECT_DEACTIVATED,
+            request=request,
+            user=user,
+            resource_accessed=f"Project:{entity.id} ({entity.code})",
+            details=f"Project '{entity.name}' ({entity.code}) was archived and marked Inactive.",
+            success=True,
+        )
+    elif entity_type == "Site":
+        log_auth_event(
+            AuthAuditLog.EventType.SITE_DEACTIVATED,
+            request=request,
+            user=user,
+            resource_accessed=f"Site:{entity.id} ({entity.code})",
+            details=f"Site '{entity.name}' ({entity.code}) was archived and marked Inactive.",
+            success=True,
+        )
     return entity
 
 

@@ -4,7 +4,7 @@ Includes Phase 01 Core & UI showcase routes, Phase 02 Authentication & RBAC rout
 """
 
 from django.urls import path
-from apps.core import auth_views, org_views, period_views, views
+from apps.core import activity_views, auth_views, org_views, period_views, views
 
 app_name = "core"
 
@@ -31,9 +31,10 @@ urlpatterns = [
     path("auth/reset/done/", auth_views.CustomPasswordResetCompleteView.as_view(), name="password_reset_complete"),
 
     # -------------------------------------------------------------------------
-    # Phase 02 Role-Based Dashboards & Object-Access Verification Routes
+    # Phase 02 & Phase 07 Role-Based Dashboards & Object-Access Verification Routes
     # -------------------------------------------------------------------------
     path("site-manager/dashboard/", auth_views.site_manager_dashboard, name="site_manager_dashboard"),
+    path("dashboard/site-manager/", auth_views.site_manager_dashboard_redirect, name="site_manager_dashboard_alias"),
     path("site-manager/sites/<int:site_id>/", auth_views.site_detail_view, name="site_detail"),
     path("subsidiary-manager/dashboard/", auth_views.subsidiary_manager_dashboard, name="subsidiary_manager_dashboard"),
     path("subsidiary-manager/subsidiaries/<int:subsidiary_id>/", auth_views.subsidiary_detail_view, name="subsidiary_detail"),
@@ -71,5 +72,33 @@ urlpatterns = [
     path("reporting-periods/<int:period_id>/", period_views.period_detail_view, name="period_detail"),
     path("reporting-periods/<int:period_id>/edit/", period_views.period_edit_view, name="period_edit"),
     path("reporting-periods/<int:period_id>/status/", period_views.period_status_transition_view, name="period_status_transition"),
+
+    # -------------------------------------------------------------------------
+    # Phase 05 Projects & Operational Sites Direct Routes (/projects/... & /sites/...)
+    # -------------------------------------------------------------------------
+    path("projects/", org_views.project_list_view, name="project_list"),
+    path("projects/create/", org_views.project_create_view, name="project_create"),
+    path("projects/<int:project_id>/", org_views.project_detail_view, name="project_detail"),
+    path("projects/<int:project_id>/edit/", org_views.project_edit_view, name="project_edit"),
+    path("projects/<int:project_id>/deactivate/", org_views.project_deactivate_view, name="project_deactivate"),
+    path("sites/", org_views.site_list_view, name="site_list"),
+    path("sites/create/", org_views.site_create_view, name="site_create"),
+    path("sites/<int:site_id>/", org_views.site_detail_view, name="site_direct_detail"),
+    path("sites/<int:site_id>/edit/", org_views.site_edit_view, name="site_edit"),
+    path("sites/<int:site_id>/deactivate/", org_views.site_deactivate_view, name="site_deactivate"),
+
+    # -------------------------------------------------------------------------
+    # Phase 06 Activity Master & ESG Data Catalog Routes (/activity-master/...)
+    # -------------------------------------------------------------------------
+    path("activity-master/", activity_views.activity_list_view, name="activity_list"),
+    path("activity-master/create/", activity_views.activity_create_view, name="activity_create"),
+    path("activity-master/<int:activity_id>/", activity_views.activity_detail_view, name="activity_detail"),
+    path("activity-master/<int:activity_id>/edit/", activity_views.activity_edit_view, name="activity_edit"),
+    path("activity-master/<int:activity_id>/deactivate/", activity_views.activity_deactivate_view, name="activity_deactivate"),
+    path("activity-master/categories/", activity_views.category_list_view, name="category_list"),
+    path("activity-master/categories/create/", activity_views.category_create_view, name="category_create"),
+    path("activity-master/categories/<int:category_id>/", activity_views.category_detail_view, name="category_detail"),
+    path("activity-master/units/", activity_views.unit_list_view, name="unit_list"),
+    path("activity-master/units/create/", activity_views.unit_create_view, name="unit_create"),
 ]
 

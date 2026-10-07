@@ -239,8 +239,195 @@ def run():
     assert code == 403, f"Expected 403, got {code}"
     assert "Access Denied" in html or "Forbidden" in html
 
-    print("\nALL 32 LIVE E2E HTTP VERIFICATIONS PASSED SUCCESSFULLY!")
+    # -------------------------------------------------------------------------
+    # PHASE 05: PROJECTS & SITES DIRECT ROUTES & RBAC VERIFICATION
+    # -------------------------------------------------------------------------
+    # 14. MEIL Operator direct routes
+    code, html = get_url(opener_op, f"{BASE_URL}/projects/")
+    print(f"[33] /projects/ Direct List: Status {code} (Expected 200)")
+    assert code == 200
+    assert "Infrastructure Projects" in html
+
+    code, html = get_url(opener_op, f"{BASE_URL}/projects/1/")
+    print(f"[34] /projects/1/ Direct Detail: Status {code} (Expected 200)")
+    assert code == 200
+    assert "Polavaram Hydro Project" in html or "Infrastructure Project" in html
+
+    code, html = get_url(opener_op, f"{BASE_URL}/sites/")
+    print(f"[35] /sites/ Direct List: Status {code} (Expected 200)")
+    assert code == 200
+    assert "Operational Sites" in html
+
+    code, html = get_url(opener_op, f"{BASE_URL}/sites/1/")
+    print(f"[36] /sites/1/ Direct Detail: Status {code} (Expected 200)")
+    assert code == 200
+    assert "Operational Boundary Specification" in html
+
+    # 15. Auditor direct routes (Read-only 200, mutation 403)
+    code, html = get_url(opener_aud, f"{BASE_URL}/projects/")
+    print(f"[37] auditor accesses /projects/: Status {code} (Expected 200)")
+    assert code == 200
+
+    code, html = get_url(opener_aud, f"{BASE_URL}/projects/1/")
+    print(f"[38] auditor accesses /projects/1/: Status {code} (Expected 200)")
+    assert code == 200
+
+    code, html = get_url(opener_aud, f"{BASE_URL}/projects/create/")
+    print(f"[39] auditor attempts /projects/create/ -> Status {code} (Expected 403)")
+    assert code == 403, f"Expected 403, got {code}"
+
+    code, html = get_url(opener_aud, f"{BASE_URL}/sites/")
+    print(f"[40] auditor accesses /sites/: Status {code} (Expected 200)")
+    assert code == 200
+
+    code, html = get_url(opener_aud, f"{BASE_URL}/sites/create/")
+    print(f"[41] auditor attempts /sites/create/ -> Status {code} (Expected 403)")
+    assert code == 403, f"Expected 403, got {code}"
+
+    # 16. Site Manager direct routes & IDOR isolation
+    code, html = get_url(opener_sm, f"{BASE_URL}/projects/")
+    print(f"[42] site_manager accesses /projects/: Status {code} (Expected 200)")
+    assert code == 200
+
+    code, html = get_url(opener_sm, f"{BASE_URL}/projects/1/")
+    print(f"[43] site_manager accesses assigned /projects/1/: Status {code} (Expected 200)")
+    assert code == 200
+
+    code, html = get_url(opener_sm, f"{BASE_URL}/projects/2/")
+    print(f"[44] IDOR attempt: site_manager accesses unassigned /projects/2/ -> Status {code} (Expected 403)")
+    assert code == 403, f"Expected 403, got {code}"
+
+    code, html = get_url(opener_sm, f"{BASE_URL}/sites/")
+    print(f"[45] site_manager accesses /sites/: Status {code} (Expected 200)")
+    assert code == 200
+
+    code, html = get_url(opener_sm, f"{BASE_URL}/sites/1/")
+    print(f"[46] site_manager accesses assigned /sites/1/: Status {code} (Expected 200)")
+    assert code == 200
+
+    code, html = get_url(opener_sm, f"{BASE_URL}/sites/2/")
+    print(f"[47] IDOR attempt: site_manager accesses unassigned /sites/2/ -> Status {code} (Expected 403)")
+    assert code == 403, f"Expected 403, got {code}"
+
+    # 17. Phase 06 Activity Master Catalog & RBAC Live Verification
+    code, html = get_url(opener_op, f"{BASE_URL}/activity-master/")
+    print(f"[48] meil_operator accesses /activity-master/: Status {code} (Expected 200)")
+    assert code == 200
+    assert "Authoritative ESG Activity Master Catalog" in html
+    assert "FUEL-DIESEL" in html
+
+    code, html = get_url(opener_op, f"{BASE_URL}/activity-master/1/")
+    print(f"[49] meil_operator accesses /activity-master/1/: Status {code} (Expected 200)")
+    assert code == 200
+    assert "Activity Specification" in html
+
+    code, html = get_url(opener_op, f"{BASE_URL}/activity-master/create/")
+    print(f"[50] meil_operator accesses /activity-master/create/: Status {code} (Expected 200)")
+    assert code == 200
+
+    code, html = get_url(opener_op, f"{BASE_URL}/activity-master/categories/")
+    print(f"[51] meil_operator accesses /activity-master/categories/: Status {code} (Expected 200)")
+    assert code == 200
+    assert "Governed ESG Categories" in html
+
+    code, html = get_url(opener_op, f"{BASE_URL}/activity-master/units/")
+    print(f"[52] meil_operator accesses /activity-master/units/: Status {code} (Expected 200)")
+    assert code == 200
+    assert "Standard Measurement Units" in html
+
+    code, html = get_url(opener_esg, f"{BASE_URL}/activity-master/")
+    print(f"[53] esg_manager accesses /activity-master/: Status {code} (Expected 200)")
+    assert code == 200
+
+    code, html = get_url(opener_esg, f"{BASE_URL}/activity-master/create/")
+    print(f"[54] esg_manager accesses /activity-master/create/: Status {code} (Expected 200)")
+    assert code == 200
+
+    code, html = get_url(opener_esg, f"{BASE_URL}/activity-master/1/edit/")
+    print(f"[55] esg_manager accesses /activity-master/1/edit/: Status {code} (Expected 200)")
+    assert code == 200
+
+    code, html = get_url(opener_aud, f"{BASE_URL}/activity-master/")
+    print(f"[56] auditor accesses /activity-master/: Status {code} (Expected 200)")
+    assert code == 200
+
+    code, html = get_url(opener_aud, f"{BASE_URL}/activity-master/1/")
+    print(f"[57] auditor accesses /activity-master/1/: Status {code} (Expected 200)")
+    assert code == 200
+
+    code, html = get_url(opener_aud, f"{BASE_URL}/activity-master/create/")
+    print(f"[58] auditor attempts /activity-master/create/ -> Status {code} (Expected 403)")
+    assert code == 403, f"Expected 403, got {code}"
+
+    code, html = get_url(opener_aud, f"{BASE_URL}/activity-master/1/edit/")
+    print(f"[59] auditor attempts /activity-master/1/edit/ -> Status {code} (Expected 403)")
+    assert code == 403, f"Expected 403, got {code}"
+
+    code, html = get_url(opener_sm, f"{BASE_URL}/activity-master/")
+    print(f"[60] site_manager accesses /activity-master/: Status {code} (Expected 200)")
+    assert code == 200
+
+    code, html = get_url(opener_sm, f"{BASE_URL}/activity-master/1/")
+    print(f"[61] site_manager accesses /activity-master/1/: Status {code} (Expected 200)")
+    assert code == 200
+
+    code, html = get_url(opener_sm, f"{BASE_URL}/activity-master/create/")
+    print(f"[62] site_manager attempts /activity-master/create/ -> Status {code} (Expected 403)")
+    assert code == 403, f"Expected 403, got {code}"
+
+    code, html = get_url(opener_sm, f"{BASE_URL}/activity-master/1/edit/")
+    print(f"[63] site_manager attempts /activity-master/1/edit/ -> Status {code} (Expected 403)")
+    assert code == 403, f"Expected 403, got {code}"
+
+    code, html = get_url(opener_sub, f"{BASE_URL}/activity-master/create/")
+    print(f"[64] subsidiary_manager attempts /activity-master/create/ -> Status {code} (Expected 403)")
+    assert code == 403, f"Expected 403, got {code}"
+
+    # 15. Phase 07 — Site Manager Dashboard Verification
+    # Site Manager accesses /site-manager/dashboard/
+    code, html = get_url(opener_sm, f"{BASE_URL}/site-manager/dashboard/")
+    print(f"[65] site_manager accesses /site-manager/dashboard/: Status {code} (Expected 200)")
+    assert code == 200
+    assert "Site Manager Operational Dashboard" in html
+    assert "My Authorized Operational Sites" in html
+    assert "SITE-POL-101" in html
+    assert "SITE-POL-102" not in html, "Cross-site data leak detected: unassigned site present in site_manager view"
+
+    # Site Manager accesses alias /dashboard/site-manager/
+    code, html = get_url(opener_sm, f"{BASE_URL}/dashboard/site-manager/")
+    print(f"[66] site_manager accesses /dashboard/site-manager/ alias: Status {code} (Expected 200/302)")
+    assert code in (200, 302)
+
+    # IDOR parameter tampering attempt (?site_id=2)
+    code, html = get_url(opener_sm, f"{BASE_URL}/site-manager/dashboard/?site_id=2")
+    print(f"[67] IDOR query param tampering on /site-manager/dashboard/?site_id=2: Status {code} (Expected 200 with no leak)")
+    assert code == 200
+    assert "SITE-POL-101" in html
+    assert "SITE-POL-102" not in html
+
+    # MEIL Operator (supervisor) accesses Site Manager dashboard
+    code, html = get_url(opener_op, f"{BASE_URL}/site-manager/dashboard/")
+    print(f"[68] meil_operator supervisor accesses /site-manager/dashboard/: Status {code} (Expected 200)")
+    assert code == 200
+
+    # Subsidiary Manager denied access to Site Manager dashboard
+    code, html = get_url(opener_sub, f"{BASE_URL}/site-manager/dashboard/")
+    print(f"[69] subsidiary_manager attempts /site-manager/dashboard/ -> Status {code} (Expected 403)")
+    assert code == 403, f"Expected 403, got {code}"
+
+    # ESG Manager denied access to Site Manager dashboard
+    code, html = get_url(opener_esg, f"{BASE_URL}/site-manager/dashboard/")
+    print(f"[70] esg_manager attempts /site-manager/dashboard/ -> Status {code} (Expected 403)")
+    assert code == 403, f"Expected 403, got {code}"
+
+    # Auditor denied access to Site Manager dashboard
+    code, html = get_url(opener_aud, f"{BASE_URL}/site-manager/dashboard/")
+    print(f"[71] auditor attempts /site-manager/dashboard/ -> Status {code} (Expected 403)")
+    assert code == 403, f"Expected 403, got {code}"
+
+    print("\nALL 71 LIVE E2E HTTP VERIFICATIONS PASSED SUCCESSFULLY!")
 
 if __name__ == "__main__":
     run()
+
 

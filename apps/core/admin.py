@@ -19,6 +19,9 @@ from apps.core.models import (
     User,
     UserRole,
     ReportingPeriod,
+    ActivityCategory,
+    UnitOfMeasure,
+    ActivityMaster,
 )
 
 
@@ -139,17 +142,99 @@ class SubsidiaryAdmin(admin.ModelAdmin):
 
 @admin.register(Project)
 class ProjectAdmin(admin.ModelAdmin):
-    list_display = ("code", "name", "subsidiary", "location", "status", "is_active")
+    list_display = ("code", "name", "subsidiary", "location", "start_date", "end_date", "status", "is_active")
     list_filter = ("subsidiary__company", "subsidiary", "status", "is_active")
     search_fields = ("code", "name", "location", "description")
+    readonly_fields = ("created_at", "updated_at", "created_by", "updated_by")
     inlines = [SiteInline]
+    fieldsets = (
+        (
+            "Project Identification",
+            {
+                "fields": ("code", "name", "subsidiary", "status"),
+            },
+        ),
+        (
+            "Operational Scope & Location",
+            {
+                "fields": ("location", "description"),
+            },
+        ),
+        (
+            "Timeline Boundaries",
+            {
+                "fields": ("start_date", "end_date"),
+            },
+        ),
+        (
+            "Audit & Governance Lineage",
+            {
+                "fields": ("created_by", "updated_by", "created_at", "updated_at"),
+            },
+        ),
+    )
 
 
 @admin.register(Site)
 class SiteAdmin(admin.ModelAdmin):
-    list_display = ("code", "name", "project", "facility_type", "location", "status", "is_active")
-    list_filter = ("project__subsidiary__company", "project__subsidiary", "status", "is_active", "facility_type")
+    list_display = (
+        "code",
+        "name",
+        "project",
+        "facility_type",
+        "location",
+        "operational_start_date",
+        "operational_end_date",
+        "status",
+        "is_active",
+    )
+    list_filter = (
+        "project__subsidiary__company",
+        "project__subsidiary",
+        "status",
+        "is_active",
+        "facility_type",
+    )
     search_fields = ("code", "name", "location", "facility_type", "contact_person", "contact_email")
+    readonly_fields = ("created_at", "updated_at", "created_by", "updated_by")
+    fieldsets = (
+        (
+            "Facility Boundary Identification",
+            {
+                "fields": ("code", "name", "project", "facility_type", "status"),
+            },
+        ),
+        (
+            "Geographic Location & Coordinates",
+            {
+                "fields": ("location", "latitude", "longitude"),
+            },
+        ),
+        (
+            "Site Leadership & Correspondence",
+            {
+                "fields": ("contact_person", "contact_email"),
+            },
+        ),
+        (
+            "Operational Lifecycle Dates",
+            {
+                "fields": ("operational_start_date", "operational_end_date"),
+            },
+        ),
+        (
+            "ESG Boundary Description",
+            {
+                "fields": ("description",),
+            },
+        ),
+        (
+            "Audit & Lineage",
+            {
+                "fields": ("created_by", "updated_by", "created_at", "updated_at"),
+            },
+        ),
+    )
 
 
 @admin.register(SiteAssignment)
@@ -256,4 +341,80 @@ class ReportingPeriodAdmin(admin.ModelAdmin):
             },
         ),
     )
+
+
+@admin.register(ActivityCategory)
+class ActivityCategoryAdmin(admin.ModelAdmin):
+    list_display = ("code", "name", "display_order", "status", "is_active", "created_at")
+    list_filter = ("status", "is_active")
+    search_fields = ("code", "name", "description")
+    readonly_fields = ("created_at", "updated_at", "created_by", "updated_by")
+
+
+@admin.register(UnitOfMeasure)
+class UnitOfMeasureAdmin(admin.ModelAdmin):
+    list_display = ("code", "name", "symbol", "dimension", "status", "is_active", "created_at")
+    list_filter = ("status", "dimension", "is_active")
+    search_fields = ("code", "name", "symbol", "description")
+    readonly_fields = ("created_at", "updated_at", "created_by", "updated_by")
+
+
+@admin.register(ActivityMaster)
+class ActivityMasterAdmin(admin.ModelAdmin):
+    list_display = (
+        "code",
+        "name",
+        "category",
+        "activity_type",
+        "scope_classification",
+        "base_unit",
+        "collection_frequency",
+        "status",
+        "is_active",
+        "created_at",
+    )
+    list_filter = ("status", "scope_classification", "category", "collection_frequency")
+    search_fields = ("code", "name", "activity_type", "description", "evidence_requirement_hint")
+    filter_horizontal = ("allowed_units",)
+    readonly_fields = ("created_at", "updated_at", "created_by", "updated_by")
+    fieldsets = (
+        (
+            "Activity Definition",
+            {
+                "fields": ("code", "name", "category", "activity_type", "status"),
+            },
+        ),
+        (
+            "Measurement & Unit Validation",
+            {
+                "fields": ("base_unit", "allowed_units"),
+            },
+        ),
+        (
+            "ESG & GHG Regulatory Classification",
+            {
+                "fields": ("scope_classification", "collection_frequency", "evidence_requirement_hint"),
+            },
+        ),
+        (
+            "Operational Guidance & Applicability",
+            {
+                "fields": ("description", "applicability_notes"),
+            },
+        ),
+        (
+            "Advanced Integration Hooks (JSON Metadata)",
+            {
+                "fields": ("validation_rules", "calculation_metadata"),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "Audit Metadata",
+            {
+                "fields": ("created_by", "updated_by", "created_at", "updated_at"),
+            },
+        ),
+    )
+
 

@@ -80,6 +80,14 @@ class ProjectForm(forms.ModelForm):
         else:
             self.fields["subsidiary"].queryset = Subsidiary.objects.filter(is_active=True).order_by("name")
 
+    def clean(self):
+        cleaned_data = super().clean()
+        start_date = cleaned_data.get("start_date")
+        end_date = cleaned_data.get("end_date")
+        if start_date and end_date and start_date > end_date:
+            self.add_error("end_date", "Project completion end date must be on or after start date.")
+        return cleaned_data
+
 
 class SiteForm(forms.ModelForm):
     """Form for creating and editing Operational Sites with scope enforcement."""
@@ -96,6 +104,8 @@ class SiteForm(forms.ModelForm):
             "longitude",
             "contact_person",
             "contact_email",
+            "operational_start_date",
+            "operational_end_date",
             "description",
             "status",
         ]
@@ -109,6 +119,8 @@ class SiteForm(forms.ModelForm):
             "longitude": forms.NumberInput(attrs={"class": "form-control", "step": "0.000001", "placeholder": "e.g. 81.654200"}),
             "contact_person": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g. Er. K. Srinivasa Rao"}),
             "contact_email": forms.EmailInput(attrs={"class": "form-control", "placeholder": "e.g. polavaram.site1@meilgroup.com"}),
+            "operational_start_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "operational_end_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "description": forms.Textarea(attrs={"class": "form-control", "rows": 3, "placeholder": "Facility telemetry boundaries, fuel meters, and grid interconnects"}),
             "status": forms.Select(attrs={"class": "form-select"}),
         }
@@ -120,3 +132,11 @@ class SiteForm(forms.ModelForm):
             self.fields["project"].queryset = get_accessible_projects(user).filter(is_active=True)
         else:
             self.fields["project"].queryset = Project.objects.filter(is_active=True).order_by("name")
+
+    def clean(self):
+        cleaned_data = super().clean()
+        start_date = cleaned_data.get("operational_start_date")
+        end_date = cleaned_data.get("operational_end_date")
+        if start_date and end_date and start_date > end_date:
+            self.add_error("operational_end_date", "Operational end date must be on or after start date.")
+        return cleaned_data

@@ -24,6 +24,7 @@ from apps.core.models import (
     Company,
     OrganizationStatus,
     Project,
+    ReportingPeriod,
     Role,
     Site,
     Subsidiary,
@@ -364,16 +365,9 @@ def subsidiary_deactivate_view(request, subsidiary_id):
 def project_list_view(request):
     """List accessible infrastructure projects."""
     user = request.user
-    if user.has_role(Role.Code.SITE_MANAGER) and not (
-        user.is_superuser
-        or user.has_role(Role.Code.MEIL_OPERATOR)
-        or user.has_role(Role.Code.SUBSIDIARY_MANAGER)
-        or user.has_role(Role.Code.ESG_MANAGER)
-        or user.has_role(Role.Code.AUDITOR)
-    ):
-        raise PermissionDenied("Access Denied.")
-
-    projects = get_accessible_projects(user)
+    projects = get_accessible_projects(user).annotate(
+        annotated_sites_count=Count("sites", filter=Q(sites__status=OrganizationStatus.ACTIVE))
+    )
     subsidiaries = get_accessible_subsidiaries(user)
 
     search_q = request.GET.get("q", "").strip()
@@ -392,7 +386,7 @@ def project_list_view(request):
     context = {
         "page_title": "Infrastructure Projects",
         "page_subtitle": "Engineering, EPC & Operational Projects Grouping Site Assets",
-        "active_nav": "entities",
+        "active_nav": "projects" if user.has_role(Role.Code.SITE_MANAGER) else "entities",
         "projects": projects,
         "subsidiaries": subsidiaries,
         "search_q": search_q,
@@ -423,12 +417,20 @@ def project_detail_view(request, project_id):
     can_edit = user_can_manage_project(request.user, project=project)
     can_create_site = user_can_manage_site(request.user, project=project)
 
+    # Phase 04 Reporting Period Integration
+    reporting_periods = ReportingPeriod.objects.filter(
+        company=project.company
+    ).filter(
+        Q(subsidiary__isnull=True) | Q(subsidiary=project.subsidiary)
+    ).order_by("-start_date")
+
     context = {
         "page_title": f"Project: {project.name}",
         "page_subtitle": f"Code: {project.code} | Division: {project.subsidiary.name} | Status: {project.status}",
-        "active_nav": "entities",
+        "active_nav": "projects" if request.user.has_role(Role.Code.SITE_MANAGER) else "entities",
         "project": project,
         "sites": sites,
+        "reporting_periods": reporting_periods,
         "can_edit": can_edit,
         "can_create_site": can_create_site,
     }
@@ -481,9 +483,13 @@ def project_create_view(request):
             if not user_can_manage_project(request.user, subsidiary=selected_sub):
                 raise PermissionDenied("You cannot create a project under this subsidiary.")
 
-            proj = form.save()
+            proj = form.save(commit=False)
+            proj.created_by = request.user
+            proj.updated_by = request.user
+            proj.save()
+
             log_auth_event(
-                AuthAuditLog.EventType.ORGANIZATION_CREATED,
+                AuthAuditLog.EventType.PROJECT_CREATED,
                 request=request,
                 user=request.user,
                 resource_accessed=f"Project:{proj.id} ({proj.code})",
@@ -527,9 +533,12 @@ def project_edit_view(request, project_id):
             if not user_can_manage_project(request.user, subsidiary=selected_sub):
                 raise PermissionDenied("You cannot assign project to this subsidiary.")
 
-            proj = form.save()
+            proj = form.save(commit=False)
+            proj.updated_by = request.user
+            proj.save()
+
             log_auth_event(
-                AuthAuditLog.EventType.ORGANIZATION_UPDATED,
+                AuthAuditLog.EventType.PROJECT_UPDATED,
                 request=request,
                 user=request.user,
                 resource_accessed=f"Project:{proj.id} ({proj.code})",
@@ -636,7 +645,7 @@ def site_list_view(request):
 
 @login_required
 def site_detail_view(request, site_id):
-    """Operational site detail view with full breadcrumb hierarchy & metadata."""
+    """Operational site detail view with full breadcrumb hierarchy, assigned managers & metadata."""
     site = get_object_or_404(Site, id=site_id)
     if not user_can_access_site(request.user, site):
         log_auth_event(
@@ -651,11 +660,23 @@ def site_detail_view(request, site_id):
 
     can_edit = user_can_manage_site(request.user, site=site)
 
+    # Phase 04 Reporting Period Integration
+    reporting_periods = ReportingPeriod.objects.filter(
+        company=site.company
+    ).filter(
+        Q(subsidiary__isnull=True) | Q(subsidiary=site.subsidiary)
+    ).order_by("-start_date")
+
+    # Phase 02/05 Site Manager Assignment Transparency
+    assigned_managers = site.assigned_users.all().select_related("user")
+
     context = {
         "page_title": f"Site: {site.name}",
         "page_subtitle": f"Code: {site.code} | Project: {site.project.name} | Division: {site.project.subsidiary.name}",
         "active_nav": "site_dashboard" if request.user.has_role(Role.Code.SITE_MANAGER) else "entities",
         "site": site,
+        "reporting_periods": reporting_periods,
+        "assigned_managers": assigned_managers,
         "can_edit": can_edit,
     }
     return render(request, "organization/site_detail.html", context)
@@ -707,13 +728,17 @@ def site_create_view(request):
             if not user_can_manage_site(request.user, project=selected_proj):
                 raise PermissionDenied("You cannot create a site under this project.")
 
-            site = form.save()
+            site = form.save(commit=False)
+            site.created_by = request.user
+            site.updated_by = request.user
+            site.save()
+
             log_auth_event(
-                AuthAuditLog.EventType.ORGANIZATION_CREATED,
+                AuthAuditLog.EventType.SITE_CREATED,
                 request=request,
                 user=request.user,
                 resource_accessed=f"Site:{site.id} ({site.code})",
-                details=f"Created site '{site.name}'.",
+                details=f"Created operational site '{site.name}'.",
                 success=True,
             )
             messages.success(request, f"Operational site '{site.name}' created successfully.")
@@ -753,13 +778,16 @@ def site_edit_view(request, site_id):
             if not user_can_manage_site(request.user, project=selected_proj):
                 raise PermissionDenied("You cannot assign site to this project.")
 
-            st = form.save()
+            st = form.save(commit=False)
+            st.updated_by = request.user
+            st.save()
+
             log_auth_event(
-                AuthAuditLog.EventType.ORGANIZATION_UPDATED,
+                AuthAuditLog.EventType.SITE_UPDATED,
                 request=request,
                 user=request.user,
                 resource_accessed=f"Site:{st.id} ({st.code})",
-                details=f"Updated site '{st.name}'.",
+                details=f"Updated operational site '{st.name}'.",
                 success=True,
             )
             messages.success(request, f"Operational site '{st.name}' updated successfully.")

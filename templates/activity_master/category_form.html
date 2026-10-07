@@ -1,0 +1,86 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block page_actions %}
+  <a href="{% url 'core:category_list' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="icon-arrow-left me-1"></i> Back to Categories
+  </a>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark"><i class="icon-grid text-primary me-2"></i> Category Details</h6>
+        </div>
+        <div class="card-body p-4">
+          <form method="post" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger mb-4">
+                {% for error in form.non_field_errors %}
+                  <div>{{ error }}</div>
+                {% endfor %}
+              </div>
+            {% endif %}
+
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label small fw-bold text-dark">Category Code <span class="text-danger">*</span></label>
+                {{ form.code }}
+                {% if form.code.errors %}
+                  <div class="text-danger small mt-1">{{ form.code.errors.0 }}</div>
+                {% endif %}
+                <div class="form-text text-muted small">Unique code (e.g. <code>FUEL</code>, <code>ENERGY</code>, <code>WATER</code>).</div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-bold text-dark">Category Name <span class="text-danger">*</span></label>
+                {{ form.name }}
+                {% if form.name.errors %}
+                  <div class="text-danger small mt-1">{{ form.name.errors.0 }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-bold text-dark">Display Order</label>
+                {{ form.display_order }}
+                {% if form.display_order.errors %}
+                  <div class="text-danger small mt-1">{{ form.display_order.errors.0 }}</div>
+                {% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-bold text-dark">Status</label>
+                {{ form.status }}
+                {% if form.status.errors %}
+                  <div class="text-danger small mt-1">{{ form.status.errors.0 }}</div>
+                {% endif %}
+              </div>
+              <div class="col-12">
+                <label class="form-label small fw-bold text-dark">Description</label>
+                {{ form.description }}
+                {% if form.description.errors %}
+                  <div class="text-danger small mt-1">{{ form.description.errors.0 }}</div>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 pt-4 border-top mt-4">
+              <a href="{% url 'core:category_list' %}" class="btn btn-outline-secondary">Cancel</a>
+              <button type="submit" class="btn btn-primary px-4">
+                <i class="icon-check me-1"></i> Save Category
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

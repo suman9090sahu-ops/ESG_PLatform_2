@@ -1,0 +1,178 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block page_actions %}
+  <a href="{% url 'core:activity_list' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="icon-arrow-left me-1"></i> Back to Catalog
+  </a>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-note text-primary me-2"></i>
+            {% if is_create %}Define New Activity Master Specification{% else %}Edit Activity: {{ activity.name }}{% endif %}
+          </h6>
+          <span class="badge bg-light text-muted">Authoritative Master Data</span>
+        </div>
+
+        <div class="card-body p-4">
+          <form method="post" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger mb-4">
+                {% for error in form.non_field_errors %}
+                  <div><i class="icon-close me-1"></i> {{ error }}</div>
+                {% endfor %}
+              </div>
+            {% endif %}
+
+            <!-- Section 1: Core Identification -->
+            <div class="mb-4">
+              <h6 class="fw-bold text-primary mb-3"><i class="icon-tag me-2"></i>1. Activity Identification</h6>
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <label class="form-label small fw-bold text-dark">Activity Code <span class="text-danger">*</span></label>
+                  {{ form.code }}
+                  {% if form.code.errors %}
+                    <div class="text-danger small mt-1">{{ form.code.errors.0 }}</div>
+                  {% endif %}
+                  <div class="form-text text-muted small">Unique machine identifier (e.g. <code>FUEL-DIESEL-STAT</code>).</div>
+                </div>
+                <div class="col-md-8">
+                  <label class="form-label small fw-bold text-dark">Activity Name <span class="text-danger">*</span></label>
+                  {{ form.name }}
+                  {% if form.name.errors %}
+                    <div class="text-danger small mt-1">{{ form.name.errors.0 }}</div>
+                  {% endif %}
+                  <div class="form-text text-muted small">Human-readable description for Site Managers and reports.</div>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label small fw-bold text-dark">Governing Category <span class="text-danger">*</span></label>
+                  {{ form.category }}
+                  {% if form.category.errors %}
+                    <div class="text-danger small mt-1">{{ form.category.errors.0 }}</div>
+                  {% endif %}
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label small fw-bold text-dark">Operational Classification <span class="text-danger">*</span></label>
+                  {{ form.activity_type }}
+                  {% if form.activity_type.errors %}
+                    <div class="text-danger small mt-1">{{ form.activity_type.errors.0 }}</div>
+                  {% endif %}
+                  <div class="form-text text-muted small">e.g. Stationary Combustion, Mobile, Discom Grid.</div>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label small fw-bold text-dark">Lifecycle Status <span class="text-danger">*</span></label>
+                  {{ form.status }}
+                  {% if form.status.errors %}
+                    <div class="text-danger small mt-1">{{ form.status.errors.0 }}</div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+
+            <hr class="my-4">
+
+            <!-- Section 2: Measurement Units -->
+            <div class="mb-4">
+              <h6 class="fw-bold text-primary mb-3"><i class="icon-speedometer me-2"></i>2. Measurement &amp; Unit Validation</h6>
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <label class="form-label small fw-bold text-dark">Primary Base Reporting Unit <span class="text-danger">*</span></label>
+                  {{ form.base_unit }}
+                  {% if form.base_unit.errors %}
+                    <div class="text-danger small mt-1">{{ form.base_unit.errors.0 }}</div>
+                  {% endif %}
+                  <div class="form-text text-muted small">Authoritative regulatory unit for consolidation and GHG calculation.</div>
+                </div>
+                <div class="col-md-8">
+                  <label class="form-label small fw-bold text-dark">Permissible Entry Units (Allowed Units)</label>
+                  {{ form.allowed_units }}
+                  {% if form.allowed_units.errors %}
+                    <div class="text-danger small mt-1">{{ form.allowed_units.errors.0 }}</div>
+                  {% endif %}
+                  <div class="form-text text-muted small">Select all allowable units for operational data input. (Base unit is included automatically).</div>
+                </div>
+              </div>
+            </div>
+
+            <hr class="my-4">
+
+            <!-- Section 3: Regulatory Scope & Cadence -->
+            <div class="mb-4">
+              <h6 class="fw-bold text-primary mb-3"><i class="icon-layers me-2"></i>3. Regulatory Scope &amp; Evidence Expectations</h6>
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <label class="form-label small fw-bold text-dark">Scope Classification <span class="text-danger">*</span></label>
+                  {{ form.scope_classification }}
+                  {% if form.scope_classification.errors %}
+                    <div class="text-danger small mt-1">{{ form.scope_classification.errors.0 }}</div>
+                  {% endif %}
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label small fw-bold text-dark">Collection Frequency <span class="text-danger">*</span></label>
+                  {{ form.collection_frequency }}
+                  {% if form.collection_frequency.errors %}
+                    <div class="text-danger small mt-1">{{ form.collection_frequency.errors.0 }}</div>
+                  {% endif %}
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label small fw-bold text-dark">Audit Evidence Guidance</label>
+                  {{ form.evidence_requirement_hint }}
+                  {% if form.evidence_requirement_hint.errors %}
+                    <div class="text-danger small mt-1">{{ form.evidence_requirement_hint.errors.0 }}</div>
+                  {% endif %}
+                  <div class="form-text text-muted small">e.g. Fuel Log / Invoice / HT Meter Record.</div>
+                </div>
+              </div>
+            </div>
+
+            <hr class="my-4">
+
+            <!-- Section 4: Operational Guidance -->
+            <div class="mb-4">
+              <h6 class="fw-bold text-primary mb-3"><i class="icon-info me-2"></i>4. Operational Guidance &amp; Applicability</h6>
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label small fw-bold text-dark">Operational Definition &amp; Boundary Rules</label>
+                  {{ form.description }}
+                  {% if form.description.errors %}
+                    <div class="text-danger small mt-1">{{ form.description.errors.0 }}</div>
+                  {% endif %}
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-bold text-dark">Site Applicability Notes</label>
+                  {{ form.applicability_notes }}
+                  {% if form.applicability_notes.errors %}
+                    <div class="text-danger small mt-1">{{ form.applicability_notes.errors.0 }}</div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+              <a href="{% url 'core:activity_list' %}" class="btn btn-outline-secondary">Cancel</a>
+              <button type="submit" class="btn btn-primary px-4">
+                <i class="icon-check me-1"></i>
+                {% if is_create %}Create Activity Master{% else %}Save Modifications{% endif %}
+              </button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}

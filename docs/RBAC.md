@@ -161,3 +161,70 @@ Reporting period management enforces clear role-based separation:
 - Periods in `CLOSED`, `LOCKED`, or `FINALIZED` prohibit operational data creation and modification.
 - Historical locked and finalized periods prohibit metadata edits, protecting regulatory audit lineage.
 
+---
+
+## 9. Projects & Operational Sites Operational Boundary RBAC (Phase 05)
+
+The Project and Operational Site operational foundation enforces strict access partitioning:
+
+| Role | Project Visibility | Site Visibility | Project/Site Creation & Mutation | Deactivation / Archival |
+| :--- | :--- | :--- | :--- | :--- |
+| `MEIL_OPERATOR` | Platform-wide (all projects) | Platform-wide (all sites) | Permitted across all subsidiaries & projects | Permitted (Safe Deactivation Policy) |
+| `SUBSIDIARY_MANAGER` | Projects within assigned subsidiaries | Sites under projects in assigned subsidiaries | Permitted within assigned subsidiaries only | Permitted within assigned scope |
+| `SITE_MANAGER` | Parent projects of assigned sites | Assigned operational sites only (`My Assigned Sites`) | Prohibited (403 Forbidden) | Prohibited (403 Forbidden) |
+| `ESG_MANAGER` | Platform-wide (all projects) | Platform-wide (all sites) | Prohibited (403 Forbidden) | Prohibited (403 Forbidden) |
+| `AUDITOR` | Governed scope (Read-Only) | Governed scope (Read-Only) | Strictly Prohibited (403 Forbidden) | Strictly Prohibited (403 Forbidden) |
+
+### Key Isolation Mechanisms
+1. **Site Manager Containment**:
+   - `get_accessible_sites(user)` filters strictly by active `SiteAssignment` records.
+   - `get_accessible_projects(user)` resolves only the parent projects of assigned sites.
+   - Any access attempt to unassigned sites or unrelated projects raises `PermissionDenied` (`403 Forbidden`) and logs `UNAUTHORIZED_ACCESS_ATTEMPT`.
+2. **Auditor Read-Only Enforcement**:
+   - `user_can_manage_project(user)` and `user_can_manage_site(user)` return `False` for Auditors.
+   - GET/POST on `/projects/create/`, `/projects/<id>/edit/`, `/sites/create/`, `/sites/<id>/edit/`, or deactivation endpoints yields `403 Forbidden`.
+3. **Safe Deactivation Over Hard Deletion**:
+   - Entities marked `INACTIVE` (`is_active=False`) to preserve historical ESG references and audit lineage.
+   - Destructive hard deletion is prevented via `on_delete=models.PROTECT`.
+
+---
+
+## 10. Activity Master & Categorization RBAC (Phase 06)
+
+The ESG Activity Master module defines the centralized catalog of BRSR and ESG activities, categorizations, and emission factors:
+
+| Role | Activity Catalog Read | Category & Activity Create/Edit | Activity Deactivation | Custom Unit Management |
+| :--- | :--- | :--- | :--- | :--- |
+| `MEIL_OPERATOR` | Platform-wide | Permitted (Global) | Permitted (Safe Deactivation) | Permitted |
+| `ESG_MANAGER` | Platform-wide | Permitted (Global) | Permitted (Safe Deactivation) | Permitted |
+| `SUBSIDIARY_MANAGER` | Read-only | Prohibited (403 Forbidden) | Prohibited (403 Forbidden) | Prohibited (403 Forbidden) |
+| `SITE_MANAGER` | Read-only (Catalog reference) | Prohibited (403 Forbidden) | Prohibited (403 Forbidden) | Prohibited (403 Forbidden) |
+| `AUDITOR` | Read-only (Audit review) | Prohibited (403 Forbidden) | Prohibited (403 Forbidden) | Prohibited (403 Forbidden) |
+
+### Key Governance Principles:
+1. **Centralized Standards Control**: Only `MEIL_OPERATOR` and `ESG_MANAGER` may create or alter activity categories, standardized unit systems, or calculation methodology attributes.
+2. **Immutable Historic Auditability**: Activities referenced in reporting periods are protected against hard deletion (`on_delete=models.PROTECT`).
+3. **Safe Invalidation**: Deactivation (`is_active=False`) retains historical reporting integrity while preventing new data entries.
+
+---
+
+## 11. Site Manager Operational Dashboard Scoping & Governance (Phase 07)
+
+The Site Manager Dashboard (`/site-manager/dashboard/` and canonical alias `/dashboard/site-manager/`) provides a role-scoped operational view strictly constrained to authorized entities:
+
+| Role | Dashboard Access | Site Scope | Project Metrics Scope | Audit Trail Visibility |
+| :--- | :--- | :--- | :--- | :--- |
+| `SITE_MANAGER` | **Authorized (200 OK)** | Strictly assigned sites via `SiteAssignment` | Parent projects of assigned sites (distinct count) | User's own auth and authorized site activities only |
+| `MEIL_OPERATOR` | **Authorized (200 OK)** | Supervisory access across all active sites | All active projects | Global system activity |
+| `SUBSIDIARY_MANAGER` | **Forbidden (403)** | N/A (Directs to Subsidiary Dashboard) | N/A | N/A |
+| `ESG_MANAGER` | **Forbidden (403)** | N/A (Directs to ESG Control Tower Dashboard) | N/A | N/A |
+| `AUDITOR` | **Forbidden (403)** | N/A (Directs to Audit Review Workspace) | N/A | N/A |
+
+### Anti-IDOR & Information Leakage Defenses
+1. **Zero Client Parameter Trust**: Dashboard context computation (`get_site_manager_dashboard_context(user)`) ignores URL query parameters (such as `?site_id=...` or `?project_id=...`). Access boundaries are derived exclusively from the authenticated session user.
+2. **Multi-Project Duplicate Prevention**: Projects are aggregated with `.distinct()` over authorized sites, preventing artificial inflation of project counts when multiple sites belong to the same project.
+3. **Audit Trail Data Leakage Prevention**: When unauthorized access attempts occur (e.g. attempting to tamper with another site's ID in other views), the dashboard audit trail filters out foreign site identifiers to prevent resource code leakage.
+4. **Zero Metric Fabrication**: All dashboard cards, tables, and readiness indicators reflect verified database queries; future workflows (Phases 08–12) display honest readiness hooks with 0 pending items rather than placeholder or random data.
+
+
+

@@ -34,7 +34,8 @@ This document tracks all active URL endpoints in **Phase 01 & Phase 02** as well
 
 | URL Pattern | View Function | Route Name | Authorized Roles | Access Scope |
 | :--- | :--- | :--- | :--- | :--- |
-| `/site-manager/dashboard/` | `apps.core.auth_views.site_manager_dashboard` | `core:site_manager_dashboard` | `SITE_MANAGER`, `MEIL_OPERATOR` | Assigned operational sites |
+| `/site-manager/dashboard/` | `apps.core.auth_views.site_manager_dashboard` | `core:site_manager_dashboard` | `SITE_MANAGER`, `MEIL_OPERATOR` | Assigned operational sites (Phase 07 Operational Dashboard) |
+| `/dashboard/site-manager/` | `apps.core.auth_views.site_manager_dashboard_redirect` | `core:site_manager_dashboard_alias` | Authenticated | Canonical alias redirecting to `/site-manager/dashboard/` |
 | `/site-manager/sites/<int:site_id>/` | `apps.core.auth_views.site_detail_view` | `core:site_detail` | `SITE_MANAGER`, `SUBSIDIARY_MANAGER`, `MEIL_OPERATOR`, `ESG_MANAGER`, `AUDITOR` | Verified object access (IDOR protected) |
 | `/subsidiary-manager/dashboard/` | `apps.core.auth_views.subsidiary_manager_dashboard` | `core:subsidiary_manager_dashboard` | `SUBSIDIARY_MANAGER`, `MEIL_OPERATOR` | Assigned subsidiary divisions |
 | `/subsidiary-manager/subsidiaries/<int:subsidiary_id>/` | `apps.core.auth_views.subsidiary_detail_view` | `core:subsidiary_detail` | `SUBSIDIARY_MANAGER`, `MEIL_OPERATOR`, `ESG_MANAGER`, `AUDITOR` | Verified subsidiary object access |
@@ -145,7 +146,21 @@ This document tracks all active URL endpoints in **Phase 01 & Phase 02** as well
 │   ├── /<id>/edit/                    Edit Period Configuration (Scoped)
 │   └── /<id>/status/                  Controlled Lifecycle Transition (POST)
 │
-├── /environmental/                    [Planned - Phase 05]
+├── /projects/                         [Active - Phase 05]
+│   ├── /                              Direct Infrastructure Projects Registry
+│   ├── /create/                       Register Project (Scoped)
+│   ├── /<id>/                         Project Scope, Child Sites & Reporting Cycles
+│   ├── /<id>/edit/                    Edit Project Specification (Scoped)
+│   └── /<id>/deactivate/              Safe Project Archiving (Scoped)
+│
+├── /sites/                            [Active - Phase 05]
+│   ├── /                              Direct Operational Sites Registry
+│   ├── /create/                       Register Operational Boundary (Scoped)
+│   ├── /<id>/                         Site Boundary, Assigned Managers & Reporting Cycles
+│   ├── /<id>/edit/                    Edit Site Boundary (Scoped)
+│   └── /<id>/deactivate/              Safe Site Archiving (Scoped)
+│
+├── /activities/                       [Planned - Phase 06 Activity Master]
 │   ├── /ghg/                          Scope 1, 2, 3 carbon accounting
 │   ├── /energy/                       Renewable vs non-renewable energy
 │   ├── /water/                        Withdrawal, consumption, recycling

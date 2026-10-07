@@ -1,0 +1,86 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block page_actions %}
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'core:activity_list' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="icon-arrow-left me-1"></i> Activity Catalog
+    </a>
+    {% if can_manage %}
+      <a href="{% url 'core:category_create' %}" class="btn btn-sm btn-primary">
+        <i class="icon-plus me-1"></i> Add Category
+      </a>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+      <h6 class="mb-0 fw-bold text-dark"><i class="icon-grid text-primary me-2"></i> Governed ESG Categories</h6>
+      <span class="badge bg-light text-muted">{{ categories.count }} category(ies)</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr class="small text-muted">
+            <th>CODE</th>
+            <th>CATEGORY TITLE</th>
+            <th>ORDER</th>
+            <th>ACTIVE ACTIVITIES</th>
+            <th>TOTAL ACTIVITIES</th>
+            <th>STATUS</th>
+            <th class="text-end">ACTIONS</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cat in categories %}
+            <tr>
+              <td>
+                <span class="badge bg-light text-dark border font-monospace fw-bold">{{ cat.code }}</span>
+              </td>
+              <td>
+                <a href="{% url 'core:category_detail' cat.id %}" class="fw-bold text-primary text-decoration-none">
+                  {{ cat.name }}
+                </a>
+                {% if cat.description %}
+                  <div class="text-muted small">{{ cat.description|truncatechars:80 }}</div>
+                {% endif %}
+              </td>
+              <td>
+                <span class="badge bg-light text-muted border">{{ cat.display_order }}</span>
+              </td>
+              <td>
+                <span class="badge bg-success-subtle text-success fw-bold">{{ cat.active_activities_count }}</span>
+              </td>
+              <td>
+                <span class="badge bg-light text-secondary border">{{ cat.total_activities_count }}</span>
+              </td>
+              <td>
+                <span class="badge {{ cat.status_badge_class }}">{{ cat.get_status_display }}</span>
+              </td>
+              <td class="text-end">
+                <a href="{% url 'core:category_detail' cat.id %}" class="btn btn-xs btn-outline-primary">
+                  <i class="icon-eye"></i> View
+                </a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="7" class="text-center py-4 text-muted">
+                No ESG Categories configured.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
