@@ -22,6 +22,11 @@ from apps.core.models import (
     ActivityCategory,
     UnitOfMeasure,
     ActivityMaster,
+    ActivityRecord,
+    Evidence,
+    ValidationRule,
+    ValidationRun,
+    ValidationResult,
 )
 
 
@@ -416,5 +421,293 @@ class ActivityMasterAdmin(admin.ModelAdmin):
             },
         ),
     )
+
+
+@admin.register(ActivityRecord)
+class ActivityRecordAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "activity",
+        "site",
+        "reporting_period",
+        "measurement_date",
+        "quantity",
+        "unit",
+        "status",
+        "validation_status",
+        "created_by",
+        "created_at",
+    )
+    list_filter = (
+        "status",
+        "validation_status",
+        "reporting_period",
+        "activity__category",
+        "site__project__subsidiary__company",
+    )
+    search_fields = (
+        "activity__name",
+        "activity__code",
+        "site__name",
+        "site__code",
+        "notes",
+        "evidence_reference",
+    )
+    readonly_fields = ("created_at", "updated_at", "last_validated_at")
+    date_hierarchy = "measurement_date"
+    raw_id_fields = ("site", "reporting_period", "activity", "unit", "created_by", "updated_by")
+    fieldsets = (
+        (
+            "Operational Binding",
+            {
+                "fields": ("site", "reporting_period", "activity", "status", "validation_status", "last_validated_at"),
+            },
+        ),
+        (
+            "Telemetry & Measurement",
+            {
+                "fields": ("measurement_date", "quantity", "unit"),
+            },
+        ),
+        (
+            "Evidence & Notes",
+            {
+                "fields": ("evidence_reference", "notes"),
+            },
+        ),
+        (
+            "Audit Lineage",
+            {
+                "fields": ("created_by", "updated_by", "created_at", "updated_at"),
+            },
+        ),
+    )
+
+
+class EvidenceInline(admin.TabularInline):
+    model = Evidence
+    extra = 0
+    fields = ("original_filename", "evidence_type", "file_size", "status", "created_at")
+    readonly_fields = ("original_filename", "evidence_type", "file_size", "status", "created_at")
+    can_delete = False
+    show_change_link = True
+
+
+class ValidationRunInline(admin.TabularInline):
+    model = ValidationRun
+    extra = 0
+    fields = ("run_number", "status", "error_count", "warning_count", "executed_by", "executed_at")
+    readonly_fields = ("run_number", "status", "error_count", "warning_count", "executed_by", "executed_at")
+    can_delete = False
+    show_change_link = True
+
+
+ActivityRecordAdmin.inlines = [EvidenceInline, ValidationRunInline]
+
+
+@admin.register(Evidence)
+class EvidenceAdmin(admin.ModelAdmin):
+    """Admin configuration for Supporting Evidence documents."""
+
+    list_display = (
+        "id",
+        "original_filename",
+        "evidence_type",
+        "activity_record",
+        "file_size",
+        "status",
+        "uploaded_by",
+        "created_at",
+    )
+    list_filter = (
+        "status",
+        "evidence_type",
+        "created_at",
+    )
+    search_fields = (
+        "original_filename",
+        "description",
+        "file_hash",
+        "activity_record__activity__name",
+        "activity_record__site__name",
+    )
+    readonly_fields = (
+        "file_size",
+        "file_type",
+        "file_hash",
+        "created_at",
+        "updated_at",
+        "retired_at",
+        "retired_by",
+    )
+    date_hierarchy = "created_at"
+    raw_id_fields = ("activity_record", "uploaded_by", "retired_by")
+    fieldsets = (
+        (
+            "Document Identification",
+            {
+                "fields": ("activity_record", "evidence_type", "original_filename", "file", "status"),
+            },
+        ),
+        (
+            "Technical Metadata & Hash",
+            {
+                "fields": ("file_type", "file_size", "file_hash"),
+            },
+        ),
+        (
+            "Operational Notes & Retirement",
+            {
+                "fields": ("description", "retirement_reason", "retired_at", "retired_by"),
+            },
+        ),
+        (
+            "Pipeline Metadata Hooks",
+            {
+                "classes": ("collapse",),
+                "fields": ("ocr_metadata", "validation_metadata"),
+            },
+        ),
+        (
+            "Audit Lineage",
+            {
+                "fields": ("uploaded_by", "created_at", "updated_at"),
+            },
+        ),
+    )
+
+
+class ValidationResultInline(admin.TabularInline):
+    model = ValidationResult
+    extra = 0
+    fields = ("rule", "severity", "field_name", "is_blocking", "message")
+    readonly_fields = ("rule", "severity", "field_name", "is_blocking", "message")
+    can_delete = False
+    show_change_link = True
+
+
+@admin.register(ValidationRule)
+class ValidationRuleAdmin(admin.ModelAdmin):
+    list_display = (
+        "code",
+        "name",
+        "category",
+        "severity",
+        "is_active",
+        "is_blocking",
+        "version",
+        "applicable_activity",
+        "updated_at",
+    )
+    list_filter = (
+        "category",
+        "severity",
+        "is_active",
+        "is_blocking",
+    )
+    search_fields = (
+        "code",
+        "name",
+        "description",
+    )
+    readonly_fields = ("created_at", "updated_at")
+    fieldsets = (
+        (
+            "Rule Specification",
+            {
+                "fields": ("code", "name", "category", "severity", "is_active", "is_blocking", "version"),
+            },
+        ),
+        (
+            "Domain Scope & Parameters",
+            {
+                "fields": ("applicable_activity", "rule_parameters", "description", "effective_from"),
+            },
+        ),
+        (
+            "Audit Lineage",
+            {
+                "fields": ("created_by", "updated_by", "created_at", "updated_at"),
+            },
+        ),
+    )
+
+
+@admin.register(ValidationRun)
+class ValidationRunAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "activity_record",
+        "run_number",
+        "status",
+        "total_rules_evaluated",
+        "error_count",
+        "warning_count",
+        "info_count",
+        "executed_by",
+        "executed_at",
+    )
+    list_filter = (
+        "status",
+        "executed_at",
+    )
+    search_fields = (
+        "activity_record__activity__name",
+        "activity_record__site__name",
+        "summary_message",
+    )
+    readonly_fields = (
+        "activity_record",
+        "run_number",
+        "status",
+        "total_rules_evaluated",
+        "error_count",
+        "warning_count",
+        "info_count",
+        "summary_message",
+        "executed_by",
+        "executed_at",
+        "execution_duration_ms",
+        "rule_version_snapshot",
+    )
+    inlines = [ValidationResultInline]
+    date_hierarchy = "executed_at"
+
+
+@admin.register(ValidationResult)
+class ValidationResultAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "validation_run",
+        "activity_record",
+        "rule",
+        "severity",
+        "field_name",
+        "is_blocking",
+        "created_at",
+    )
+    list_filter = (
+        "severity",
+        "is_blocking",
+        "rule__category",
+    )
+    search_fields = (
+        "rule__code",
+        "rule__name",
+        "message",
+        "field_name",
+    )
+    readonly_fields = (
+        "validation_run",
+        "activity_record",
+        "rule",
+        "severity",
+        "is_blocking",
+        "field_name",
+        "message",
+        "context_data",
+        "created_at",
+    )
+
 
 

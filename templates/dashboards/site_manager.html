@@ -253,9 +253,9 @@
                       <a href="{% url 'core:activity_list' %}" class="btn btn-sm btn-outline-info" title="View Approved ESG Activity Catalog">
                         <i class="icon-list me-1"></i> Catalog
                       </a>
-                      <button type="button" class="btn btn-sm btn-outline-secondary disabled" title="ESG Data Entry module scheduled for Phase 08" disabled>
-                        <i class="icon-pencil me-1"></i> Data Entry <span class="badge bg-secondary ms-1">Phase 08</span>
-                      </button>
+                      <a href="{% url 'core:activity_record_create' %}?site_id={{ site.id }}" class="btn btn-sm btn-outline-success" title="Record ESG Activity Data for {{ site.name }}">
+                        <i class="icon-pencil me-1"></i> Data Entry
+                      </a>
                     </div>
                   </td>
                 </tr>
@@ -292,12 +292,17 @@
             </div>
             <p class="small text-muted mb-2">
               {% if workflow_status.is_data_entry_ready %}
-                Cycle <code>{{ current_period.code }}</code> is OPEN. Ready for activity logging once Phase 08 is active.
+                Cycle <code>{{ current_period.code }}</code> is OPEN. Active ESG activity telemetry logging enabled.
               {% else %}
                 Waiting for open reporting cycle or assigned operational sites.
               {% endif %}
             </p>
-            <div class="text-muted small">Draft Records: <strong>{{ workflow_status.draft_records_count }}</strong></div>
+            <div class="d-flex justify-content-between align-items-center text-muted small mt-2">
+              <span>Draft Records: <strong>{{ workflow_status.draft_records_count }}</strong></span>
+              <a href="{% url 'core:activity_record_create' %}" class="btn btn-sm btn-outline-primary py-0 px-2">
+                <i class="icon-plus me-1"></i> Log Data
+              </a>
+            </div>
           </div>
         </div>
 
@@ -513,6 +518,14 @@
       </h6>
     </div>
     <div class="list-group list-group-flush small">
+      <a href="{% url 'core:activity_record_create' %}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between">
+        <span><i class="icon-pencil me-2 text-warning"></i> ESG Data Entry</span>
+        <span class="badge bg-success-subtle text-success border border-success">New</span>
+      </a>
+      <a href="{% url 'core:activity_record_list' %}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between">
+        <span><i class="icon-docs me-2 text-primary"></i> Activity Records Ledger</span>
+        <i class="icon-arrow-right text-muted"></i>
+      </a>
       <a href="{% url 'core:org_site_list' %}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between">
         <span><i class="icon-location-pin me-2 text-success"></i> All Assigned Sites</span>
         <i class="icon-arrow-right text-muted"></i>

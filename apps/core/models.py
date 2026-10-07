@@ -644,6 +644,16 @@ class AuthAuditLog(models.Model):
         ACTIVITY_CATEGORY_UPDATED = "ACTIVITY_CATEGORY_UPDATED", "Activity Category Updated"
         UNIT_CREATED = "UNIT_CREATED", "Unit of Measure Created"
         UNIT_UPDATED = "UNIT_UPDATED", "Unit of Measure Updated"
+        ACTIVITY_RECORD_CREATED = "ACTIVITY_RECORD_CREATED", "Activity Record Created"
+        ACTIVITY_RECORD_UPDATED = "ACTIVITY_RECORD_UPDATED", "Activity Record Updated"
+        ACTIVITY_RECORD_DELETED = "ACTIVITY_RECORD_DELETED", "Activity Record Deleted"
+        EVIDENCE_UPLOADED = "EVIDENCE_UPLOADED", "Evidence Document Uploaded"
+        EVIDENCE_DOWNLOADED = "EVIDENCE_DOWNLOADED", "Evidence Document Downloaded"
+        EVIDENCE_RETIRED = "EVIDENCE_RETIRED", "Evidence Document Retired"
+        EVIDENCE_DELETED = "EVIDENCE_DELETED", "Evidence Document Deleted"
+        VALIDATION_EXECUTED = "VALIDATION_EXECUTED", "Validation Run Executed"
+        VALIDATION_RULE_CREATED = "VALIDATION_RULE_CREATED", "Validation Rule Created"
+        VALIDATION_RULE_UPDATED = "VALIDATION_RULE_UPDATED", "Validation Rule Updated"
 
     user = models.ForeignKey(
         User,
@@ -1227,5 +1237,818 @@ class ActivityMaster(models.Model):
             ScopeClassification.CONTEXT_DEPENDENT: "badge-secondary",
         }
         return scope_map.get(self.scope_classification, "badge-secondary")
+
+
+# -----------------------------------------------------------------------------
+# PHASE 08: ESG DATA ENTRY & ACTIVITY RECORDS
+# -----------------------------------------------------------------------------
+
+class RecordStatus(models.TextChoices):
+    DRAFT = "DRAFT", "Draft"
+    READY = "READY", "Ready for Submission"
+    SUBMITTED = "SUBMITTED", "Submitted"
+    VERIFIED = "VERIFIED", "Verified"
+    APPROVED = "APPROVED", "Approved"
+    REJECTED = "REJECTED", "Revision Requested"
+
+
+# -----------------------------------------------------------------------------
+# PHASE 10: VALIDATION ENGINE CHOICES
+# -----------------------------------------------------------------------------
+
+class ValidationSeverity(models.TextChoices):
+    ERROR = "ERROR", "Error"
+    WARNING = "WARNING", "Warning"
+    INFO = "INFO", "Information"
+
+
+class ValidationCategory(models.TextChoices):
+    STRUCTURAL = "STRUCTURAL", "Structural Integrity"
+    SCOPE = "SCOPE", "Organizational Scope & Hierarchy"
+    PERIOD = "PERIOD", "Reporting Period & Temporal"
+    ACTIVITY = "ACTIVITY", "Activity Master & Taxonomy"
+    EVIDENCE = "EVIDENCE", "Audit Evidence Verification"
+    CONSISTENCY = "CONSISTENCY", "Data Consistency & Range"
+    WORKFLOW = "WORKFLOW", "Workflow & Submission Readiness"
+
+
+class ValidationStatus(models.TextChoices):
+    UNVALIDATED = "UNVALIDATED", "Not Validated"
+    VALID = "VALID", "Valid"
+    WARNING = "WARNING", "Valid with Warnings"
+    INVALID = "INVALID", "Invalid / Errors Detected"
+
+
+class ActivityRecord(models.Model):
+    """
+    Authoritative ESG Activity Telemetry & Operational Data Record.
+
+    Captures actual operational activity and consumption data recorded by Site Managers:
+    - Fuel consumption, electricity, water extraction, waste generated, logistics, etc.
+    - Explicit relational binding to Site, ReportingPeriod, ActivityMaster, and UnitOfMeasure.
+    - Server-side domain constraints: positive quantity, valid units, period date boundary.
+    - Controlled lifecycle: DRAFT -> READY -> SUBMITTED (Phase 08 focuses on entry/draft/edit).
+    - Future integration hooks for Evidence (Phase 09), OCR (Phase 11), Calculations (Phase 10), and Submissions (Phase 12).
+    """
+
+    site = models.ForeignKey(
+        Site,
+        on_delete=models.PROTECT,
+        related_name="activity_records",
+        help_text="Operational site where activity occurred.",
+    )
+    reporting_period = models.ForeignKey(
+        ReportingPeriod,
+        on_delete=models.PROTECT,
+        related_name="activity_records",
+        help_text="Governing reporting cycle boundary.",
+    )
+    activity = models.ForeignKey(
+        ActivityMaster,
+        on_delete=models.PROTECT,
+        related_name="activity_records",
+        help_text="Approved ESG Activity Master definition.",
+    )
+    measurement_date = models.DateField(
+        help_text="Date of operational activity measurement, meter reading, or invoice.",
+    )
+    quantity = models.DecimalField(
+        max_digits=18,
+        decimal_places=4,
+        help_text="Measured consumption or operational quantity.",
+    )
+    unit = models.ForeignKey(
+        UnitOfMeasure,
+        on_delete=models.PROTECT,
+        related_name="activity_records",
+        help_text="Physical unit of measure corresponding to quantity.",
+    )
+    notes = models.TextField(
+        blank=True,
+        help_text="Operational notes, invoice number, vehicle/meter identifier, or batch description.",
+    )
+    evidence_reference = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Document reference, invoice/challan number, or future Phase 09 attachment ID.",
+    )
+    status = models.CharField(
+        max_length=30,
+        choices=RecordStatus.choices,
+        default=RecordStatus.DRAFT,
+        db_index=True,
+        help_text="Workflow status of this activity record.",
+    )
+    validation_status = models.CharField(
+        max_length=30,
+        choices=ValidationStatus.choices,
+        default=ValidationStatus.UNVALIDATED,
+        db_index=True,
+        help_text="Deterministic data quality status evaluated by Phase 10 Validation Engine.",
+    )
+    last_validated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="Timestamp when this record was last evaluated by the validation engine.",
+    )
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_activity_records",
+        help_text="User who entered this record.",
+    )
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="updated_activity_records",
+        help_text="User who last updated this record.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Activity Record"
+        verbose_name_plural = "Activity Records"
+        ordering = ["-measurement_date", "-created_at"]
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(quantity__gte=0),
+                name="check_activity_record_quantity_positive",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["site", "reporting_period"], name="idx_rec_site_period"),
+            models.Index(fields=["activity", "measurement_date"], name="idx_rec_act_date"),
+            models.Index(fields=["status"], name="idx_rec_status"),
+            models.Index(fields=["validation_status"], name="idx_rec_val_status"),
+            models.Index(fields=["created_at"], name="idx_rec_created"),
+        ]
+
+    def __str__(self):
+        return f"{self.activity.name} @ {self.site.name}: {self.quantity} {self.unit.symbol} ({self.measurement_date})"
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        super().clean()
+
+        if self.quantity is not None and self.quantity < 0:
+            raise ValidationError({"quantity": "Consumption quantity cannot be negative."})
+
+        # Validate Unit against ActivityMaster
+        if self.activity_id and self.unit_id:
+            from apps.core.activity_services import validate_activity_unit
+            if not validate_activity_unit(self.activity, self.unit):
+                allowed_symbols = [self.activity.base_unit.symbol] + [u.symbol for u in self.activity.allowed_units.all()]
+                allowed_str = ", ".join(dict.fromkeys(allowed_symbols))
+                raise ValidationError({
+                    "unit": f"Unit '{self.unit.name} ({self.unit.symbol})' is not permissible for activity '{self.activity.name}'. Allowed units: {allowed_str}."
+                })
+
+        # Validate Reporting Period boundary
+        if self.reporting_period_id and self.measurement_date:
+            if self.measurement_date < self.reporting_period.start_date or self.measurement_date > self.reporting_period.end_date:
+                raise ValidationError({
+                    "measurement_date": (
+                        f"Measurement date ({self.measurement_date}) must fall within the reporting period boundary: "
+                        f"{self.reporting_period.start_date} to {self.reporting_period.end_date}."
+                    )
+                })
+
+        # Validate Site and Reporting Period organizational alignment
+        if self.site_id and self.reporting_period_id:
+            site_company = self.site.project.subsidiary.company
+            site_subsidiary = self.site.project.subsidiary
+            if self.reporting_period.company_id != site_company.id:
+                raise ValidationError({
+                    "reporting_period": f"Reporting period company '{self.reporting_period.company.name}' does not match site's enterprise company '{site_company.name}'."
+                })
+            if self.reporting_period.subsidiary_id and self.reporting_period.subsidiary_id != site_subsidiary.id:
+                raise ValidationError({
+                    "reporting_period": f"Reporting period subsidiary '{self.reporting_period.subsidiary.name}' does not match site's division '{site_subsidiary.name}'."
+                })
+
+        # Validate Activity is ACTIVE
+        if self.activity_id and not self.activity.is_active:
+            raise ValidationError({
+                "activity": f"Activity '{self.activity.name}' is inactive and cannot accept new telemetry entries."
+            })
+
+    def save(self, *args, **kwargs):
+        update_fields = kwargs.get("update_fields")
+        # Only run full model clean if saving the whole model or modifying core operational attributes
+        if update_fields is None or any(
+            f in update_fields
+            for f in [
+                "quantity", "unit", "unit_id", "measurement_date", "site",
+                "site_id", "activity", "activity_id", "reporting_period", "reporting_period_id"
+            ]
+        ):
+            self.clean()
+        super().save(*args, **kwargs)
+
+    @property
+    def is_draft(self):
+        return self.status == RecordStatus.DRAFT
+
+    @property
+    def is_ready(self):
+        return self.status == RecordStatus.READY
+
+    @property
+    def is_submitted(self):
+        return self.status == RecordStatus.SUBMITTED
+
+    @property
+    def is_editable_by_site_manager(self):
+        """
+        Site Manager can edit records in DRAFT, READY, or REJECTED state,
+        provided the reporting period is currently OPEN.
+        Once SUBMITTED, VERIFIED, or APPROVED, records are locked from Site Manager editing.
+        """
+        editable_statuses = [RecordStatus.DRAFT, RecordStatus.READY, RecordStatus.REJECTED]
+        return (
+            self.status in editable_statuses
+            and self.reporting_period.allows_data_modification
+        )
+
+    @property
+    def status_badge_class(self):
+        badge_map = {
+            RecordStatus.DRAFT: "badge-secondary",
+            RecordStatus.READY: "badge-info",
+            RecordStatus.SUBMITTED: "badge-primary",
+            RecordStatus.VERIFIED: "badge-warning",
+            RecordStatus.APPROVED: "badge-success",
+            RecordStatus.REJECTED: "badge-danger",
+        }
+        return badge_map.get(self.status, "badge-secondary")
+
+    @property
+    def evidence_count(self):
+        """Returns the number of active supporting evidence documents attached."""
+        return self.evidence_files.filter(status=EvidenceStatus.ACTIVE).count()
+
+    @property
+    def total_evidence_count(self):
+        """Returns total count of attached evidence documents including retired."""
+        return self.evidence_files.count()
+
+    @property
+    def has_evidence(self):
+        """Boolean indicator whether active supporting evidence is present."""
+        return self.evidence_files.filter(status=EvidenceStatus.ACTIVE).exists()
+
+    @property
+    def is_validated(self):
+        """Returns True if the record was evaluated and passed without blocking errors."""
+        return self.validation_status in [ValidationStatus.VALID, ValidationStatus.WARNING]
+
+    @property
+    def has_validation_errors(self):
+        """Returns True if the record was evaluated and has blocking errors."""
+        return self.validation_status == ValidationStatus.INVALID
+
+    @property
+    def latest_validation_run(self):
+        """Returns the most recent ValidationRun instance."""
+        return self.validation_runs.order_by("-executed_at", "-run_number").first()
+
+    @property
+    def validation_badge_class(self):
+        badge_map = {
+            ValidationStatus.UNVALIDATED: "badge-secondary",
+            ValidationStatus.VALID: "badge-success",
+            ValidationStatus.WARNING: "badge-warning",
+            ValidationStatus.INVALID: "badge-danger",
+        }
+        return badge_map.get(self.validation_status, "badge-secondary")
+
+    @property
+    def can_submit_for_review(self):
+        """Record can be advanced to READY/SUBMITTED only if it has been validated without blocking errors."""
+        return self.validation_status in [ValidationStatus.VALID, ValidationStatus.WARNING]
+
+
+# -----------------------------------------------------------------------------
+# PHASE 09: EVIDENCE MANAGEMENT & AUDIT VERIFICATION
+# -----------------------------------------------------------------------------
+
+def evidence_file_upload_path(instance, filename):
+    """
+    Computes a deterministic, collision-safe, traversal-proof storage path for uploaded evidence.
+    Format: evidence/<site_code>/<period_code>/rec_<record_id>/<uuid_prefix>_<safe_filename>
+    """
+    import os
+    import re
+    from uuid import uuid4
+    from django.utils.text import get_valid_filename
+
+    clean_name = get_valid_filename(os.path.basename(filename))
+    base, ext = os.path.splitext(clean_name)
+    safe_base = re.sub(r"[^a-zA-Z0-9_\-]", "_", base)[:50]
+    safe_filename = f"{uuid4().hex[:12]}_{safe_base}{ext.lower()}"
+
+    site_code = "unscoped_site"
+    period_code = "unscoped_period"
+    record_id = "0"
+
+    if instance and instance.activity_record_id:
+        record = instance.activity_record
+        site_code = re.sub(r"[^a-zA-Z0-9_\-]", "_", record.site.code.lower())
+        period_code = re.sub(r"[^a-zA-Z0-9_\-]", "_", record.reporting_period.code.lower())
+        record_id = str(record.id)
+
+    return f"evidence/{site_code}/{period_code}/rec_{record_id}/{safe_filename}"
+
+
+class EvidenceType(models.TextChoices):
+    INVOICE = "INVOICE", "Tax / Commercial Invoice"
+    UTILITY_BILL = "UTILITY_BILL", "Utility Bill (Electricity / Water / Gas)"
+    METER_READING = "METER_READING", "Meter Reading / Calibration Log"
+    FUEL_CHALLAN = "FUEL_CHALLAN", "Fuel Delivery Challan / DG Log"
+    WASTE_MANIFEST = "WASTE_MANIFEST", "Waste Manifest / Weighbridge Slip"
+    TRANSPORT_RECORD = "TRANSPORT_RECORD", "Transport / Logistics Record"
+    TRAVEL_RECORD = "TRAVEL_RECORD", "Business Travel Record"
+    PURCHASE_DOCUMENT = "PURCHASE_DOCUMENT", "Purchase Order / Goods Receipt Note"
+    SUPPLIER_CERTIFICATE = "SUPPLIER_CERTIFICATE", "Supplier Certificate / Spec Sheet"
+    ERP_EXTRACT = "ERP_EXTRACT", "ERP / Financial System Export"
+    LAB_REPORT = "LAB_REPORT", "Lab Test Report / Emission Test"
+    RENEWABLE_CERTIFICATE = "RENEWABLE_CERTIFICATE", "Renewable Energy Certificate (REC/PPA)"
+    OTHER = "OTHER", "Other ESG Supporting Document"
+
+
+class EvidenceStatus(models.TextChoices):
+    ACTIVE = "ACTIVE", "Active"
+    RETIRED = "RETIRED", "Retired"
+
+
+class Evidence(models.Model):
+    """
+    Authoritative ESG Supporting Evidence Document.
+
+    Links operational physical documentation (fuel invoices, utility bills, weighbridge slips,
+    meter logs, lab certifications) directly to ActivityRecord operational telemetry.
+    Establishes the evidence foundation for future Phase 10 Validation, Phase 11 OCR,
+    and Phase 14 Auditor Trace-This-Number lineage.
+    """
+
+    activity_record = models.ForeignKey(
+        ActivityRecord,
+        on_delete=models.PROTECT,
+        related_name="evidence_files",
+        help_text="Operational activity record supported by this evidence document.",
+    )
+    file = models.FileField(
+        upload_to=evidence_file_upload_path,
+        max_length=255,
+        help_text="Stored evidence document file.",
+    )
+    evidence_type = models.CharField(
+        max_length=50,
+        choices=EvidenceType.choices,
+        default=EvidenceType.INVOICE,
+        db_index=True,
+        help_text="Document classification category.",
+    )
+    original_filename = models.CharField(
+        max_length=255,
+        help_text="Original filename as provided by the client during upload.",
+    )
+    file_type = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Verified MIME / Content type (e.g. application/pdf, image/jpeg).",
+    )
+    file_size = models.PositiveBigIntegerField(
+        help_text="File size in bytes.",
+    )
+    file_hash = models.CharField(
+        max_length=64,
+        blank=True,
+        db_index=True,
+        help_text="SHA-256 cryptographic hash of the file payload for tamper-evident audit integrity.",
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="Document description, invoice/challan number, or operational commentary.",
+    )
+    status = models.CharField(
+        max_length=30,
+        choices=EvidenceStatus.choices,
+        default=EvidenceStatus.ACTIVE,
+        db_index=True,
+        help_text="Lifecycle state of this evidence document.",
+    )
+    retirement_reason = models.TextField(
+        blank=True,
+        help_text="Audit explanation when this evidence document is retired or replaced.",
+    )
+    retired_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when this evidence was marked retired.",
+    )
+    retired_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="retired_evidence",
+        help_text="User who retired this evidence.",
+    )
+    ocr_metadata = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Future Phase 11 OCR ingestion pipeline metadata (extracted entities, confidence, status).",
+    )
+    validation_metadata = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Future Phase 10 automated validation rule execution metadata.",
+    )
+    uploaded_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="uploaded_evidence",
+        help_text="User who uploaded this evidence file.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Supporting Evidence"
+        verbose_name_plural = "Supporting Evidence Documents"
+        ordering = ["-created_at"]
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(file_size__gt=0),
+                name="check_evidence_file_size_positive",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["activity_record", "status"], name="idx_evid_rec_status"),
+            models.Index(fields=["evidence_type"], name="idx_evid_type"),
+            models.Index(fields=["created_at"], name="idx_evid_created"),
+            models.Index(fields=["file_hash"], name="idx_evid_hash"),
+        ]
+
+    def __str__(self):
+        return f"{self.get_evidence_type_display()}: {self.original_filename} (Record #{self.activity_record_id})"
+
+    @property
+    def is_active(self):
+        return self.status == EvidenceStatus.ACTIVE
+
+    @property
+    def is_retired(self):
+        return self.status == EvidenceStatus.RETIRED
+
+    @property
+    def site(self):
+        return self.activity_record.site
+
+    @property
+    def project(self):
+        return self.activity_record.site.project
+
+    @property
+    def subsidiary(self):
+        return self.activity_record.site.project.subsidiary
+
+    @property
+    def company(self):
+        return self.activity_record.site.project.subsidiary.company
+
+    @property
+    def reporting_period(self):
+        return self.activity_record.reporting_period
+
+    @property
+    def file_extension(self):
+        import os
+        return os.path.splitext(self.original_filename)[1].lower()
+
+    @property
+    def is_previewable(self):
+        return self.file_extension in [".pdf", ".jpg", ".jpeg", ".png"]
+
+    @property
+    def is_pdf(self):
+        return self.file_extension == ".pdf"
+
+    @property
+    def is_image(self):
+        return self.file_extension in [".jpg", ".jpeg", ".png"]
+
+    @property
+    def file_size_formatted(self):
+        size = self.file_size
+        if size < 1024:
+            return f"{size} B"
+        elif size < 1024 * 1024:
+            return f"{size / 1024:.1f} KB"
+        else:
+            return f"{size / (1024 * 1024):.2f} MB"
+
+    @property
+    def status_badge_class(self):
+        return "badge-success" if self.status == EvidenceStatus.ACTIVE else "badge-secondary"
+
+
+# -----------------------------------------------------------------------------
+# PHASE 10: VALIDATION ENGINE & DATA QUALITY AUDIT
+# -----------------------------------------------------------------------------
+
+class ValidationRule(models.Model):
+    """
+    Controlled ESG Validation Rule Definition.
+
+    Defines deterministic data quality, taxonomy, boundary, and evidence rules evaluated
+    by the Validation Engine before records proceed through Submission, Review,
+    Anomaly Detection, or GHG Scope 1/2/3 Calculation.
+    """
+
+    code = models.CharField(
+        max_length=50,
+        unique=True,
+        db_index=True,
+        help_text="Stable unique rule identifier (e.g. STRUCT_REQ_QUANTITY, EVID_MANDATORY_CHECK).",
+    )
+    name = models.CharField(
+        max_length=150,
+        help_text="Human-readable rule name.",
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="Operational description explaining what this rule checks and why.",
+    )
+    category = models.CharField(
+        max_length=30,
+        choices=ValidationCategory.choices,
+        db_index=True,
+        help_text="Functional validation layer classification.",
+    )
+    severity = models.CharField(
+        max_length=20,
+        choices=ValidationSeverity.choices,
+        default=ValidationSeverity.ERROR,
+        help_text="Severity of non-compliance (ERROR blocks progression; WARNING advises).",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text="Whether this rule is active and evaluated during validation runs.",
+    )
+    is_blocking = models.BooleanField(
+        default=True,
+        help_text="If True, violations prevent the record from proceeding to submission or ready status.",
+    )
+    applicable_activity = models.ForeignKey(
+        ActivityMaster,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="validation_rules_set",
+        help_text="Specific activity this rule applies to. If empty, rule applies across all activities.",
+    )
+    rule_parameters = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Configured parameters (e.g. thresholds, required evidence types, min/max).",
+    )
+    version = models.PositiveIntegerField(
+        default=1,
+        help_text="Rule revision version number for regulatory lineage and audit traceability.",
+    )
+    effective_from = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Effective start date from which this rule is enforced.",
+    )
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_validation_rules",
+    )
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="updated_validation_rules",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Validation Rule"
+        verbose_name_plural = "Validation Rules"
+        ordering = ["category", "code"]
+        indexes = [
+            models.Index(fields=["category", "is_active"], name="idx_valrule_cat_act"),
+            models.Index(fields=["code"], name="idx_valrule_code"),
+        ]
+
+    def __str__(self):
+        return f"[{self.code}] {self.name} ({self.get_severity_display()})"
+
+    @property
+    def severity_badge_class(self):
+        return {
+            ValidationSeverity.ERROR: "badge-danger",
+            ValidationSeverity.WARNING: "badge-warning",
+            ValidationSeverity.INFO: "badge-info",
+        }.get(self.severity, "badge-secondary")
+
+
+class ValidationRun(models.Model):
+    """
+    Execution History Instance of a Validation Run for an Activity Record.
+
+    Preserves complete immutable audit history across successive edits and revalidations.
+    """
+
+    activity_record = models.ForeignKey(
+        ActivityRecord,
+        on_delete=models.CASCADE,
+        related_name="validation_runs",
+        help_text="Operational record evaluated during this run.",
+    )
+    run_number = models.PositiveIntegerField(
+        default=1,
+        help_text="Sequential iteration count of validation evaluations for this record.",
+    )
+    status = models.CharField(
+        max_length=30,
+        choices=ValidationStatus.choices,
+        default=ValidationStatus.UNVALIDATED,
+        db_index=True,
+        help_text="Composite validation outcome of this run.",
+    )
+    total_rules_evaluated = models.PositiveIntegerField(
+        default=0,
+        help_text="Count of active rules executed in this run.",
+    )
+    error_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of blocking ERROR violations detected.",
+    )
+    warning_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of WARNING non-conformances detected.",
+    )
+    info_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Number of INFO informational items generated.",
+    )
+    summary_message = models.TextField(
+        blank=True,
+        help_text="Executive summary of the validation outcome.",
+    )
+    executed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="executed_validation_runs",
+        help_text="User who initiated this validation run (or System).",
+    )
+    executed_at = models.DateTimeField(
+        auto_now_add=True,
+        db_index=True,
+        help_text="Timestamp when validation was executed.",
+    )
+    execution_duration_ms = models.PositiveIntegerField(
+        default=0,
+        help_text="Execution latency in milliseconds.",
+    )
+    rule_version_snapshot = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Snapshot of rule codes and versions evaluated for regulatory lineage.",
+    )
+
+    class Meta:
+        verbose_name = "Validation Run"
+        verbose_name_plural = "Validation Runs"
+        ordering = ["-executed_at", "-run_number"]
+        indexes = [
+            models.Index(fields=["activity_record", "-executed_at"], name="idx_valrun_rec_exec"),
+            models.Index(fields=["status"], name="idx_valrun_status"),
+        ]
+
+    def __str__(self):
+        return f"Run #{self.run_number} for Record #{self.activity_record_id}: {self.get_status_display()} ({self.executed_at.strftime('%Y-%m-%d %H:%M')})"
+
+    @property
+    def is_valid(self):
+        return self.status in [ValidationStatus.VALID, ValidationStatus.WARNING]
+
+    @property
+    def has_errors(self):
+        return self.error_count > 0
+
+    @property
+    def badge_class(self):
+        return {
+            ValidationStatus.VALID: "badge-success",
+            ValidationStatus.WARNING: "badge-warning",
+            ValidationStatus.INVALID: "badge-danger",
+            ValidationStatus.UNVALIDATED: "badge-secondary",
+        }.get(self.status, "badge-secondary")
+
+
+class ValidationResult(models.Model):
+    """
+    Granular Rule Evaluation Result associated with a Validation Run.
+
+    Contains field-level or record-level message, severity, context, and blocking status.
+    """
+
+    validation_run = models.ForeignKey(
+        ValidationRun,
+        on_delete=models.CASCADE,
+        related_name="results",
+        help_text="Parent validation run.",
+    )
+    activity_record = models.ForeignKey(
+        ActivityRecord,
+        on_delete=models.CASCADE,
+        related_name="validation_results",
+        help_text="Target activity record.",
+    )
+    rule = models.ForeignKey(
+        ValidationRule,
+        on_delete=models.PROTECT,
+        related_name="results",
+        help_text="Governing validation rule that produced this outcome.",
+    )
+    severity = models.CharField(
+        max_length=20,
+        choices=ValidationSeverity.choices,
+        help_text="Severity of this finding.",
+    )
+    is_blocking = models.BooleanField(
+        default=False,
+        help_text="Whether this finding blocks record progression.",
+    )
+    field_name = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Target form field name (e.g. quantity, unit, measurement_date, evidence) for UI highlighting.",
+    )
+    message = models.TextField(
+        help_text="Clear, human-readable finding explanation for operational users.",
+    )
+    context_data = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Diagnostic context data (e.g. given value, allowed values, expected bounds).",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Validation Result"
+        verbose_name_plural = "Validation Results"
+        ordering = ["severity", "id"]
+        indexes = [
+            models.Index(fields=["validation_run", "severity"], name="idx_valres_run_sev"),
+            models.Index(fields=["activity_record", "created_at"], name="idx_valres_rec_created"),
+        ]
+
+    def __str__(self):
+        field_str = f" [{self.field_name}]" if self.field_name else ""
+        return f"{self.severity}{field_str}: {self.message}"
+
+    @property
+    def is_error(self):
+        return self.severity == ValidationSeverity.ERROR
+
+    @property
+    def is_warning(self):
+        return self.severity == ValidationSeverity.WARNING
+
+    @property
+    def is_info(self):
+        return self.severity == ValidationSeverity.INFO
+
+    @property
+    def badge_class(self):
+        return {
+            ValidationSeverity.ERROR: "badge-danger",
+            ValidationSeverity.WARNING: "badge-warning",
+            ValidationSeverity.INFO: "badge-info",
+        }.get(self.severity, "badge-secondary")
+
 
 

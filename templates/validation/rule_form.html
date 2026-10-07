@@ -1,0 +1,94 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block page_actions %}
+  <a href="{% url 'core:validation_rule_detail' rule.id %}" class="btn btn-sm btn-outline-secondary">
+    <i class="icon-arrow-left me-1"></i> Cancel &amp; Back to Rule
+  </a>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-pencil text-warning me-2"></i> Modify Rule Configuration: <code>{{ rule.code }}</code>
+          </h6>
+          <span class="badge bg-light text-muted border">Version increment on save</span>
+        </div>
+        <div class="card-body p-4">
+          <form method="post">
+            {% csrf_token %}
+
+            <div class="mb-3">
+              <label class="form-label small fw-bold text-dark">Rule Name</label>
+              {{ form.name }}
+              {% if form.name.errors %}
+                <div class="text-danger small mt-1">{{ form.name.errors }}</div>
+              {% endif %}
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label small fw-bold text-dark">Operational Description &amp; Guidance</label>
+              {{ form.description }}
+              {% if form.description.errors %}
+                <div class="text-danger small mt-1">{{ form.description.errors }}</div>
+              {% endif %}
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label small fw-bold text-dark">Severity Level</label>
+                {{ form.severity }}
+                {% if form.severity.errors %}
+                  <div class="text-danger small mt-1">{{ form.severity.errors }}</div>
+                {% endif %}
+                <div class="form-text small">{{ form.severity.help_text }}</div>
+              </div>
+              <div class="col-md-6 d-flex align-items-center gap-4 pt-3">
+                <div class="form-check">
+                  {{ form.is_active }}
+                  <label class="form-check-label small fw-bold text-dark ms-1" for="{{ form.is_active.id_for_label }}">
+                    Rule Active
+                  </label>
+                </div>
+                <div class="form-check">
+                  {{ form.is_blocking }}
+                  <label class="form-check-label small fw-bold text-dark ms-1" for="{{ form.is_blocking.id_for_label }}">
+                    Blocks Submission
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label small fw-bold text-dark">Rule Parameters (JSON Object)</label>
+              {{ form.rule_parameters }}
+              {% if form.rule_parameters.errors %}
+                <div class="text-danger small mt-1">{{ form.rule_parameters.errors }}</div>
+              {% endif %}
+              <div class="form-text small">
+                Deterministic configuration parameters (e.g. <code>{"mandatory_activities": ["FUEL-DIESEL-STAT"]}</code>).
+              </div>
+            </div>
+
+            <div class="d-flex align-items-center justify-content-between pt-3 border-top">
+              <a href="{% url 'core:validation_rule_detail' rule.id %}" class="btn btn-outline-secondary">
+                Cancel
+              </a>
+              <button type="submit" class="btn btn-primary">
+                <i class="icon-check me-1"></i> Save Configuration (v{{ rule.version|add:1 }})
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

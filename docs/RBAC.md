@@ -226,5 +226,74 @@ The Site Manager Dashboard (`/site-manager/dashboard/` and canonical alias `/das
 3. **Audit Trail Data Leakage Prevention**: When unauthorized access attempts occur (e.g. attempting to tamper with another site's ID in other views), the dashboard audit trail filters out foreign site identifiers to prevent resource code leakage.
 4. **Zero Metric Fabrication**: All dashboard cards, tables, and readiness indicators reflect verified database queries; future workflows (Phases 08–12) display honest readiness hooks with 0 pending items rather than placeholder or random data.
 
+---
 
+## 12. ESG Data Entry & Activity Telemetry RBAC (Phase 08)
+
+The ESG Data Entry module (`/data-entry/...`) enforces zero-trust, object-level authorization across the entire measurement entry lifecycle:
+
+| Role | Ledger View (`/data-entry/`) | Create Record (`/data-entry/create/`) | Edit Record (`/data-entry/<id>/edit/`) | Delete Draft (`/data-entry/<id>/delete/`) | Detail View (`/data-entry/<id>/`) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `SITE_MANAGER` | Scoped to assigned sites only | Permitted for assigned sites in OPEN periods | Permitted in DRAFT, READY, REJECTED states | Permitted in DRAFT state only | Scoped to assigned sites |
+| `SUBSIDIARY_MANAGER` | Scoped to child division sites | Prohibited (403 Forbidden) | Prohibited (403 Forbidden) | Prohibited (403 Forbidden) | Scoped to child division sites |
+| `MEIL_OPERATOR` | Universal enterprise scope | Permitted across enterprise sites | Permitted in editable states | Permitted for DRAFT records | Universal enterprise scope |
+| `ESG_MANAGER` | Universal enterprise scope | Permitted across enterprise sites | Permitted in editable states | Permitted for DRAFT records | Universal enterprise scope |
+| `AUDITOR` | Universal enterprise scope (Read-Only) | Prohibited (403 Forbidden) | Prohibited (403 Forbidden) | Prohibited (403 Forbidden) | Universal enterprise scope (Read-Only) |
+
+### Anti-IDOR & Lifecycle Protection Rules:
+1. **Query Boundary Enforcement**: `get_accessible_activity_records(user)` filters down to authorized sites before any database access occurs. Unauthorized record queries evaluate to empty or trigger `PermissionDenied`.
+2. **Form Foreign Key Scoping**: Choice dropdowns for `site`, `reporting_period`, and `unit` are dynamically filtered at the form query boundary to prevent ID tampering in POST payloads.
+3. **Period Lifecycle Lock**: Activity data creation or editing is strictly prohibited against `CLOSED`, `LOCKED`, or `FINALIZED` reporting cycles.
+4. **Workflow Protection**: Once an Activity Record transitions to `SUBMITTED`, `VERIFIED`, or `APPROVED`, it is locked against modification by Site Managers to preserve compliance and audit integrity.
+
+---
+
+## 13. Evidence Management & Supporting Document RBAC (Phase 09)
+
+The Evidence Management module (`/evidence/...` and `/data-entry/<id>/evidence/...`) implements strict object-level authorization and tamper-proof audit controls:
+
+| Role | Repository View (`/evidence/`) | Upload Evidence (`/data-entry/<id>/evidence/upload/`) | Detail View (`/evidence/<id>/`) | Download / Preview (`.../download/`, `.../preview/`) | Retire Document (`/evidence/<id>/retire/`) | Delete Document (`.../delete/`) |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `SITE_MANAGER` | Scoped to assigned sites only | Permitted for assigned sites (in DRAFT, READY, REJECTED records) | Scoped to assigned sites | Permitted for assigned sites (Audit logged) | Permitted with required justification reason | Permitted for DRAFT records only |
+| `SUBSIDIARY_MANAGER` | Scoped to child division sites | Prohibited (403 Forbidden) | Scoped to child division sites | Permitted for child division sites | Prohibited (Review role only) | Prohibited (403 Forbidden) |
+| `MEIL_OPERATOR` | Universal enterprise scope | Permitted across all enterprise records | Universal enterprise scope | Permitted across all records (Audit logged) | Permitted with justification | Permitted for DRAFT records |
+| `ESG_MANAGER` | Universal enterprise scope | Permitted across all enterprise records | Universal enterprise scope | Permitted across all records (Audit logged) | Permitted with justification | Permitted for DRAFT records |
+| `AUDITOR` | Universal enterprise scope (Read-Only) | Prohibited (403 Forbidden) | Universal enterprise scope (Read-Only) | Permitted across all records (Audit logged) | Prohibited (403 Forbidden) | Prohibited (403 Forbidden) |
+
+### Anti-IDOR, Storage & Integrity Controls:
+1. **Server-Side Authorization (`user_can_access_evidence`)**: Direct object access through URL parameters (`/evidence/<id>/`, `/evidence/<id>/download/`, `/evidence/<id>/preview/`) executes object-level permission verification before any file metadata or binary payload is transmitted.
+2. **Upload Ownership Verification (`user_can_upload_evidence`)**: Attempting to post evidence to `/data-entry/<id>/evidence/upload/` verifies that the current user has site-level authorization for the parent `ActivityRecord` and that the reporting period is open and record is in an editable workflow state.
+3. **Download Logging (`AuthAuditLog.EventType.EVIDENCE_DOWNLOADED`)**: Every successful file download logs the requesting user, client IP, resource ID, and file size to the immutable security audit log.
+4. **Historical Preservation & Safe Retirement**: Once an activity record progresses beyond `DRAFT`, evidence files cannot be hard-deleted. They may only be transitioned to `RETIRED` state with a mandatory justification explanation, recording the retiring user and timestamp while preserving the original file and SHA-256 hash.
+5. **Magic Byte Content Verification**: Rejects spoofed MIME types and disguised executables by verifying actual binary magic bytes (`%PDF-`, `\x89PNG`, `\xff\xd8\xff`, `PK\x03\x04`).
+
+---
+
+## 14. ESG Validation Engine & Rule Governance RBAC (Phase 10)
+
+The ESG Validation Engine (`/data-entry/<id>/validate/`, `/validation/runs/<id>/`, `/validation/rules/...`) enforces clear boundaries between operational execution, audit review, and central rule governance:
+
+| Role | Execute Validation on Record | Batch Validate Records | View Validation Run Audit | View Rules Catalog (`/validation/rules/`) | Create / Edit Rules | Toggle Rule Active Status |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `SITE_MANAGER` | Permitted for assigned sites only | Permitted for assigned sites only | Scoped to assigned sites only | **Prohibited (403 Forbidden)** | **Prohibited (403 Forbidden)** | **Prohibited (403 Forbidden)** |
+| `SUBSIDIARY_MANAGER` | Scoped to child division sites | Scoped to child division sites | Scoped to child division sites | **Prohibited (403 Forbidden)** | **Prohibited (403 Forbidden)** | **Prohibited (403 Forbidden)** |
+| `MEIL_OPERATOR` | Universal enterprise scope | Universal enterprise scope | Universal enterprise scope | Permitted (Full visibility) | Permitted (Full governance) | Permitted |
+| `ESG_MANAGER` | Universal enterprise scope | Universal enterprise scope | Universal enterprise scope | Permitted (Full visibility) | Permitted (Full governance) | Permitted |
+| `AUDITOR` | **Prohibited (403 Forbidden)** | **Prohibited (403 Forbidden)** | Universal enterprise scope (Read-Only) | Permitted (Read-Only review) | **Prohibited (403 Forbidden)** | **Prohibited (403 Forbidden)** |
+
+### Key Isolation & Governance Mechanisms:
+1. **Server-Side Record Validation Authorization (`user_can_validate_record`)**:
+   - Site Managers can only trigger validation runs on `ActivityRecord` instances associated with their explicitly assigned operational sites.
+   - Access attempts to unassigned records or foreign companies are blocked with `Http404` or `PermissionDenied` (Anti-IDOR).
+   - Inactive or suspended user accounts are strictly blocked.
+2. **Centralized Rule Governance Protection (`user_can_manage_validation_rules` / `user_can_view_validation_rules`)**:
+   - Operational users (`SITE_MANAGER`, `SUBSIDIARY_MANAGER`) are prevented from viewing or modifying validation rule configurations (`403 Forbidden`), preventing unauthorized loosening of compliance standards.
+   - Only `ESG_MANAGER` and `MEIL_OPERATOR` can create, edit, or toggle rules.
+   - `AUDITOR` has strict read-only access to `/validation/rules/` and `/validation/rules/<id>/` for audit verification; mutation POSTs (such as `/toggle/`) are rejected with `403 Forbidden`.
+3. **Immutable Run Ledger & Demotion Safety**:
+   - Every execution creates a new, immutable `ValidationRun` record; historical runs are never overwritten or deleted.
+   - If a record currently in `READY` status fails validation with blocking errors, the engine automatically demotes it to `DRAFT`, preventing premature submission.
+4. **Audit Trail Logging**:
+   - Validation executions log `VALIDATION_EXECUTED` with record ID, run number, composite status, and error count.
+   - Rule changes log `VALIDATION_RULE_CREATED` and `VALIDATION_RULE_UPDATED` capturing actor, rule code, and parameter diffs.
 

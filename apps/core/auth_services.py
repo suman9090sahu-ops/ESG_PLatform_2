@@ -286,20 +286,26 @@ def get_role_sidebar_menu(user):
                     {
                         "nav_id": "data_entry",
                         "label": "ESG Data Entry",
-                        "url": "#",
+                        "url": reverse("core:activity_record_create"),
                         "icon": "icon-pencil text-warning",
+                    },
+                    {
+                        "nav_id": "activity_records",
+                        "label": "My Activity Data",
+                        "url": reverse("core:activity_record_list"),
+                        "icon": "icon-docs text-primary",
                     },
                     {
                         "nav_id": "evidence",
                         "label": "Evidence Uploads",
-                        "url": "#",
-                        "icon": "icon-docs text-info",
+                        "url": reverse("core:evidence_list"),
+                        "icon": "icon-camera text-info",
                     },
                     {
                         "nav_id": "ocr_results",
                         "label": "OCR Ingestion",
                         "url": "#",
-                        "icon": "icon-camera text-secondary",
+                        "icon": "icon-refresh text-secondary",
                     },
                     {
                         "nav_id": "submissions",
@@ -451,6 +457,12 @@ def get_role_sidebar_menu(user):
                         "icon": "icon-list text-success",
                     },
                     {
+                        "nav_id": "validation_rules",
+                        "label": "Validation Rules",
+                        "url": reverse("core:validation_rule_list"),
+                        "icon": "icon-check text-warning",
+                    },
+                    {
                         "nav_id": "ghg_accounting",
                         "label": "Scope 1, 2, 3 GHG",
                         "url": "#",
@@ -551,8 +563,14 @@ def get_role_sidebar_menu(user):
                     {
                         "nav_id": "evidence_trace",
                         "label": "Evidence Traceability",
-                        "url": "#",
+                        "url": reverse("core:evidence_list"),
                         "icon": "icon-magnifier text-success",
+                    },
+                    {
+                        "nav_id": "validation_rules",
+                        "label": "Validation Rules",
+                        "url": reverse("core:validation_rule_list"),
+                        "icon": "icon-check text-info",
                     },
                     {
                         "nav_id": "audit_findings",
@@ -615,6 +633,18 @@ def get_role_sidebar_menu(user):
                         "label": "Activity Master",
                         "url": reverse("core:activity_list"),
                         "icon": "icon-list text-success",
+                    },
+                    {
+                        "nav_id": "evidence",
+                        "label": "Evidence Repository",
+                        "url": reverse("core:evidence_list"),
+                        "icon": "icon-docs text-info",
+                    },
+                    {
+                        "nav_id": "validation_rules",
+                        "label": "Validation Rules",
+                        "url": reverse("core:validation_rule_list"),
+                        "icon": "icon-check text-warning",
                     },
                     {
                         "nav_id": "telemetry_sync",

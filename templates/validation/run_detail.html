@@ -1,0 +1,222 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block page_actions %}
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'core:activity_record_detail' record.id %}" class="btn btn-sm btn-outline-secondary">
+      <i class="icon-arrow-left me-1"></i> Back to Record #{{ record.id }}
+    </a>
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+  <!-- Summary KPI Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body p-3">
+          <div class="text-muted small text-uppercase fw-semibold">Validation Run</div>
+          <div class="h3 fw-bold mb-0 text-dark mt-1 font-monospace">Run #{{ val_run.run_number }}</div>
+          <small class="text-muted">Target Record #{{ record.id }}</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+      <div class="card border-0 shadow-sm h-100 border-start border-4 {% if val_run.status == 'VALID' %}border-success{% elif val_run.status == 'INVALID' %}border-danger{% else %}border-warning{% endif %}">
+        <div class="card-body p-3">
+          <div class="text-muted small text-uppercase fw-semibold">Composite Outcome</div>
+          <div class="mt-1">
+            <span class="badge {{ val_run.badge_class }} fs-6 py-1 px-3">
+              {{ val_run.get_status_display }}
+            </span>
+          </div>
+          <small class="text-muted mt-1 d-block">{{ val_run.executed_at|date:"d M Y H:i:s" }}</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+      <div class="card border-0 shadow-sm h-100 border-start border-4 border-danger">
+        <div class="card-body p-3">
+          <div class="text-muted small text-uppercase fw-semibold">Blocking Errors</div>
+          <div class="h3 fw-bold mb-0 {% if val_run.error_count > 0 %}text-danger{% else %}text-muted{% endif %} mt-1">
+            {{ val_run.error_count }}
+          </div>
+          <small class="text-muted">{{ val_run.warning_count }} Warnings | {{ val_run.info_count }} Info</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+      <div class="card border-0 shadow-sm h-100 border-start border-4 border-primary">
+        <div class="card-body p-3">
+          <div class="text-muted small text-uppercase fw-semibold">Rules Evaluated</div>
+          <div class="h3 fw-bold mb-0 text-primary mt-1">{{ val_run.total_rules_evaluated }}</div>
+          <small class="text-muted font-monospace">Execution: {{ val_run.execution_duration_ms }} ms</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Main Column: Findings & Results -->
+    <div class="col-lg-8">
+
+      <!-- Summary Banner -->
+      <div class="alert {% if val_run.status == 'VALID' %}alert-success{% elif val_run.status == 'INVALID' %}alert-danger{% else %}alert-warning{% endif %} mb-4 border-0 shadow-sm">
+        <div class="d-flex align-items-center">
+          <i class="{% if val_run.status == 'VALID' %}icon-check text-success{% elif val_run.status == 'INVALID' %}icon-close text-danger{% else %}icon-exclamation text-warning{% endif %} fs-4 me-3"></i>
+          <div>
+            <strong>{{ val_run.summary_message }}</strong>
+            <div class="small text-muted mt-1">
+              Executed by: <strong>{{ val_run.executed_by.username|default:"System" }}</strong> at {{ val_run.executed_at|date:"d M Y H:i:s" }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Granular Findings Table -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-list text-primary me-2"></i> Detailed Rule Findings ({{ results.count }})
+          </h6>
+          <span class="badge bg-light text-muted border">Run #{{ val_run.run_number }}</span>
+        </div>
+        <div class="card-body p-0">
+          {% if results %}
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light small text-muted text-uppercase">
+                  <tr>
+                    <th style="width: 100px;">Severity</th>
+                    <th style="width: 180px;">Rule Identifier</th>
+                    <th style="width: 120px;">Field</th>
+                    <th>Message &amp; Diagnostic Details</th>
+                    <th class="text-end" style="width: 100px;">Blocking</th>
+                  </tr>
+                </thead>
+                <tbody class="small">
+                  {% for res in results %}
+                    <tr>
+                      <td>
+                        <span class="badge {{ res.badge_class }}">{{ res.get_severity_display }}</span>
+                      </td>
+                      <td>
+                        <a href="{% url 'core:validation_rule_detail' res.rule.id %}" class="fw-bold font-monospace text-dark text-decoration-none">
+                          {{ res.rule.code }}
+                        </a>
+                        <div class="text-muted small">{{ res.rule.name }}</div>
+                      </td>
+                      <td>
+                        {% if res.field_name %}
+                          <span class="badge bg-light text-dark border">{{ res.field_name }}</span>
+                        {% else %}
+                          <span class="text-muted fst-italic">Record</span>
+                        {% endif %}
+                      </td>
+                      <td>
+                        <div class="text-dark">{{ res.message }}</div>
+                        {% if res.context_data %}
+                          <pre class="bg-light p-1 rounded font-monospace small mb-0 mt-1" style="font-size: 0.75rem;"><code>{{ res.context_data }}</code></pre>
+                        {% endif %}
+                      </td>
+                      <td class="text-end">
+                        {% if res.is_blocking %}
+                          <span class="badge bg-danger">Yes</span>
+                        {% else %}
+                          <span class="badge bg-secondary">No</span>
+                        {% endif %}
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="p-4 text-center text-success">
+              <i class="icon-check display-6 d-block mb-2"></i>
+              <h6>No violations or warnings. All evaluated rules passed successfully.</h6>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Side Column: Record Context & Rule Version Snapshot -->
+    <div class="col-lg-4">
+
+      <!-- Target Record Summary -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-doc text-primary me-2"></i> Evaluated Activity Record
+          </h6>
+        </div>
+        <div class="card-body p-3">
+          <ul class="list-group list-group-flush small">
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Record ID:</span>
+              <strong class="font-monospace">#{{ record.id }}</strong>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Activity:</span>
+              <span class="fw-semibold text-dark">{{ record.activity.name }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Site:</span>
+              <span>{{ record.site.name }} ({{ record.site.code }})</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Period:</span>
+              <span>{{ record.reporting_period.code }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Date:</span>
+              <span>{{ record.measurement_date|date:"d M Y" }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Quantity:</span>
+              <span class="fw-bold font-monospace">{{ record.quantity }} {{ record.unit.symbol }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Active Evidence:</span>
+              <span>{{ record.evidence_count }} document(s)</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Rule Snapshot -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-shield text-info me-2"></i> Regulatory Rules Snapshot
+          </h6>
+        </div>
+        <div class="card-body p-3">
+          <div class="small text-muted mb-2">
+            Captures immutable rule versions evaluated during this run for full regulatory audit traceability:
+          </div>
+          <div style="max-height: 250px; overflow-y: auto;">
+            <ul class="list-group list-group-flush small">
+              {% for code, snap in val_run.rule_version_snapshot.items %}
+                <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-1">
+                  <code>{{ code }}</code>
+                  <span class="badge bg-light text-dark border">v{{ snap.version }}</span>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}

@@ -4,7 +4,16 @@ Includes Phase 01 Core & UI showcase routes, Phase 02 Authentication & RBAC rout
 """
 
 from django.urls import path
-from apps.core import activity_views, auth_views, org_views, period_views, views
+from apps.core import (
+    activity_views,
+    auth_views,
+    data_entry_views,
+    evidence_views,
+    org_views,
+    period_views,
+    validation_views,
+    views,
+)
 
 app_name = "core"
 
@@ -100,5 +109,40 @@ urlpatterns = [
     path("activity-master/categories/<int:category_id>/", activity_views.category_detail_view, name="category_detail"),
     path("activity-master/units/", activity_views.unit_list_view, name="unit_list"),
     path("activity-master/units/create/", activity_views.unit_create_view, name="unit_create"),
+
+    # -------------------------------------------------------------------------
+    # Phase 08 ESG Data Entry & Activity Telemetry Routes (/data-entry/...)
+    # -------------------------------------------------------------------------
+    path("data-entry/", data_entry_views.activity_record_list_view, name="activity_record_list"),
+    path("data-entry/create/", data_entry_views.activity_record_create_view, name="activity_record_create"),
+    path("data-entry/<int:record_id>/", data_entry_views.activity_record_detail_view, name="activity_record_detail"),
+    path("data-entry/<int:record_id>/edit/", data_entry_views.activity_record_edit_view, name="activity_record_edit"),
+    path("data-entry/<int:record_id>/delete/", data_entry_views.activity_record_delete_view, name="activity_record_delete"),
+    path("data-entry/api/activity-units/", data_entry_views.activity_units_api_view, name="activity_units_api"),
+
+    # -------------------------------------------------------------------------
+    # Phase 09 Evidence Management Routes (/evidence/... & /data-entry/<id>/evidence/...)
+    # -------------------------------------------------------------------------
+    path("evidence/", evidence_views.evidence_list_view, name="evidence_list"),
+    path("evidence/<int:evidence_id>/", evidence_views.evidence_detail_view, name="evidence_detail"),
+    path("evidence/<int:evidence_id>/download/", evidence_views.evidence_download_view, name="evidence_download"),
+    path("evidence/<int:evidence_id>/preview/", evidence_views.evidence_preview_view, name="evidence_preview"),
+    path("evidence/<int:evidence_id>/retire/", evidence_views.evidence_retire_view, name="evidence_retire"),
+    path("data-entry/<int:record_id>/evidence/upload/", evidence_views.evidence_upload_view, name="evidence_upload"),
+    path("data-entry/<int:record_id>/evidence/<int:evidence_id>/delete/", evidence_views.evidence_delete_view, name="evidence_delete"),
+
+    # -------------------------------------------------------------------------
+    # Phase 10 Validation Engine Routes (/data-entry/<id>/validate/ & /validation/...)
+    # -------------------------------------------------------------------------
+    path("data-entry/<int:record_id>/validate/", validation_views.record_validate_view, name="activity_record_validate"),
+    path("data-entry/<int:record_id>/run-validation/", validation_views.record_validate_view, name="record_validate"),
+    path("data-entry/validate-batch/", validation_views.record_batch_validate_view, name="activity_record_batch_validate"),
+    path("data-entry/batch-validate/", validation_views.record_batch_validate_view, name="record_batch_validate"),
+    path("validation/runs/<int:run_id>/", validation_views.validation_run_detail_view, name="validation_run_detail"),
+    path("validation/rules/", validation_views.validation_rule_list_view, name="validation_rule_list"),
+    path("validation/rules/<int:rule_id>/", validation_views.validation_rule_detail_view, name="validation_rule_detail"),
+    path("validation/rules/<int:rule_id>/toggle/", validation_views.validation_rule_toggle_view, name="validation_rule_toggle"),
+    path("validation/rules/<int:rule_id>/edit/", validation_views.validation_rule_edit_view, name="validation_rule_edit"),
 ]
+
 

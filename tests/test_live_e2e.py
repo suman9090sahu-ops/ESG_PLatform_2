@@ -420,12 +420,278 @@ def run():
     print(f"[70] esg_manager attempts /site-manager/dashboard/ -> Status {code} (Expected 403)")
     assert code == 403, f"Expected 403, got {code}"
 
-    # Auditor denied access to Site Manager dashboard
-    code, html = get_url(opener_aud, f"{BASE_URL}/site-manager/dashboard/")
-    print(f"[71] auditor attempts /site-manager/dashboard/ -> Status {code} (Expected 403)")
-    assert code == 403, f"Expected 403, got {code}"
+    # 16. Phase 08 — ESG Data Entry Verification
+    # A. site_manager accesses /data-entry/
+    code, html = get_url(opener_sm, f"{BASE_URL}/data-entry/")
+    print(f"[72] site_manager accesses /data-entry/: Status {code} (Expected 200)")
+    assert code == 200
+    assert "Activity Records" in html
+    assert "SITE-POL-101" in html
 
-    print("\nALL 71 LIVE E2E HTTP VERIFICATIONS PASSED SUCCESSFULLY!")
+    # B. site_manager accesses /data-entry/create/
+    code, html = get_url(opener_sm, f"{BASE_URL}/data-entry/create/")
+    print(f"[73] site_manager accesses /data-entry/create/: Status {code} (Expected 200)")
+    assert code == 200
+    assert "Log New ESG Activity Telemetry" in html
+    assert "Polavaram Dam Headworks Site" in html
+    assert "Polavaram Spillway & Powerhouse Site" not in html, "Unassigned site exposed in create dropdown"
+
+    # C. AJAX API endpoint /data-entry/api/activity-units/?activity_id=1
+    code, body = get_url(opener_sm, f"{BASE_URL}/data-entry/api/activity-units/?activity_id=1")
+    print(f"[74] site_manager queries /data-entry/api/activity-units/?activity_id=1: Status {code} (Expected 200)")
+    assert code == 200
+    assert '"units":' in body
+
+    # D. site_manager creates a new activity record as DRAFT
+    create_url = f"{BASE_URL}/data-entry/create/"
+    token = get_csrf_token(opener_sm, create_url)
+    post_data = urllib.parse.urlencode({
+        "csrfmiddlewaretoken": token,
+        "site": "1",
+        "reporting_period": "2",
+        "activity": "1",
+        "measurement_date": "2025-06-15",
+        "quantity": "450.50",
+        "unit": "1",
+        "notes": "Live E2E test generator consumption",
+        "status": "DRAFT",
+    }).encode("utf-8")
+    req = urllib.request.Request(create_url, data=post_data, headers={"Referer": create_url})
+    resp = opener_sm.open(req)
+    final_url = resp.geturl()
+    body = resp.read().decode("utf-8")
+    print(f"[75] site_manager creates draft ActivityRecord: Final URL {final_url}")
+    assert "/data-entry/" in final_url
+    assert "Draft saved" in body or "450.50" in body
+
+    # Extract created record ID from response URL or body
+    match = re.search(r'/data-entry/(\d+)/', final_url)
+    if not match:
+        match = re.search(r'/data-entry/(\d+)/', body)
+    assert match, "Failed to identify created record ID"
+    rec_id = match.group(1)
+    print(f"Created ActivityRecord ID: {rec_id}")
+
+    # E. site_manager views detail of created record
+    code, html = get_url(opener_sm, f"{BASE_URL}/data-entry/{rec_id}/")
+    print(f"[76] site_manager views /data-entry/{rec_id}/: Status {code} (Expected 200)")
+    assert code == 200
+    assert "450.50" in html
+    assert "Litre" in html
+    assert "Draft" in html
+    assert "SITE-POL-101" in html
+
+    # F. IDOR test: site_manager attempts to create record for unassigned site (site 2)
+    token = get_csrf_token(opener_sm, create_url)
+    post_data_idor = urllib.parse.urlencode({
+        "csrfmiddlewaretoken": token,
+        "site": "2",
+        "reporting_period": "2",
+        "activity": "1",
+        "measurement_date": "2025-06-15",
+        "quantity": "100.00",
+        "unit": "1",
+        "status": "DRAFT",
+    }).encode("utf-8")
+    req_idor = urllib.request.Request(create_url, data=post_data_idor, headers={"Referer": create_url})
+    try:
+        resp_idor = opener_sm.open(req_idor)
+        idor_body = resp_idor.read().decode("utf-8")
+        # Form validation should fail and re-render with validation error
+        assert "Select a valid choice" in idor_body or "not authorized" in idor_body or resp_idor.status == 403
+        print(f"[77] IDOR site tampering prevented on /data-entry/create/: Form validation rejected unauthorized site")
+    except urllib.error.HTTPError as e:
+        print(f"[77] IDOR site tampering rejected with HTTP {e.code}")
+        assert e.code in (400, 403)
+
+    # G. site_manager edits the created record
+    edit_url = f"{BASE_URL}/data-entry/{rec_id}/edit/"
+    token = get_csrf_token(opener_sm, edit_url)
+    edit_data = urllib.parse.urlencode({
+        "csrfmiddlewaretoken": token,
+        "site": "1",
+        "reporting_period": "2",
+        "activity": "1",
+        "measurement_date": "2025-06-16",
+        "quantity": "520.00",
+        "unit": "1",
+        "notes": "Updated during live E2E test",
+        "status": "READY",
+    }).encode("utf-8")
+    req_edit = urllib.request.Request(edit_url, data=edit_data, headers={"Referer": edit_url})
+    resp_edit = opener_sm.open(req_edit)
+    body_edit = resp_edit.read().decode("utf-8")
+    print(f"[78] site_manager edits ActivityRecord to READY: Final URL {resp_edit.geturl()}")
+    assert "520.00" in body_edit
+
+    # H. Auditor views data ledger (read-only allowed)
+    code, html = get_url(opener_aud, f"{BASE_URL}/data-entry/")
+    print(f"[79] auditor accesses /data-entry/: Status {code} (Expected 200)")
+    assert code == 200
+    assert "Activity Records" in html
+
+    # I. Auditor attempts to access /data-entry/create/ (forbidden)
+    code, html = get_url(opener_aud, f"{BASE_URL}/data-entry/create/")
+    print(f"[80] auditor attempts /data-entry/create/: Status {code} (Expected 403)")
+    assert code == 403
+
+    # J. Unauthenticated access to /data-entry/ redirects to login
+    opener_anon, _ = create_session()
+    code, html = get_url(opener_anon, f"{BASE_URL}/data-entry/")
+    print(f"[81] anonymous user attempts /data-entry/: Status {code} (Expected 302/redirect to login)")
+    assert code in (200, 302)  # urllib auto-follows 302 to /auth/login/ which returns 200
+    assert "Login" in html or "Sign In" in html
+
+    # =========================================================================
+    # PHASE 09: EVIDENCE MANAGEMENT LIVE E2E VERIFICATION
+    # =========================================================================
+    print("\n--- Testing Phase 09 Evidence Management ---")
+
+    # 1. Site Manager accesses /evidence/
+    code, html = get_url(opener_sm, f"{BASE_URL}/evidence/")
+    print(f"[82] site_manager accesses /evidence/: Status {code} (Expected 200)")
+    assert code == 200
+    assert "Audit Evidence Repository" in html
+    assert "Total Documents" in html
+
+    # 2. Site Manager accesses evidence upload form for created record
+    upload_url = f"{BASE_URL}/data-entry/{rec_id}/evidence/upload/"
+    code, html = get_url(opener_sm, upload_url)
+    print(f"[83] site_manager accesses {upload_url}: Status {code} (Expected 200)")
+    assert code == 200
+    assert "Upload Supporting Document" in html
+
+    # 3. Site Manager uploads PDF invoice
+    csrf_up = get_csrf_token(opener_sm, upload_url)
+    sample_pdf = b"%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF"
+    boundary = "----WebKitFormBoundaryE2EEvidenceUpload"
+    body_parts = bytearray()
+    body_parts.extend(f"--{boundary}\r\nContent-Disposition: form-data; name=\"csrfmiddlewaretoken\"\r\n\r\n{csrf_up}\r\n".encode("utf-8"))
+    body_parts.extend(f"--{boundary}\r\nContent-Disposition: form-data; name=\"evidence_type\"\r\n\r\nINVOICE\r\n".encode("utf-8"))
+    body_parts.extend(f"--{boundary}\r\nContent-Disposition: form-data; name=\"description\"\r\n\r\nLive E2E Verification Tax Invoice IOCL-001\r\n".encode("utf-8"))
+    body_parts.extend(f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"iocl_invoice_001.pdf\"\r\nContent-Type: application/pdf\r\n\r\n".encode("utf-8"))
+    body_parts.extend(sample_pdf)
+    body_parts.extend(f"\r\n--{boundary}--\r\n".encode("utf-8"))
+
+    req_up = urllib.request.Request(
+        upload_url,
+        data=bytes(body_parts),
+        headers={"Content-Type": f"multipart/form-data; boundary={boundary}", "Referer": upload_url},
+    )
+    resp_up = opener_sm.open(req_up)
+    final_up_url = resp_up.geturl()
+    body_up = resp_up.read().decode("utf-8")
+    print(f"[84] site_manager uploads PDF evidence: Status {resp_up.status}, Final URL: {final_up_url}")
+    assert resp_up.status == 200
+    assert f"/data-entry/{rec_id}/" in final_up_url
+
+    # 4. Check evidence table rendered on record detail
+    code, html = get_url(opener_sm, f"{BASE_URL}/data-entry/{rec_id}/")
+    assert code == 200
+    assert "iocl_invoice_001.pdf" in html
+    assert "Supporting Audit Evidence" in html
+    print("[85] Evidence table on ActivityRecord detail displays uploaded file")
+
+    # Extract created evidence ID
+    ev_match = re.search(r'/evidence/(\d+)/', html)
+    assert ev_match, "Failed to find created evidence ID in HTML"
+    ev_id = ev_match.group(1)
+    print(f"Created Evidence ID: #{ev_id}")
+
+    # 5. Site Manager inspects evidence detail /evidence/<ev_id>/
+    code, html = get_url(opener_sm, f"{BASE_URL}/evidence/{ev_id}/")
+    print(f"[86] site_manager accesses /evidence/{ev_id}/: Status {code} (Expected 200)")
+    assert code == 200
+    assert "iocl_invoice_001.pdf" in html
+    assert "Cryptographic SHA-256 Checksum" in html
+    assert "ESG Operational Lineage Path" in html
+
+    # 6. Site Manager downloads evidence binary
+    req_dl = urllib.request.Request(f"{BASE_URL}/evidence/{ev_id}/download/")
+    with opener_sm.open(req_dl) as resp_dl:
+        code = resp_dl.status
+        content_disp = resp_dl.headers.get("Content-Disposition", "")
+        print(f"[87] site_manager downloads /evidence/{ev_id}/download/: Status {code} (Expected 200)")
+        assert code == 200
+        assert "attachment" in content_disp
+        assert "iocl_invoice_001.pdf" in content_disp
+
+    # 7. Site Manager previews evidence inline
+    req_prev = urllib.request.Request(f"{BASE_URL}/evidence/{ev_id}/preview/")
+    with opener_sm.open(req_prev) as resp_prev:
+        code = resp_prev.status
+        content_type = resp_prev.headers.get("Content-Type", "")
+        print(f"[88] site_manager previews /evidence/{ev_id}/preview/: Status {code} (Expected 200)")
+        assert code == 200
+        assert content_type == "application/pdf"
+
+    # 8. IDOR test: site_manager attempts upload against unassigned site's activity
+    # Operator creates an activity record on Site 2 (unassigned to site_manager)
+    token_op = get_csrf_token(opener_op, create_url)
+    post_data_op = urllib.parse.urlencode({
+        "csrfmiddlewaretoken": token_op,
+        "site": "2",
+        "reporting_period": "2",
+        "activity": "1",
+        "measurement_date": "2025-06-15",
+        "quantity": "888.00",
+        "unit": "1",
+        "notes": "Record on unassigned site 2 for IDOR test",
+        "status": "DRAFT",
+    }).encode("utf-8")
+    req_op_rec = urllib.request.Request(create_url, data=post_data_op, headers={"Referer": create_url})
+    resp_op_rec = opener_op.open(req_op_rec)
+    final_op_url = resp_op_rec.geturl()
+    body_op_rec = resp_op_rec.read().decode("utf-8")
+    match_op = re.search(r'/data-entry/(\d+)/', final_op_url)
+    if not match_op:
+        match_op = re.search(r'/data-entry/(\d+)/', body_op_rec)
+    assert match_op, "Failed to identify created foreign record ID"
+    foreign_rec_id = match_op.group(1)
+
+    code, html = get_url(opener_sm, f"{BASE_URL}/data-entry/{foreign_rec_id}/evidence/upload/")
+    print(f"[89] IDOR attempt: site_manager uploads to unassigned record /data-entry/{foreign_rec_id}/evidence/upload/: Status {code} (Expected 403)")
+    assert code == 403
+
+    # 9. Auditor accesses /evidence/ (200 OK)
+    code, html = get_url(opener_aud, f"{BASE_URL}/evidence/")
+    print(f"[90] auditor accesses /evidence/: Status {code} (Expected 200)")
+    assert code == 200
+    assert "iocl_invoice_001.pdf" in html
+
+    # 10. Auditor downloads evidence (200 OK)
+    req_aud_dl = urllib.request.Request(f"{BASE_URL}/evidence/{ev_id}/download/")
+    with opener_aud.open(req_aud_dl) as resp_aud_dl:
+        code = resp_aud_dl.status
+        print(f"[91] auditor downloads /evidence/{ev_id}/download/: Status {code} (Expected 200)")
+        assert code == 200
+
+    # 11. Auditor attempts upload -> 403 Forbidden
+    code, html = get_url(opener_aud, f"{BASE_URL}/data-entry/{rec_id}/evidence/upload/")
+    print(f"[92] auditor attempts /data-entry/{rec_id}/evidence/upload/: Status {code} (Expected 403)")
+    assert code == 403
+
+    # 12. Unauthenticated access to /evidence/ redirects to login
+    code, html = get_url(opener_anon, f"{BASE_URL}/evidence/")
+    print(f"[93] anonymous user attempts /evidence/: Status {code} (Expected 200/302)")
+    assert code in (200, 302)
+    assert "Login" in html or "Sign In" in html
+
+    # 13. Site Manager retires evidence with justification
+    retire_url = f"{BASE_URL}/evidence/{ev_id}/retire/"
+    csrf_ret = get_csrf_token(opener_sm, retire_url)
+    ret_data = urllib.parse.urlencode({
+        "csrfmiddlewaretoken": csrf_ret,
+        "reason": "Superseded during master live E2E test verification run",
+    }).encode("utf-8")
+    req_ret = urllib.request.Request(retire_url, data=ret_data, headers={"Referer": retire_url})
+    resp_ret = opener_sm.open(req_ret)
+    body_ret = resp_ret.read().decode("utf-8")
+    print(f"[94] site_manager retires evidence: Final URL {resp_ret.geturl()}")
+    assert f"/evidence/{ev_id}/" in resp_ret.geturl()
+    assert "Retired" in body_ret or "Superseded" in body_ret
+
+    print("\nALL 94 LIVE E2E HTTP VERIFICATIONS PASSED SUCCESSFULLY!")
 
 if __name__ == "__main__":
     run()

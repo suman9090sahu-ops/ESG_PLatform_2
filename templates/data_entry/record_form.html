@@ -1,0 +1,266 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block page_actions %}
+  <a href="{% url 'core:activity_record_list' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="icon-arrow-left me-1"></i> Back to Activity Ledger
+  </a>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-pencil text-primary me-2"></i>
+            {% if is_create %}Log New ESG Activity Telemetry{% else %}Edit Activity Record #{{ record.id }}{% endif %}
+          </h6>
+          <span class="badge bg-light text-muted border">
+            Site Manager Operational Entry
+          </span>
+        </div>
+
+        <div class="card-body p-4">
+          <form method="post" novalidate id="dataEntryForm">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger mb-4 shadow-xs" role="alert">
+                {% for error in form.non_field_errors %}
+                  <div><i class="icon-close me-1"></i> {{ error }}</div>
+                {% endfor %}
+              </div>
+            {% endif %}
+
+            <!-- Section 1: Operational Binding -->
+            <div class="mb-4">
+              <div class="d-flex align-items-center mb-3">
+                <span class="badge bg-primary rounded-circle me-2 px-2 py-1">1</span>
+                <h6 class="fw-bold text-dark mb-0">Operational Boundary &amp; Reporting Cycle</h6>
+              </div>
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label for="id_site" class="form-label small fw-bold text-dark">
+                    Operational Site <span class="text-danger">*</span>
+                  </label>
+                  {{ form.site }}
+                  {% if form.site.errors %}
+                    <div class="text-danger small mt-1">{{ form.site.errors.0 }}</div>
+                  {% endif %}
+                  <div class="form-text text-muted small">
+                    Restricted exclusively to sites authorized under your MEIL user assignment.
+                  </div>
+                </div>
+
+                <div class="col-md-6">
+                  <label for="id_reporting_period" class="form-label small fw-bold text-dark">
+                    Reporting Period <span class="text-danger">*</span>
+                  </label>
+                  {{ form.reporting_period }}
+                  {% if form.reporting_period.errors %}
+                    <div class="text-danger small mt-1">{{ form.reporting_period.errors.0 }}</div>
+                  {% endif %}
+                  <div class="form-text text-muted small">
+                    Data entry is permitted only in active <code>OPEN</code> reporting cycles.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <hr class="text-muted opacity-25 my-4">
+
+            <!-- Section 2: ESG Activity Specification -->
+            <div class="mb-4">
+              <div class="d-flex align-items-center mb-3">
+                <span class="badge bg-primary rounded-circle me-2 px-2 py-1">2</span>
+                <h6 class="fw-bold text-dark mb-0">ESG Activity &amp; Physical Unit</h6>
+              </div>
+              <div class="row g-3">
+                <div class="col-md-7">
+                  <label for="id_activity" class="form-label small fw-bold text-dark">
+                    ESG Activity Master <span class="text-danger">*</span>
+                  </label>
+                  {{ form.activity }}
+                  {% if form.activity.errors %}
+                    <div class="text-danger small mt-1">{{ form.activity.errors.0 }}</div>
+                  {% endif %}
+                  <div class="form-text text-muted small">
+                    Approved activity schema from the centrally governed enterprise catalog.
+                  </div>
+                </div>
+
+                <div class="col-md-5">
+                  <label for="id_unit" class="form-label small fw-bold text-dark">
+                    Physical Unit of Measure <span class="text-danger">*</span>
+                  </label>
+                  {{ form.unit }}
+                  {% if form.unit.errors %}
+                    <div class="text-danger small mt-1">{{ form.unit.errors.0 }}</div>
+                  {% endif %}
+                  <div class="form-text text-muted small" id="unitHelperText">
+                    Permissible unit matching the selected activity master definition.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <hr class="text-muted opacity-25 my-4">
+
+            <!-- Section 3: Telemetry & Measurement -->
+            <div class="mb-4">
+              <div class="d-flex align-items-center mb-3">
+                <span class="badge bg-primary rounded-circle me-2 px-2 py-1">3</span>
+                <h6 class="fw-bold text-dark mb-0">Consumption Quantity &amp; Activity Date</h6>
+              </div>
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label for="id_measurement_date" class="form-label small fw-bold text-dark">
+                    Measurement / Invoice Date <span class="text-danger">*</span>
+                  </label>
+                  {{ form.measurement_date }}
+                  {% if form.measurement_date.errors %}
+                    <div class="text-danger small mt-1">{{ form.measurement_date.errors.0 }}</div>
+                  {% endif %}
+                  <div class="form-text text-muted small">
+                    Must fall within the start and end dates of the selected reporting period.
+                  </div>
+                </div>
+
+                <div class="col-md-6">
+                  <label for="id_quantity" class="form-label small fw-bold text-dark">
+                    Measured Quantity <span class="text-danger">*</span>
+                  </label>
+                  {{ form.quantity }}
+                  {% if form.quantity.errors %}
+                    <div class="text-danger small mt-1">{{ form.quantity.errors.0 }}</div>
+                  {% endif %}
+                  <div class="form-text text-muted small">
+                    Positive consumption value (e.g. litres of diesel, kWh of electricity, kg of waste).
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <hr class="text-muted opacity-25 my-4">
+
+            <!-- Section 4: Evidence Reference & Notes -->
+            <div class="mb-4">
+              <div class="d-flex align-items-center mb-3">
+                <span class="badge bg-primary rounded-circle me-2 px-2 py-1">4</span>
+                <h6 class="fw-bold text-dark mb-0">Evidence Reference &amp; Operational Notes</h6>
+              </div>
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label for="id_evidence_reference" class="form-label small fw-bold text-dark">
+                    Evidence / Challan / Invoice Identifier
+                  </label>
+                  {{ form.evidence_reference }}
+                  {% if form.evidence_reference.errors %}
+                    <div class="text-danger small mt-1">{{ form.evidence_reference.errors.0 }}</div>
+                  {% endif %}
+                  <div class="form-text text-muted small">
+                    Invoice number, vendor delivery challan, or meter reading ID (Phase 09 OCR link).
+                  </div>
+                </div>
+
+                <div class="col-md-6">
+                  <label for="id_status" class="form-label small fw-bold text-dark">
+                    Lifecycle Workflow State <span class="text-danger">*</span>
+                  </label>
+                  {{ form.status }}
+                  {% if form.status.errors %}
+                    <div class="text-danger small mt-1">{{ form.status.errors.0 }}</div>
+                  {% endif %}
+                  <div class="form-text text-muted small">
+                    Choose <strong>Save as Draft</strong> to revise later, or <strong>Mark Ready</strong> for review.
+                  </div>
+                </div>
+
+                <div class="col-12">
+                  <label for="id_notes" class="form-label small fw-bold text-dark">
+                    Operational Notes / Asset Remarks
+                  </label>
+                  {{ form.notes }}
+                  {% if form.notes.errors %}
+                    <div class="text-danger small mt-1">{{ form.notes.errors.0 }}</div>
+                  {% endif %}
+                  <div class="form-text text-muted small">
+                    Optional details such as DG Set serial number, vehicle registration number, or batch description.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Action Controls -->
+            <div class="d-flex align-items-center justify-content-between pt-3 border-top">
+              <a href="{% url 'core:activity_record_list' %}" class="btn btn-outline-secondary">
+                <i class="icon-close me-1"></i> Cancel
+              </a>
+              <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary px-4">
+                  <i class="icon-check me-1"></i>
+                  {% if is_create %}Save Activity Record{% else %}Save Changes{% endif %}
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Vanilla JS: Dynamic Unit Filtering on Activity Selection -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const activitySelect = document.getElementById("id_activity");
+  const unitSelect = document.getElementById("id_unit");
+  const unitHelper = document.getElementById("unitHelperText");
+
+  if (activitySelect && unitSelect) {
+    activitySelect.addEventListener("change", function () {
+      const activityId = this.value;
+      if (!activityId) return;
+
+      const apiUrl = "{% url 'core:activity_units_api' %}?activity_id=" + encodeURIComponent(activityId);
+
+      fetch(apiUrl)
+        .then(function (response) {
+          if (!response.ok) throw new Error("Network error fetching allowed units");
+          return response.json();
+        })
+        .then(function (data) {
+          if (data && data.units && data.units.length > 0) {
+            const currentSelected = unitSelect.value;
+            unitSelect.innerHTML = '<option value="">— Select Unit of Measure —</option>';
+
+            data.units.forEach(function (u) {
+              const option = document.createElement("option");
+              option.value = u.id;
+              option.textContent = u.name + " (" + u.symbol + ")" + (u.is_base ? " [Base Unit]" : "");
+              if (u.id.toString() === currentSelected || (u.is_base && !currentSelected)) {
+                option.selected = true;
+              }
+              unitSelect.appendChild(option);
+            });
+
+            if (unitHelper) {
+              unitHelper.innerHTML = "<span class='text-success'><i class='icon-check me-1'></i>Filtered to " + data.units.length + " allowed unit(s) for " + data.activity_name + "</span>";
+            }
+          }
+        })
+        .catch(function (err) {
+          console.warn("Dynamic unit fetch error:", err);
+        });
+    });
+  }
+});
+</script>
+{% endblock %}

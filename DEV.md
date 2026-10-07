@@ -1,11 +1,11 @@
 # MEIL ESG CONTROL TOWER — Development Tracking
 
 ## Current Phase
-**PHASE 07 — SITE MANAGER DASHBOARD**
+**PHASE 08 — ESG DATA ENTRY & ACTIVITY TELEMETRY**
 
 **Status:** IMPLEMENTED & VERIFIED  
-**Phase 07 Completion:** 100%  
-**Total Project Completion:** 88%
+**Phase 08 Completion:** 100%  
+**Total Project Completion:** 93%
 
 ---
 
@@ -376,12 +376,374 @@ ALL 71 LIVE E2E HTTP VERIFICATIONS PASSED SUCCESSFULLY!
 
 ---
 
-## 4. Next Recommended Phase
-**PHASE 08 — ESG DATA ENTRY & ACTIVITY TELEMETRY**
-- Operational data entry forms scoped to authorized site, active reporting period, and approved activity masters.
-- Numeric consumption inputs, physical unit validation (`validate_activity_unit`), and operational calculation hooks.
-- Draft vs. Submitted lifecycle states (`ESGDataRecord`).
-- Integration with Site Manager Dashboard pending actions counter.
+## 4. Phase 08 Implementation Summary: ESG Data Entry & Activity Telemetry
 
+Engineered the authoritative operational measurement layer allowing Site Managers to log actual physical ESG consumption telemetry scoped strictly to authorized operational sites and open reporting cycles.
 
+### Key Architectural Deliverables
+1. **Domain Model (`ActivityRecord` in `apps/core/models.py`)**:
+   - Fields: `site` (PROTECT FK), `reporting_period` (PROTECT FK), `activity` (PROTECT FK), `measurement_date`, `quantity` (`DecimalField(18, 4)`), `unit` (PROTECT FK to `UnitOfMeasure`), `notes`, `evidence_reference`, `status`, `created_by`, `updated_by`, timestamps.
+   - Database `CheckConstraint(check=Q(quantity__gte=0))` strictly forbidding negative consumption values.
+   - Database composite indexes:
+     - `idx_rec_site_period`: `['site', 'reporting_period']`
+     - `idx_rec_act_date`: `['activity', 'measurement_date']`
+     - `idx_rec_status`: `['status']`
+     - `idx_rec_created`: `['-created_at']`
+   - Model `clean()` enforcing:
+     - Permissible unit of measure validation against `ActivityMaster` (`unit == base_unit` or in `allowed_units`).
+     - Measurement date within `reporting_period` start and end dates.
+     - Active ActivityMaster status requirement (`MasterStatus.ACTIVE`).
+     - Cross-organizational boundary alignment between Site and Reporting Period.
+2. **Controlled Lifecycle State Machine (`RecordStatus`)**:
+   - Progression: `DRAFT` &rarr; `READY` &rarr; `SUBMITTED` &rarr; `VERIFIED` &rarr; `APPROVED` (with `REJECTED` return path).
+   - Site Manager editable when status is `DRAFT`, `READY`, or `REJECTED`.
+   - Immutable / Locked from Site Manager modification once `SUBMITTED`, `VERIFIED`, or `APPROVED`, or when the parent `ReportingPeriod` is closed.
+   - Safe deletion strictly allowed for `DRAFT` records created by the user.
+3. **Service Layer & Scoped Querysets (`apps/core/data_entry_services.py`)**:
+   - Scoped querysets: `get_accessible_activity_records(user)` (Site Manager strictly confined to assigned sites; Subsidiary Manager to child division sites; Operator/Auditor universal).
+   - Object-level authorization guards: `user_can_access_activity_record`, `user_can_create_activity_record`, `user_can_modify_activity_record`, `user_can_delete_activity_record`.
+   - Candidate choice selectors: `get_candidate_sites_for_data_entry`, `get_candidate_periods_for_site`, `get_candidate_activities_for_data_entry`, `get_candidate_units_for_activity`.
+   - Audit logging helper: `log_activity_record_event` recording `ACTIVITY_RECORD_CREATED`, `ACTIVITY_RECORD_UPDATED`, `ACTIVITY_RECORD_DELETED` events to `AuthAuditLog`.
+4. **Forms Layer (`apps/core/data_entry_forms.py`)**:
+   - `ActivityRecordForm`: Dynamically scopes all foreign key choices (`site`, `reporting_period`, `activity`, `unit`) to the user's active permissions. Auto-selects single site / open period. Validates anti-tampering server-side.
+   - `ActivityRecordFilterForm`: Responsive toolbar filter supporting site, period, category, status, date range, and keyword search.
+5. **Views & Routing (`apps/core/data_entry_views.py` & `urls.py`)**:
+   - `activity_record_list_view` (`/data-entry/`): Operational ledger with 4 KPI summary cards (Total, Draft, Ready, Submitted/Approved), filter toolbar, table, and pagination.
+   - `activity_record_create_view` (`/data-entry/create/`): Validated creation form supporting draft saving and ready submission.
+   - `activity_record_detail_view` (`/data-entry/<id>/`): High-fidelity telemetry inspection with full audit trail, downstream Phase 09 evidence integration hook, and Phase 10 emissions calculation placeholder.
+   - `activity_record_edit_view` (`/data-entry/<id>/edit/`): Scoped edit view with locked-state guards.
+   - `activity_record_delete_view` (`/data-entry/<id>/delete/`): Safe deletion of draft records only.
+   - `activity_units_api_view` (`/data-entry/api/activity-units/`): Dynamic JSON API endpoint enabling reactive unit selection in vanilla JavaScript when activity changes.
+6. **Site Manager Workspace Integration**:
+   - Updated `apps/core/dashboard_services.py` to aggregate real `draft_records_count` and `ready_records_count` without fabrication.
+   - Updated `templates/dashboards/site_manager.html` to activate the "Data Entry" button in authorized site tables and display actionable pending draft notices.
+   - Linked sidebar navigation item "ESG Data Entry" and "My Activity Data".
+7. **Database Migrations**:
+   - Created and applied `apps/core/migrations/0006_alter_authauditlog_event_type_activityrecord.py`. Zero pending migrations (`makemigrations --check` clean).
 
+---
+
+## 5. Verification & Test Telemetry (Phase 08)
+
+### Django System Check
+```text
+System check identified no issues (0 silenced).
+Result: PASS
+```
+
+### Migration Check (`makemigrations --check`)
+```text
+No changes detected
+Result: PASS (0 pending schema migrations)
+```
+
+### Phase 08 Automated Test Suite (`tests/test_phase08_esg_data_entry.py`)
+```text
+Ran 28 tests in 9.804s
+OK
+Result: 28 Passed, 0 Failed, 0 Errors
+```
+**Test Coverage Matrix:**
+- `Model Constraints & Validation`: Non-negative quantity CheckConstraint, unit permissibility against ActivityMaster, measurement date boundaries, cross-organizational boundary alignment, inactive activity rejection.
+- `Scoped Querysets`: Site Manager strictly sees assigned sites' records; Subsidiary Manager sees division sites' records; Auditor and MEIL Operator have universal visibility.
+- `Anti-IDOR & Zero Client Trust`: Tampered `site_id`, `reporting_period_id`, `activity_id` rejected; direct access to foreign records returns `403 Forbidden`.
+- `Workflow State Enforcement`: Site Manager can edit `DRAFT`, `READY`, `REJECTED`; edits blocked on `SUBMITTED`, `VERIFIED`, `APPROVED` records and closed periods.
+- `Draft Deletion Protection`: `DRAFT` records can be deleted; deleting `READY` or `SUBMITTED` records is rejected.
+- `Candidate Choice Selectors`: Restricted dropdowns for sites, periods, activities, and allowed units.
+- `Dynamic AJAX API`: Permitted units endpoint returns allowed units for selected activity.
+- `Audit Lineage`: `ACTIVITY_RECORD_CREATED`, `UPDATED`, `DELETED` logged to `AuthAuditLog`.
+
+### Full Monolith Regression Suite (`manage.py test`)
+```text
+Ran 226 tests in 258.001s
+OK (Found 226 tests, 0 failures, 0 errors)
+Result: 100% PASS (Phases 01–08 fully passing)
+```
+
+### Live E2E HTTP Verification (`tests/test_live_e2e.py`)
+```text
+[PASS] site_manager accesses /data-entry/ (Status 200)
+[PASS] site_manager accesses /data-entry/create/ (Status 200, unassigned sites excluded)
+[PASS] site_manager queries /data-entry/api/activity-units/?activity_id=1 (Status 200, returns units)
+[PASS] site_manager creates draft ActivityRecord (Status 302 -> redirected to detail)
+[PASS] site_manager views ActivityRecord detail (Status 200, telemetry & audit rendered)
+[PASS] IDOR defense: site_manager attempts to create record for unassigned site (Rejected)
+[PASS] site_manager edits ActivityRecord to READY (Status 302 -> updated)
+[PASS] auditor accesses /data-entry/ (Status 200, read-only)
+[PASS] auditor attempts /data-entry/create/ (Status 403 Forbidden)
+[PASS] anonymous user attempts /data-entry/ (Status 302 redirect to login)
+ALL 81 LIVE E2E HTTP VERIFICATIONS PASSED SUCCESSFULLY!
+```
+
+---
+
+# Phase 09 — Evidence Management
+
+**Status:** IMPLEMENTED & VERIFIED  
+**Date:** October 7, 2026  
+**Sign-off:** Antigravity Agentic Pair Programmer
+
+---
+
+## 1. Overview & Architecture
+
+Phase 09 establishes the authoritative supporting evidence layer for the MEIL ESG Control Tower. Supporting documents (fuel invoices, utility bills, meter reading sheets, waste manifests, weighbridge slips, lab reports) are now first-class, tamper-evident domain entities directly linked to operational `ActivityRecord` telemetry.
+
+```text
+MEIL Enterprise
+      ↓
+Company / Subsidiary
+      ↓
+Project
+      ↓
+Operational Site
+      ↓
+Reporting Period
+      ↓
+Activity Master
+      ↓
+Activity Record
+      ↓
+Evidence (Active / Retired)
+      ↓
+Magic Bytes Validation + SHA-256 Fingerprint + Scoped Storage
+      ↓
+Future OCR (Phase 11) / Validation (Phase 10) / Trace This Number Lineage
+```
+
+---
+
+## 2. Key Architectural Deliverables
+
+1. **Domain Model (`Evidence` in `apps/core/models.py`)**:
+   - `activity_record` (`ForeignKey` to `ActivityRecord`, `on_delete=models.PROTECT`, `related_name="evidence_files"`).
+   - `file` (`FileField(upload_to=evidence_file_upload_path)`).
+   - `evidence_type` (`CharField(max_length=30)`, choices from `EvidenceType`: `INVOICE`, `UTILITY_BILL`, `METER_READING`, `FUEL_CHALLAN`, `WASTE_MANIFEST`, `TRANSPORT_LOG`, `WEIGHBRIDGE_SLIP`, `LAB_REPORT`, `PURCHASE_ORDER`, `SUPPLIER_CERTIFICATE`, `CONTRACT`, `ERP_EXPORT`, `OTHER`).
+   - `original_filename` (`CharField(max_length=255)`), `file_type` (`CharField(max_length=100)`), `file_size` (`PositiveBigIntegerField`).
+   - `file_hash` (`CharField(max_length=64)`, indexed SHA-256 cryptographic checksum).
+   - `description` (`TextField(blank=True)`).
+   - `status` (`CharField(max_length=20)`, choices `EvidenceStatus.ACTIVE`, `EvidenceStatus.RETIRED`, default `ACTIVE`).
+   - `retirement_reason` (`TextField(blank=True)`), `retired_at` (`DateTimeField(null=True)`), `retired_by` (`ForeignKey` to `User`, `SET_NULL`).
+   - `ocr_metadata` (`JSONField(default=dict, blank=True)`), `validation_metadata` (`JSONField(default=dict, blank=True)`).
+   - `uploaded_by` (`ForeignKey` to `User`, `SET_NULL`), `created_at`, `updated_at`.
+   - Database constraint: `CheckConstraint(check=Q(file_size__gt=0), name="check_evidence_file_size_positive")`.
+   - Composite and lookup indexes:
+     - `idx_ev_rec_status`: `['activity_record', 'status']`
+     - `idx_ev_type`: `['evidence_type']`
+     - `idx_ev_created`: `['-created_at']`
+     - `idx_ev_hash`: `['file_hash']`
+   - Added convenience properties to `ActivityRecord`: `evidence_count`, `total_evidence_count`, `has_evidence`.
+
+2. **File Security & Validation Pipeline (`apps/core/evidence_services.py`)**:
+   - **Allowed Extensions**: `.pdf`, `.png`, `.jpg`, `.jpeg`, `.xlsx`, `.xls`, `.docx`, `.csv`.
+   - **Size Limit**: Configurable max 25 MB (`MAX_EVIDENCE_FILE_SIZE_BYTES = 25 * 1024 * 1024`). Rejects 0-byte uploads.
+   - **Magic Bytes Validation**: Verifies binary headers against spoofed content types (`%PDF-` for PDF, `\x89PNG` for PNG, `\xff\xd8\xff` for JPEG, `PK\x03\x04` for ZIP/OOXML formats).
+   - **Sanitized Filenames & Partitioned Storage**: `evidence/<site_code>/<period_code>/rec_<record_id>/<uuid12>_<safe_filename>` eliminating directory traversal, illegal characters, and file collision.
+   - **Cryptographic Fingerprinting**: Full SHA-256 hash computed on upload stream for immutable audit trail verification.
+
+3. **Service Layer & Authorization Guards (`apps/core/evidence_services.py`)**:
+   - Scoped Querysets: `get_accessible_evidence(user)` (Site Manager strictly constrained to assigned sites; Subsidiary Manager to child division sites; Operator and Auditor universal).
+   - Object-Level Authorization Guards:
+     - `user_can_access_evidence`: Verifies read access down to the operational site assignment.
+     - `user_can_upload_evidence`: Verifies user has site-level data entry authority, reporting period is open, and record status is editable (`DRAFT`, `READY`, `REJECTED`).
+     - `user_can_download_evidence`: Governs authenticated binary downloading.
+     - `user_can_retire_evidence`: Controls soft retirement with required audit justification.
+     - `user_can_delete_evidence`: Strictly permits hard deletion only for `DRAFT` records created by user.
+   - Transactional Mutation Services: `create_evidence_record`, `retire_evidence_record`, `delete_evidence_record`.
+   - Immutable Security Auditing (`log_evidence_event`): Logs `EVIDENCE_UPLOADED`, `EVIDENCE_DOWNLOADED`, `EVIDENCE_RETIRED`, `EVIDENCE_DELETED` to `AuthAuditLog`.
+
+4. **Forms Layer (`apps/core/evidence_forms.py`)**:
+   - `EvidenceUploadForm`: Validates file upload, evidence taxonomy category, optional notes.
+   - `EvidenceRetireForm`: Enforces mandatory retirement reason for audit compliance.
+   - `EvidenceFilterForm`: Filter toolbar supporting site, period, evidence type, status, and search query.
+
+5. **Views & Routing (`apps/core/evidence_views.py` & `apps/core/urls.py`)**:
+   - `evidence_list_view` (`/evidence/`): Central evidence repository with 4 summary KPI cards (Total Documents, Active Evidence, Retired Files, Storage Footprint), filter bar, and paginated table.
+   - `evidence_detail_view` (`/evidence/<id>/`): High-fidelity document inspection displaying complete ESG lineage path, SHA-256 audit fingerprint, file metadata, and downstream OCR/validation hooks.
+   - `evidence_upload_view` (`/data-entry/<id>/evidence/upload/`): Context-aware upload form anchored directly to the parent `ActivityRecord`.
+   - `evidence_download_view` (`/evidence/<id>/download/`): Authenticated binary download with `Content-Disposition: attachment` and audit event logging.
+   - `evidence_preview_view` (`/evidence/<id>/preview/`): Inline preview (`Content-Disposition: inline`) for browser-viewable formats (PDF, PNG, JPEG).
+   - `evidence_retire_view` (`/evidence/<id>/retire/`): Soft retirement confirmation requiring audit justification.
+   - `evidence_delete_view` (`/data-entry/<id>/evidence/<ev_id>/delete/`): Safe draft deletion view.
+
+6. **UI Templates & Monolith Integrations**:
+   - Created `templates/evidence/evidence_list.html`, `evidence_detail.html`, `evidence_upload.html`, `evidence_retire_confirm.html`.
+   - Updated `templates/data_entry/record_detail.html`: Enhanced "Supporting Audit Evidence" card with attached document table, SHA-256 hashes, status badges, download/preview links, and "+ Upload Evidence" button.
+   - Updated `apps/core/dashboard_services.py`: Aggregates real `pending_evidence_count` (`records_qs.exclude(evidence_files__status=EvidenceStatus.ACTIVE).distinct().count()`).
+   - Navigation: Wired `/evidence/` in sidebar menus for Site Manager, Auditor, and MEIL Operator.
+   - Django Admin: Registered `EvidenceAdmin` with filters, search, and `EvidenceInline` on `ActivityRecordAdmin`.
+
+7. **Database Migrations**:
+   - Created and applied `apps/core/migrations/0007_alter_authauditlog_event_type_evidence.py`.
+   - `makemigrations --check` clean (0 pending migrations).
+
+---
+
+## 3. Verification & Test Telemetry (Phase 09)
+
+### Django System Check
+```text
+System check identified no issues (0 silenced).
+Result: PASS
+```
+
+### Migration Check (`makemigrations --check`)
+```text
+No changes detected
+Result: PASS (0 pending schema migrations)
+```
+
+### Dedicated Phase 09 Automated Test Suite (`tests/test_phase09_evidence_management.py`)
+```text
+Ran 17 tests in 44.520s
+OK
+Result: 17 Passed, 0 Failed, 0 Errors
+```
+
+### Full Monolith Regression Suite (`manage.py test`)
+```text
+Ran 243 tests in 294.478s
+OK (Found 243 tests, 0 failures, 0 errors)
+Result: 100% PASS (Phases 01–09 fully passing)
+```
+
+### Live E2E HTTP Verification (`tests/test_live_e2e.py`)
+```text
+[PASS] site_manager accesses /evidence/ (Status 200, KPI cards rendered)
+[PASS] site_manager accesses /data-entry/7/evidence/upload/ (Status 200)
+[PASS] site_manager uploads PDF invoice (Status 200, redirected to record detail)
+[PASS] Evidence table on ActivityRecord detail displays uploaded file
+[PASS] site_manager accesses /evidence/3/ detail (Status 200, SHA-256 and lineage displayed)
+[PASS] site_manager downloads /evidence/3/download/ (Status 200, attachment headers verified)
+[PASS] site_manager previews /evidence/3/preview/ (Status 200, inline application/pdf)
+[PASS] IDOR defense: site_manager attempts upload against unassigned site 2 record (Status 403 Forbidden)
+[PASS] auditor accesses /evidence/ (Status 200, read-only)
+[PASS] auditor downloads /evidence/3/download/ (Status 200)
+[PASS] auditor attempts /data-entry/7/evidence/upload/ (Status 403 Forbidden)
+[PASS] anonymous user attempts /evidence/ (Status 302 redirect to login)
+[PASS] site_manager retires evidence with justification (Status 200, marked RETIRED)
+ALL 94 LIVE E2E HTTP VERIFICATIONS PASSED SUCCESSFULLY!
+```
+
+---
+
+---
+
+## 4. Phase 10 Implementation Status: ESG VALIDATION ENGINE (VERIFIED COMPLETE)
+
+### Overview
+Engineered the centralized, deterministic **ESG Validation Engine** evaluating ESG Activity Records and supporting Evidence across Layers 1–7 prior to submission, review, anomaly detection, and BRSR calculation.
+
+### Key Architectural Deliverables
+1. **Domain Models & Enums (`apps/core/models.py`)**:
+   - `ValidationSeverity`: `ERROR` (blocks submission), `WARNING` (advisory notice), `INFO` (informational context).
+   - `ValidationCategory`: `STRUCTURAL`, `SCOPE`, `PERIOD`, `ACTIVITY`, `EVIDENCE`, `CONSISTENCY`, `WORKFLOW`.
+   - `ValidationStatus`: `UNVALIDATED`, `VALID`, `WARNING` (valid with warnings), `INVALID` (blocking errors detected).
+   - `ValidationRule`: Governed catalog model (`code`, `name`, `description`, `category`, `severity`, `is_active`, `is_blocking`, `applicable_activity`, `rule_parameters`, `version`, `effective_from`). Protected against deletion via `on_delete=models.PROTECT`.
+   - `ValidationRun`: Immutable evaluation ledger (`activity_record`, `run_number`, `status`, `total_rules_evaluated`, `error_count`, `warning_count`, `info_count`, `summary_message`, `executed_by`, `executed_at`, `execution_duration_ms`, `rule_version_snapshot`). `UniqueConstraint` on `['activity_record', 'run_number']`.
+   - `ValidationResult`: Granular rule findings (`validation_run`, `activity_record`, `rule`, `severity`, `is_blocking`, `field_name`, `message`, `context_data`).
+   - `ActivityRecord` Enhancements: Added `validation_status`, `last_validated_at`, `idx_rec_val_status` index, and properties (`is_validated`, `has_validation_errors`, `latest_validation_run`, `validation_badge_class`, `can_submit_for_review`). Updated `save()` to bypass full `clean()` when persisting validation metadata via `update_fields`.
+   - `AuthAuditLog`: Added event types `VALIDATION_EXECUTED`, `VALIDATION_RULE_CREATED`, `VALIDATION_RULE_UPDATED`.
+
+2. **Validation Service Layer (`apps/core/validation_services.py`)**:
+   - 21 deterministic rule validators registered without `eval()` or `exec()`:
+     - **Layer 1 (Structural)**: `STRUCT_REQ_QUANTITY`, `STRUCT_REQ_UNIT`, `STRUCT_REQ_DATE`, `STRUCT_REQ_ACTIVITY`, `STRUCT_REQ_SITE`, `STRUCT_REQ_PERIOD`.
+     - **Layer 2 (Scope)**: `SCOPE_SITE_ACTIVE`, `SCOPE_HIERARCHY_CONSISTENT`.
+     - **Layer 3 (Period)**: `PERIOD_STATUS_OPEN`, `PERIOD_DATE_BOUNDS`.
+     - **Layer 4 (Activity)**: `ACT_STATUS_ACTIVE`, `ACT_UNIT_ALLOWED`, `ACT_REQ_DATE`.
+     - **Layer 5 (Evidence)**: `EVID_MANDATORY_CHECK`, `EVID_ACTIVE_EXISTS`.
+     - **Layer 6 (Consistency & Duplicates)**: `CONSIST_POSITIVE_QUANTITY`, `CONSIST_NONZERO_QUANTITY`, `CONSIST_VALID_DECIMAL`, `CONSIST_DETERMINISTIC_DUPLICATE`.
+     - **Layer 7 (Workflow Readiness)**: `WORKFLOW_STATUS_VALID`, `WORKFLOW_NO_BLOCKING_ERRORS`.
+   - Transaction-safe runner `execute_validation_run(record, executed_by, request)` with execution timing, automatic status update, demotion of `READY` to `DRAFT` upon blocking errors, and audit event logging.
+   - Batch runner `validate_activity_records(records_qs, executed_by, request)` evaluating records in bulk.
+   - Scoped authorization helpers: `user_can_validate_record`, `user_can_manage_validation_rules`, `user_can_view_validation_rules`.
+   - Idempotent database seeder `seed_standard_validation_rules()`.
+
+3. **Forms & Views (`apps/core/validation_forms.py`, `validation_views.py`, `urls.py`)**:
+   - `activity_record_validate_view` (`/data-entry/<id>/validate/`): Dual-mode POST-only view supporting reactive AJAX JSON responses and traditional HTTP redirects.
+   - `activity_record_batch_validate_view` (`/data-entry/batch-validate/`): POST-only batch validation for records in user's scope.
+   - `validation_run_detail_view` (`/validation/runs/<id>/`): Immutable audit report of a validation run with KPI counters, outcome badge, and findings table.
+   - `validation_rule_list_view` (`/validation/rules/`): Governed rules catalog with category/severity filters and statistics.
+   - `validation_rule_detail_view` (`/validation/rules/<id>/`), `validation_rule_edit_view`, `validation_rule_toggle_view`.
+
+4. **UI Templates & Monolith Integrations**:
+   - `templates/data_entry/record_detail.html`: Added Phase 10 Validation Engine KPI metric, status badge, granular findings table, historical runs accordion, and AJAX/Form "Run Validation" / "Re-Validate" action trigger.
+   - `templates/data_entry/record_list.html`: Added Validation Status filter dropdown, Validation badge table column, and Batch Validate button.
+   - Created `templates/validation/run_detail.html`, `rule_list.html`, `rule_detail.html`, `rule_form.html`.
+   - Registered `ValidationRuleAdmin`, `ValidationRunAdmin`, `ValidationResultAdmin` in Django Admin.
+
+5. **Database Migration**:
+   - Created and applied `apps/core/migrations/0008_validationresult_validationrule_validationrun_and_more.py`.
+   - `makemigrations --check` clean (0 pending migrations).
+
+---
+
+## 5. Verification & Test Telemetry (Phase 10)
+
+### Django System Check
+```text
+.venv\Scripts\python.exe manage.py check
+System check identified no issues (0 silenced).
+Result: PASS
+```
+
+### Migration Check (`makemigrations --check`)
+```text
+.venv\Scripts\python.exe manage.py makemigrations --check
+No changes detected
+Result: PASS (0 pending schema migrations)
+```
+
+### Dedicated Phase 10 Automated Test Suite (`tests/test_phase10_validation_engine.py`)
+```text
+.venv\Scripts\python.exe manage.py test tests.test_phase10_validation_engine
+Ran 32 tests in 58.742s
+OK
+Result: 32 Passed, 0 Failed, 0 Errors
+```
+**Test Coverage Matrix:**
+- `Models & Integrity`: ValidationRule, ValidationRun, ValidationResult, UniqueConstraint on run number, PROTECT foreign keys.
+- `Layer 1-7 Deterministic Rules`: Structural, Scope, Period, Activity Master, Evidence requirements, Consistency/Positive quantities, Deterministic duplicate warnings, Workflow readiness.
+- `Lifecycle & Workflow Gates`: Demotion of `READY` to `DRAFT` upon blocking validation failure; preservation of immutable run history across multiple revalidation cycles.
+- `Batch Validation`: Bulk validation of scoped querysets.
+- `Anti-IDOR & Zero Client Trust`: Site Manager blocked from validating foreign or unassigned site records (HTTP 404/403).
+- `Governance & RBAC`: Site Manager blocked from rules catalog (403); Auditor granted read-only visibility (200) but blocked from mutation/toggle (403); ESG Manager and Operator granted full governance.
+
+### Full Monolith Regression Suite (`manage.py test`)
+```text
+.venv\Scripts\python.exe manage.py test
+Ran 275 tests in 314.653s
+OK (Found 275 tests, 0 failures, 0 errors)
+Result: 100% PASS (Phases 01–10 fully passing)
+```
+
+### Live Server Verification (`tests/verify_phase10_live.py`)
+```text
+.venv\Scripts\python.exe tests/verify_phase10_live.py
+[OK] Site Manager authenticated successfully.
+[OK] Activity Records catalog loaded with validation telemetry and filters.
+[OK] Found accessible Activity Record ID: 7
+[OK] Activity Record detail contains ESG Validation Engine section & action trigger.
+[OK] Validation executed successfully. Response payload: {"success": true, "run_id": 3, "run_number": 3, "status": "INVALID", ...}
+[OK] Record detail displays fresh validation findings, metrics, and audit summary.
+[OK] Validation Run #3 audit detail loaded with full rule lineage and findings.
+[OK] Server enforced strict authorization defense (HTTP 404) against unassigned record.
+[OK] Site Manager restricted from accessing Validation Rules Ledger (HTTP 403 Forbidden).
+[OK] ESG Manager authenticated successfully.
+[OK] Validation Rules catalog rendered with standard rules across Layers 1-7.
+[OK] Rule #14 state toggled successfully and restored.
+[OK] Auditor authenticated successfully.
+[OK] Auditor granted read-only visibility to Validation Rules catalog.
+[OK] Auditor alteration blocked with HTTP 403 Forbidden (Strict Read-Only Enforcement).
+[OK] Auditor verified Validation Run #3 audit lineage successfully.
+ALL 15 LIVE VERIFICATION CHECKS PASSED PERFECTLY!
+```
+
+---
+
+## 6. Next Recommended Phase
+
+**PHASE 11 — OCR (OPTICAL CHARACTER RECOGNITION)**
+- Automated data extraction from attached Evidence documents (PDFs, utility bills, fuel invoices).
+- Pre-population and cross-verification of extracted quantities against Activity Records.
+- Feeds into Phase 10 Validation Engine for automated invoice vs. record consistency verification.

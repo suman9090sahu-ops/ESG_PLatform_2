@@ -67,3 +67,72 @@ The **MEIL ESG CONTROL TOWER** operates across four tiers of governance:
 | **`ESG_MANAGER`** | Universal Enterprise Read Scope | Read-only access to complete organizational hierarchy. Structural modifications restricted to MEIL_OPERATOR. |
 | **`AUDITOR`** | Universal Enterprise Assurance Scope | Strictly **read-only**. Blocked from create, edit, or deactivation operations across all organizational entities. |
 | **`MEIL_OPERATOR`** | Full Enterprise Operational Scope | Full CRUD authority across Companies, Subsidiaries, Projects, and Operational Sites. |
+
+---
+
+## 4. Phase 09 Supporting Evidence Lifecycle Workflow
+
+```text
+[SITE MANAGER]
+      │
+      ├─► [Selects/Creates ActivityRecord]
+      │         │
+      │         ▼
+      ├─► [Uploads Supporting Evidence File (PDF/JPEG/PNG/XLSX/DOCX/CSV)]
+      │         │
+      │         ▼
+      ├─► [File Validation: Magic Bytes Check + SHA-256 Checksum + Safe Storage Path]
+      │         │
+      │         ▼
+      ├─► [Evidence Status: ACTIVE (Linked to ActivityRecord via FK with PROTECT)]
+      │         │
+      │         ▼
+      ├─► [Activity Status Progression: DRAFT ➔ READY ➔ SUBMITTED]
+      │
+      └─► [Correction / Retirement Path: If invoice was superseded, soft-retires with reason;
+           SHA-256 hash & original file permanently preserved for audit compliance]
+```
+
+---
+
+## 5. Phase 10 ESG Validation Engine Quality Gate Workflow
+
+```text
+[SITE MANAGER DATA ENTRY]
+          │
+          ▼
+    Activity Record (Draft)
+          │
+          ├──────────────┐
+          ▼              ▼
+   Attached Evidence   Activity Master Rules
+          │              │
+          └──────┬───────┘
+                 │
+                 ▼
+     [ESG VALIDATION ENGINE]
+     Layer 1: Structural (Presence, types, positive quantity, valid units)
+     Layer 2: Scope (Site active, user assigned, project/company hierarchy)
+     Layer 3: Period (Open status, measurement date inside reporting dates)
+     Layer 4: Activity (Compatible unit taxonomy, measurement date flag)
+     Layer 5: Evidence (Mandatory evidence attached, active status)
+     Layer 6: Consistency & Deterministic Duplicates (Same site/date/activity)
+     Layer 7: Workflow Readiness (Blocking errors check)
+                 │
+                 ▼
+       Validation Run & Findings Created (Immutable)
+                 │
+       ┌─────────┴─────────┐
+       ▼                   ▼
+ [ERRORS DETECTED]   [NO BLOCKING ERRORS]
+   Status: INVALID     Status: VALID or WARNING
+   Auto-demotes to     Eligible for Submission
+   DRAFT if READY      (Phase 11 OCR / Phase 12 Review)
+       │
+       ▼
+  Site Manager
+  Corrects Data / Evidence
+       │
+       ▼
+  Re-Validate (New Run Created, History Preserved)
+```

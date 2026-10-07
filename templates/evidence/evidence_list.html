@@ -1,0 +1,259 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block page_actions %}
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'core:site_manager_dashboard' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="icon-screen-desktop me-1"></i> Site Dashboard
+    </a>
+    <a href="{% url 'core:activity_record_list' %}" class="btn btn-sm btn-outline-primary">
+      <i class="icon-docs me-1"></i> ESG Activity Ledger
+    </a>
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <!-- Metric KPI Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body p-3">
+          <div class="text-muted small text-uppercase fw-semibold">Total Documents</div>
+          <div class="h3 fw-bold mb-0 text-dark mt-1">{{ total_docs }}</div>
+          <small class="text-muted">Scoped Evidence Repository</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+      <div class="card border-0 shadow-sm h-100 border-start border-4 border-success">
+        <div class="card-body p-3">
+          <div class="text-muted small text-uppercase fw-semibold">Active Evidence</div>
+          <div class="h3 fw-bold mb-0 text-success mt-1">{{ active_docs }}</div>
+          <small class="text-success"><i class="icon-check me-1"></i>Audit Ready</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+      <div class="card border-0 shadow-sm h-100 border-start border-4 border-secondary">
+        <div class="card-body p-3">
+          <div class="text-muted small text-uppercase fw-semibold">Retired / Superseded</div>
+          <div class="h3 fw-bold mb-0 text-secondary mt-1">{{ retired_docs }}</div>
+          <small class="text-muted">Preserved Regulatory History</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+      <div class="card border-0 shadow-sm h-100 border-start border-4 border-info">
+        <div class="card-body p-3">
+          <div class="text-muted small text-uppercase fw-semibold">Total Vault Size</div>
+          <div class="h3 fw-bold mb-0 text-info mt-1">{{ total_storage_formatted }}</div>
+          <small class="text-info"><i class="icon-folder me-1"></i>Secure Local Storage</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter & Search Toolbar Card -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+      <h6 class="mb-0 fw-bold text-dark">
+        <i class="icon-filter me-2 text-primary"></i> Filter Audit Evidence Documents
+      </h6>
+      <span class="badge bg-light text-muted border">
+        Server-Enforced Scope
+      </span>
+    </div>
+    <div class="card-body p-3">
+      <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label small text-muted mb-1">Operational Site</label>
+          {{ filter_form.site }}
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small text-muted mb-1">Reporting Cycle</label>
+          {{ filter_form.reporting_period }}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small text-muted mb-1">Evidence Category</label>
+          {{ filter_form.evidence_type }}
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small text-muted mb-1">Status</label>
+          {{ filter_form.status }}
+        </div>
+        <div class="col-md-2 d-flex gap-1">
+          <button type="submit" class="btn btn-sm btn-primary flex-fill">
+            <i class="icon-magnifier me-1"></i> Apply
+          </button>
+          <a href="{% url 'core:evidence_list' %}" class="btn btn-sm btn-outline-secondary" title="Reset Filters">
+            <i class="icon-refresh"></i>
+          </a>
+        </div>
+        <div class="col-12 mt-2">
+          <div class="input-group input-group-sm">
+            <span class="input-group-text bg-white"><i class="icon-magnifier text-muted"></i></span>
+            {{ filter_form.q }}
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Evidence Document Table Card -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+      <h6 class="mb-0 fw-bold text-dark">
+        <i class="icon-folder-alt text-primary me-2"></i> Supporting Evidence Ledger
+      </h6>
+      <span class="small text-muted">
+        Showing {{ evidence_list.start_index|default:0 }}–{{ evidence_list.end_index|default:0 }} of {{ total_docs }} documents
+      </span>
+    </div>
+    <div class="card-body p-0">
+      {% if evidence_list %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light small">
+              <tr>
+                <th style="min-width: 220px;">Document File</th>
+                <th>Category</th>
+                <th style="min-width: 200px;">Supported Activity Record</th>
+                <th>File Size &amp; Integrity</th>
+                <th>Uploaded By</th>
+                <th>Status</th>
+                <th class="text-end" style="min-width: 140px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="small">
+              {% for ev in evidence_list %}
+                <tr>
+                  <td>
+                    <div class="d-flex align-items-center">
+                      {% if ev.is_pdf %}
+                        <i class="icon-doc text-danger fs-4 me-2"></i>
+                      {% elif ev.is_image %}
+                        <i class="icon-picture text-info fs-4 me-2"></i>
+                      {% else %}
+                        <i class="icon-paper-clip text-primary fs-4 me-2"></i>
+                      {% endif %}
+                      <div>
+                        <a href="{% url 'core:evidence_detail' ev.id %}" class="fw-bold text-dark text-decoration-none d-block">
+                          {{ ev.original_filename }}
+                        </a>
+                        <span class="text-muted font-monospace small">#EV-{{ ev.id|stringformat:"05d" }}</span>
+                        {% if ev.description %}
+                          <span class="text-muted small d-block text-truncate" style="max-width: 240px;">{{ ev.description }}</span>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="badge bg-light text-dark border">{{ ev.get_evidence_type_display }}</span>
+                  </td>
+                  <td>
+                    <div>
+                      <a href="{% url 'core:activity_record_detail' ev.activity_record.id %}" class="fw-semibold text-primary text-decoration-none">
+                        {{ ev.activity_record.activity.name }}
+                      </a>
+                      <div class="small text-muted">
+                        <i class="icon-location-pin me-1"></i>{{ ev.site.name }}
+                        <span class="mx-1">•</span>
+                        {{ ev.reporting_period.code }}
+                      </div>
+                      <div class="small text-dark fw-bold">
+                        {{ ev.activity_record.quantity }} {{ ev.activity_record.unit.symbol }}
+                        <span class="text-muted fw-normal">({{ ev.activity_record.measurement_date|date:"Y-m-d" }})</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="text-dark fw-semibold">{{ ev.file_size_formatted }}</div>
+                    {% if ev.file_hash %}
+                      <div class="small text-muted font-monospace text-truncate" style="max-width: 120px;" title="SHA-256: {{ ev.file_hash }}">
+                        {{ ev.file_hash|slice:":12" }}...
+                      </div>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <div class="text-dark">{{ ev.uploaded_by.username|default:"System" }}</div>
+                    <div class="text-muted small">{{ ev.created_at|date:"M d, Y H:i" }}</div>
+                  </td>
+                  <td>
+                    <span class="badge {{ ev.status_badge_class }}">{{ ev.get_status_display }}</span>
+                  </td>
+                  <td class="text-end">
+                    <div class="btn-group btn-group-sm">
+                      {% if ev.is_previewable %}
+                        <a href="{% url 'core:evidence_preview' ev.id %}" target="_blank" class="btn btn-outline-info" title="Preview file inline">
+                          <i class="icon-eye"></i>
+                        </a>
+                      {% endif %}
+                      <a href="{% url 'core:evidence_download' ev.id %}" class="btn btn-outline-primary" title="Download file">
+                        <i class="icon-cloud-download"></i>
+                      </a>
+                      <a href="{% url 'core:evidence_detail' ev.id %}" class="btn btn-outline-secondary" title="Inspect metadata &amp; lineage">
+                        <i class="icon-info"></i>
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if evidence_list.has_other_pages %}
+          <div class="card-footer bg-white border-top py-3 d-flex justify-content-between align-items-center">
+            <span class="small text-muted">Page {{ evidence_list.number }} of {{ evidence_list.paginator.num_pages }}</span>
+            <ul class="pagination pagination-sm mb-0">
+              {% if evidence_list.has_previous %}
+                <li class="page-item">
+                  <a class="page-link" href="?page={{ evidence_list.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Previous</a>
+                </li>
+              {% else %}
+                <li class="page-item disabled"><span class="page-link">Previous</span></li>
+              {% endif %}
+
+              {% for p in evidence_list.paginator.page_range %}
+                {% if p == evidence_list.number %}
+                  <li class="page-item active"><span class="page-link">{{ p }}</span></li>
+                {% elif p > evidence_list.number|add:"-3" and p < evidence_list.number|add:"3" %}
+                  <li class="page-item">
+                    <a class="page-link" href="?page={{ p }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ p }}</a>
+                  </li>
+                {% endif %}
+              {% endfor %}
+
+              {% if evidence_list.has_next %}
+                <li class="page-item">
+                  <a class="page-link" href="?page={{ evidence_list.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Next</a>
+                </li>
+              {% else %}
+                <li class="page-item disabled"><span class="page-link">Next</span></li>
+              {% endif %}
+            </ul>
+          </div>
+        {% endif %}
+      {% else %}
+        <div class="p-5 text-center">
+          <div class="mb-3">
+            <i class="icon-folder text-muted display-4"></i>
+          </div>
+          <h5 class="fw-bold text-dark mb-1">No Supporting Documents Found</h5>
+          <p class="text-muted small mb-3" style="max-width: 480px; margin: 0 auto;">
+            No evidence records matched your current query or assigned organizational scope. Supporting documents can be attached directly to Activity Records.
+          </p>
+          <a href="{% url 'core:activity_record_list' %}" class="btn btn-sm btn-primary">
+            <i class="icon-docs me-1"></i> Go to ESG Activity Records
+          </a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

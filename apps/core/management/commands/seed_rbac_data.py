@@ -561,8 +561,30 @@ class Command(BaseCommand):
                 },
             )
             act.allowed_units.set(allowed)
+
+            # Phase 10 validation metadata enrichment
+            if act.code in ["FUEL-DIESEL-STAT", "ELEC-GRID", "WASTE-HAZARDOUS"]:
+                evid_types = ["INVOICE"]
+                if act.code == "FUEL-DIESEL-STAT":
+                    evid_types = ["INVOICE", "FUEL_CHALLAN"]
+                elif act.code == "ELEC-GRID":
+                    evid_types = ["UTILITY_BILL", "INVOICE", "METER_READING"]
+                elif act.code == "WASTE-HAZARDOUS":
+                    evid_types = ["WASTE_MANIFEST", "INVOICE"]
+                act.validation_rules = {
+                    "evidence_required": True,
+                    "required_evidence_types": evid_types,
+                }
+                act.save(update_fields=["validation_rules"])
+
             a_status = "Created" if created else "Exists"
             self.stdout.write(f"  Activity Master [{adata['code']}]: {a_status}")
 
-        self.stdout.write(self.style.SUCCESS("MEIL ESG RBAC and Activity Master Seeding successfully completed."))
+        # 6. Phase 10 Standard Validation Rules Seeding
+        self.stdout.write(self.style.NOTICE("\n--- Seeding Phase 10 Standard Validation Rules ---"))
+        from apps.core.validation_services import seed_standard_validation_rules
+        rules_created = seed_standard_validation_rules(user=operator_user)
+        self.stdout.write(f"  Standard Validation Rules: {rules_created} new rules seeded.")
+
+        self.stdout.write(self.style.SUCCESS("MEIL ESG RBAC, Activity Master, and Validation Engine Seeding successfully completed."))
 

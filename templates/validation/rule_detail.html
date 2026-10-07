@@ -1,0 +1,213 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block page_actions %}
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'core:validation_rule_list' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="icon-arrow-left me-1"></i> Rules Catalog
+    </a>
+    {% if can_manage %}
+      <a href="{% url 'core:validation_rule_edit' rule.id %}" class="btn btn-sm btn-warning">
+        <i class="icon-pencil me-1"></i> Edit Rule
+      </a>
+      <form method="post" action="{% url 'core:validation_rule_toggle' rule.id %}" class="d-inline" onsubmit="return confirm('Toggle active status for rule {{ rule.code }}?');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm {% if rule.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+          <i class="{% if rule.is_active %}icon-ban{% else %}icon-check{% endif %} me-1"></i>
+          {% if rule.is_active %}Deactivate Rule{% else %}Activate Rule{% endif %}
+        </button>
+      </form>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+  <div class="row g-4">
+    <!-- Left Column: Specification & Parameters -->
+    <div class="col-lg-8">
+
+      <!-- Specification Card -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center">
+            <i class="icon-shield text-primary me-2 fs-5"></i>
+            <div>
+              <h6 class="mb-0 fw-bold text-dark">Rule Specification</h6>
+              <span class="small text-muted">Deterministic Engine Registry Contract</span>
+            </div>
+          </div>
+          <span class="badge {{ rule.severity_badge_class }} fs-6 py-1 px-3">
+            {{ rule.get_severity_display }}
+          </span>
+        </div>
+        <div class="card-body p-4">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <span class="text-muted small d-block">Rule Identifier</span>
+              <code class="fs-5 fw-bold text-primary">{{ rule.code }}</code>
+            </div>
+            <div class="col-md-6">
+              <span class="text-muted small d-block">Rule Name</span>
+              <strong class="fs-6 text-dark">{{ rule.name }}</strong>
+            </div>
+            <div class="col-md-6">
+              <span class="text-muted small d-block">Layer / Category</span>
+              <span class="badge bg-light text-dark border fs-6">{{ rule.get_category_display }}</span>
+            </div>
+            <div class="col-md-6">
+              <span class="text-muted small d-block">Submission Blocking Policy</span>
+              {% if rule.is_blocking %}
+                <span class="badge bg-danger fs-6"><i class="icon-lock me-1"></i> Blocks Submission (Strict Gate)</span>
+              {% else %}
+                <span class="badge bg-secondary fs-6"><i class="icon-flag me-1"></i> Advisory Only</span>
+              {% endif %}
+            </div>
+            <div class="col-md-6">
+              <span class="text-muted small d-block">Applicable Activity Scope</span>
+              {% if rule.applicable_activity %}
+                <strong class="text-dark">{{ rule.applicable_activity.name }}</strong>
+                <code>({{ rule.applicable_activity.code }})</code>
+              {% else %}
+                <span class="badge bg-light text-primary border">Enterprise-Wide (All Activities)</span>
+              {% endif %}
+            </div>
+            <div class="col-md-6">
+              <span class="text-muted small d-block">Lifecycle Enforcement State</span>
+              {% if rule.is_active %}
+                <span class="badge bg-success fs-6"><i class="icon-check me-1"></i> Active in Validation Pipeline</span>
+              {% else %}
+                <span class="badge bg-secondary fs-6"><i class="icon-ban me-1"></i> Inactive (Bypassed)</span>
+              {% endif %}
+            </div>
+            <div class="col-12 mt-3 pt-3 border-top">
+              <span class="text-muted small d-block mb-1">Operational Description &amp; Rationale</span>
+              <div class="p-3 bg-light rounded text-dark small">
+                {{ rule.description|default:"No description provided." }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Configured Parameters Card -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-options text-info me-2"></i> Configured Rule Parameters (JSON)
+          </h6>
+        </div>
+        <div class="card-body p-3">
+          {% if rule.rule_parameters %}
+            <pre class="bg-light p-3 rounded text-dark font-monospace mb-0 small"><code>{{ rule.rule_parameters }}</code></pre>
+          {% else %}
+            <span class="text-muted small fst-italic">No custom JSON threshold parameters configured. Rule evaluates standard deterministic criteria.</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Recent Rule Findings -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-list text-primary me-2"></i> Recent Findings Generated by this Rule
+          </h6>
+          <span class="badge bg-light text-muted border">Latest {{ recent_results.count }}</span>
+        </div>
+        <div class="card-body p-0">
+          {% if recent_results %}
+            <div class="table-responsive">
+              <table class="table table-sm table-hover align-middle mb-0">
+                <thead class="bg-light small text-muted">
+                  <tr>
+                    <th>Record</th>
+                    <th>Severity</th>
+                    <th>Field</th>
+                    <th>Message</th>
+                    <th>Timestamp</th>
+                  </tr>
+                </thead>
+                <tbody class="small">
+                  {% for res in recent_results %}
+                    <tr>
+                      <td>
+                        <a href="{% url 'core:activity_record_detail' res.activity_record_id %}" class="fw-bold font-monospace">
+                          #{{ res.activity_record_id }}
+                        </a>
+                      </td>
+                      <td>
+                        <span class="badge {{ res.badge_class }}">{{ res.get_severity_display }}</span>
+                      </td>
+                      <td>
+                        <code>{{ res.field_name|default:"—" }}</code>
+                      </td>
+                      <td>
+                        <span class="text-dark">{{ res.message }}</span>
+                      </td>
+                      <td class="text-muted">
+                        {{ res.created_at|date:"d M Y H:i" }}
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="p-3 text-center text-muted small">
+              <i class="icon-check text-success me-1"></i> No recent findings recorded for this rule.
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Governance & Lineage -->
+    <div class="col-lg-4">
+
+      <!-- Governance Metadata -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-info text-primary me-2"></i> Regulatory Governance
+          </h6>
+        </div>
+        <div class="card-body p-3">
+          <ul class="list-group list-group-flush small">
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Rule Version:</span>
+              <strong class="font-monospace text-dark">v{{ rule.version }}</strong>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Effective From:</span>
+              <span>{{ rule.effective_from|default:"Immediate" }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Created At:</span>
+              <span>{{ rule.created_at|date:"d M Y H:i:s" }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Created By:</span>
+              <span>{{ rule.created_by.username|default:"System Seed" }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Last Updated:</span>
+              <span>{{ rule.updated_at|date:"d M Y H:i:s" }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Last Updated By:</span>
+              <span>{{ rule.updated_by.username|default:"System" }}</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}

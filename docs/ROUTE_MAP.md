@@ -160,22 +160,139 @@ This document tracks all active URL endpoints in **Phase 01 & Phase 02** as well
 │   ├── /<id>/edit/                    Edit Site Boundary (Scoped)
 │   └── /<id>/deactivate/              Safe Site Archiving (Scoped)
 │
-├── /activities/                       [Planned - Phase 06 Activity Master]
-│   ├── /ghg/                          Scope 1, 2, 3 carbon accounting
-│   ├── /energy/                       Renewable vs non-renewable energy
-│   ├── /water/                        Withdrawal, consumption, recycling
-│   └── /waste/                        Hazardous, non-hazardous, circularity
+### 6. ESG Activity Master Routes (`/activity-master/...`)
+
+| URL Pattern | View Function | Route Name | Authorized Roles | Purpose | Phase |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `/activity-master/` | `apps.core.activity_views.activity_list_view` | `core:activity_list` | Scoped Roles | Central ESG Activity Master Catalog | Phase 06 |
+| `/activity-master/create/` | `apps.core.activity_views.activity_create_view` | `core:activity_create` | `MEIL_OPERATOR`, `ESG_MANAGER` | Create New Activity Master Definition | Phase 06 |
+| `/activity-master/<id>/` | `apps.core.activity_views.activity_detail_view` | `core:activity_detail` | Scoped Roles | Activity Metadata, Units & Audit Lineage | Phase 06 |
+| `/activity-master/<id>/edit/` | `apps.core.activity_views.activity_edit_view` | `core:activity_edit` | `MEIL_OPERATOR`, `ESG_MANAGER` | Edit Activity Master Definition | Phase 06 |
+| `/activity-master/categories/` | `apps.core.activity_views.category_list_view` | `core:activity_category_list` | Scoped Roles | ESG Taxonomy Categories Registry | Phase 06 |
+| `/activity-master/categories/<id>/` | `apps.core.activity_views.category_detail_view` | `core:activity_category_detail` | Scoped Roles | Category Taxonomy Details & Child Activities | Phase 06 |
+| `/activity-master/units/` | `apps.core.activity_views.unit_list_view` | `core:unit_list` | Scoped Roles | Standard Physical Units of Measure Registry | Phase 06 |
+
+### 7. ESG Data Entry & Activity Telemetry Routes (`/data-entry/...`)
+
+| URL Pattern | View Function | Route Name | Authorized Roles | Purpose | Phase |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `/data-entry/` | `apps.core.data_entry_views.activity_record_list_view` | `core:activity_record_list` | Scoped Roles | Scoped ESG Activity Telemetry Ledger | Phase 08 |
+| `/data-entry/create/` | `apps.core.data_entry_views.activity_record_create_view` | `core:activity_record_create` | `SITE_MANAGER`, `MEIL_OPERATOR`, `ESG_MANAGER` | Operational Data Entry Form (Draft / Ready) | Phase 08 |
+| `/data-entry/<id>/` | `apps.core.data_entry_views.activity_record_detail_view` | `core:activity_record_detail` | Scoped Roles (IDOR Protected) | Telemetry Inspection, Lineage & Evidence Hook | Phase 08 |
+| `/data-entry/<id>/edit/` | `apps.core.data_entry_views.activity_record_edit_view` | `core:activity_record_edit` | Scoped Roles (IDOR Protected) | Edit Telemetry Record (Draft / Ready States) | Phase 08 |
+| `/data-entry/<id>/delete/` | `apps.core.data_entry_views.activity_record_delete_view` | `core:activity_record_delete` | Scoped Roles (IDOR Protected) | Safe Deletion of Draft Telemetry Records | Phase 08 |
+| `/data-entry/api/activity-units/` | `apps.core.data_entry_views.activity_units_api_view` | `core:activity_units_api` | Authenticated | Dynamic AJAX permitted units for selected activity | Phase 08 |
+### 8. Evidence Management & Audit Traceability Routes (`/evidence/...` & `/data-entry/.../evidence/...`)
+
+| URL Pattern | View Function | Route Name | Authorized Roles | Purpose | Phase |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `/evidence/` | `apps.core.evidence_views.evidence_list_view` | `core:evidence_list` | Scoped Roles (`SITE_MGR`, `SUB_MGR`, `OPERATOR`, `ESG_MGR`, `AUDITOR`) | Audit Evidence Repository with KPI summaries & filters | Phase 09 |
+| `/evidence/<id>/` | `apps.core.evidence_views.evidence_detail_view` | `core:evidence_detail` | Scoped Roles (IDOR Protected) | Document Profile, SHA-256 Checksum, OCR/Validation & Lineage | Phase 09 |
+| `/evidence/<id>/download/` | `apps.core.evidence_views.evidence_download_view` | `core:evidence_download` | Scoped Roles (IDOR Protected) | Authenticated File Download with Audit Log | Phase 09 |
+| `/evidence/<id>/preview/` | `apps.core.evidence_views.evidence_preview_view` | `core:evidence_preview` | Scoped Roles (IDOR Protected) | Authenticated Inline Preview (PDF, PNG, JPEG) | Phase 09 |
+| `/evidence/<id>/retire/` | `apps.core.evidence_views.evidence_retire_view` | `core:evidence_retire` | Scoped Roles (IDOR Protected) | Controlled Evidence Retirement with Audit Justification | Phase 09 |
+| `/data-entry/<id>/evidence/upload/` | `apps.core.evidence_views.evidence_upload_view` | `core:evidence_upload` | `SITE_MANAGER`, `MEIL_OPERATOR`, `ESG_MANAGER` (IDOR Protected) | Upload Supporting Document for Activity Record | Phase 09 |
+| `/data-entry/<id>/evidence/<ev_id>/delete/` | `apps.core.evidence_views.evidence_delete_view` | `core:evidence_delete` | Scoped Roles (IDOR Protected; Draft Records Only) | Hard Deletion of Attached Evidence (Draft Records Only) | Phase 09 |
+
+### 9. ESG Validation Engine & Quality Gate Routes (`/validation/...` & `/data-entry/.../validate/`)
+
+| URL Pattern | View Function | Route Name | Authorized Roles | Purpose | Phase |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `/data-entry/<id>/validate/` | `apps.core.validation_views.activity_record_validate_view` | `core:activity_record_validate` | Scoped Roles (POST only; IDOR Protected) | Execute Layer 1-7 Validation Engine for Record | Phase 10 |
+| `/data-entry/batch-validate/` | `apps.core.validation_views.activity_record_batch_validate_view` | `core:activity_record_batch_validate` | Scoped Roles (POST only) | Batch validate unvalidated records in user scope | Phase 10 |
+| `/validation/runs/<id>/` | `apps.core.validation_views.validation_run_detail_view` | `core:validation_run_detail` | Scoped Roles (`SITE_MGR`, `SUB_MGR`, `OPERATOR`, `ESG_MGR`, `AUDITOR`) | Immutable Validation Run report & granular findings | Phase 10 |
+| `/validation/rules/` | `apps.core.validation_views.validation_rule_list_view` | `core:validation_rule_list` | `MEIL_OPERATOR`, `ESG_MANAGER`, `AUDITOR` (Read-only) | Governed catalog of validation rules across Layers 1-7 | Phase 10 |
+| `/validation/rules/create/` | `apps.core.validation_views.validation_rule_create_view` | `core:validation_rule_create` | `MEIL_OPERATOR`, `ESG_MANAGER` | Create new deterministic validation rule definition | Phase 10 |
+| `/validation/rules/<id>/` | `apps.core.validation_views.validation_rule_detail_view` | `core:validation_rule_detail` | `MEIL_OPERATOR`, `ESG_MANAGER`, `AUDITOR` (Read-only) | View rule parameters, version, and execution stats | Phase 10 |
+| `/validation/rules/<id>/edit/` | `apps.core.validation_views.validation_rule_edit_view` | `core:validation_rule_edit` | `MEIL_OPERATOR`, `ESG_MANAGER` | Edit rule parameters, severity, and blocking flag | Phase 10 |
+| `/validation/rules/<id>/toggle/` | `apps.core.validation_views.validation_rule_toggle_view` | `core:validation_rule_toggle` | `MEIL_OPERATOR`, `ESG_MANAGER` (POST only) | Toggle active status of validation rule | Phase 10 |
+
+---
+
+### Custom HTTP Error Handlers
+
+| Error Code | Handler Function | Template | Status |
+| :--- | :--- | :--- | :--- |
+| **400** | `apps.core.views.handler400` | `templates/errors/400.html` | Bad Request |
+| **403** | `apps.core.views.handler403` | `templates/errors/403.html` | Forbidden / Access Denied |
+| **404** | `apps.core.views.handler404` | `templates/errors/404.html` | Page Not Found |
+| **500** | `apps.core.views.handler500` | `templates/errors/500.html` | Internal Server Error |
+
+---
+
+## Architectural Route Map
+
+```text
+/
+├── /health/                           [Active - Phase 00]
+├── /ui-preview/                       [Active - Phase 01]
+├── /components/                       [Active - Phase 00/01]
+├── /admin/                            [Active - Phase 02]
 │
-├── /social/                           [Planned - Phase 05]
-│   ├── /workforce/                    Demographics, diversity, turnover
-│   ├── /health-safety/                LTIFR, near misses, audits
-│   └── /csr/                          Community projects, impact metrics
+├── /auth/                             [Active - Phase 02]
+│   ├── /login/                        Sign In (Role-Routed)
+│   ├── /logout/                       Sign Out
+│   ├── /password-change/              Password Change
+│   └── /password-reset/               Password Reset
 │
-├── /governance/                       [Planned - Phase 06]
-│   ├── /ethics-compliance/           Anti-corruption, code of conduct
-│   └── /board-diversity/             Independent directors, committees
+├── /site-manager/dashboard/           [Active - Phase 07]
+├── /subsidiary-manager/dashboard/     [Active - Phase 02]
+├── /esg-manager/dashboard/            [Active - Phase 02]
+├── /auditor/dashboard/                [Active - Phase 02]
+├── /meil-operator/dashboard/          [Active - Phase 02]
 │
-└── /reports/                          [Planned - Phase 07]
+├── /organization/                     [Active - Phase 03]
+│   ├── /                              Multi-Tier Enterprise Hierarchy Explorer
+│   ├── /companies/<id>/               Company Entity Profile
+│   ├── /subsidiaries/                 Subsidiaries Registry
+│   ├── /projects/                     Infrastructure Projects Registry
+│   └── /sites/                        Operational Sites Boundary Registry
+│
+├── /reporting-periods/                [Active - Phase 04]
+│   ├── /                              Reporting Periods & Cycles Registry
+│   ├── /create/                       Configure New Reporting Period (Scoped)
+│   ├── /<id>/                         Temporal Boundary Specification & Status Timeline
+│   ├── /<id>/edit/                    Edit Period Configuration (Scoped)
+│   └── /<id>/status/                  Controlled Lifecycle Transition (POST)
+│
+├── /projects/                         [Active - Phase 05]
+│   ├── /                              Direct Infrastructure Projects Registry
+│   ├── /create/                       Register Project (Scoped)
+│   ├── /<id>/                         Project Scope, Child Sites & Reporting Cycles
+│   ├── /<id>/edit/                    Edit Project Specification (Scoped)
+│   └── /<id>/deactivate/              Safe Project Archiving (Scoped)
+│
+├── /sites/                            [Active - Phase 05]
+│   ├── /                              Direct Operational Sites Registry
+│   ├── /create/                       Register Operational Boundary (Scoped)
+│   ├── /<id>/                         Site Boundary, Assigned Managers & Reporting Cycles
+│   ├── /<id>/edit/                    Edit Site Boundary (Scoped)
+│   └── /<id>/deactivate/              Safe Site Archiving (Scoped)
+│
+├── /activity-master/                  [Active - Phase 06]
+│   ├── /                              Activity Master Catalog
+│   ├── /create/                       Create Activity Definition (Scoped)
+│   ├── /<id>/                         Activity Details, Scopes & Audit Trail
+│   ├── /<id>/edit/                    Edit Activity Definition (Scoped)
+│   ├── /categories/                   Taxonomy Categories Registry
+│   └── /units/                        Standard Physical Units of Measure Registry
+│
+├── /data-entry/                       [Active - Phase 08]
+│   ├── /                              Scoped ESG Activity Telemetry Ledger
+│   ├── /create/                       Operational Data Entry (Draft / Ready)
+│   ├── /<id>/                         Telemetry Detail, Audit Lineage & Evidence Hook
+│   ├── /<id>/edit/                    Edit Telemetry Record (Draft / Ready States)
+│   ├── /<id>/delete/                  Safe Deletion of Draft Telemetry Records
+│   └── /api/activity-units/           AJAX Endpoint for Permitted Unit Options
+│
+├── /evidence/                         [Active - Phase 09 Evidence Management]
+│   ├── /                              Audit Evidence Repository & Filter Explorer
+│   ├── /<id>/                         Evidence Metadata, SHA-256 Checksum & ESG Lineage
+│   ├── /<id>/download/                Secure Authenticated Attachment Download
+│   ├── /<id>/preview/                 Secure Authenticated Inline Preview (PDF, Images)
+│   └── /<id>/retire/                  Controlled Evidence Retirement with Audit Justification
+│
+└── /reports/                          [Planned - Phase 10+ Calculations & BRSR]
     ├── /brsr/                         SEBI BRSR Core format generator
     └── /gri/                          Global Reporting Initiative export
 ```

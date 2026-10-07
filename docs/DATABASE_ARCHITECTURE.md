@@ -258,4 +258,183 @@ Phase 05 establishes the operational boundary foundation where future ESG activi
 - **Migration**:
   - `apps/core/migrations/0004_project_created_by_project_updated_by_and_more.py`
 
+---
 
+## 9. ESG Data Entry & Activity Telemetry (Phase 08)
+
+Phase 08 establishes the operational measurement layer linking Operational Sites, Reporting Cycles, and Activity Master reference definitions to actual physical ESG consumption records.
+
+```text
++-------------------------------------------------------------------------------------------------+
+|                                         ActivityRecord                                          |
+|  - id (BigAutoField, PK)                                                                        |
+|  - site_id (FK -> Site.id, PROTECT, INDEX)                                                      |
+|  - reporting_period_id (FK -> ReportingPeriod.id, PROTECT, INDEX)                                |
+|  - activity_id (FK -> ActivityMaster.id, PROTECT, INDEX)                                        |
+|  - measurement_date (DATE, INDEX)                                                               |
+|  - quantity (DECIMAL(18, 4), CHECK: quantity >= 0)                                             |
+|  - unit_id (FK -> UnitOfMeasure.id, PROTECT)                                                    |
+|  - notes (TEXT, BLANK)                                                                          |
+|  - evidence_reference (VARCHAR(255), BLANK)                                                     |
+|  - status (VARCHAR(20), DRAFT/READY/SUBMITTED/VERIFIED/APPROVED/REJECTED, INDEX)                |
+|  - created_by (FK -> User.id, SET_NULL, NULL)                                                   |
+|  - updated_by (FK -> User.id, SET_NULL, NULL)                                                   |
+|  - created_at, updated_at (TIMESTAMPTZ)                                                         |
++-------------------------------------------------------------------------------------------------+
+```
+
+### Constraints & Integrity Rules (Phase 08)
+- **CheckConstraint (`check_activity_record_quantity_non_negative`)**: `check=Q(quantity__gte=0)` prevents negative consumption quantities at the database engine level.
+- **Model Validation (`clean`)**:
+  - Validates that the selected `unit` is permissible for the assigned `activity` (`unit == activity.base_unit` or `unit in activity.allowed_units`).
+  - Validates that `measurement_date` falls strictly within the `reporting_period` start and end date boundaries.
+  - Validates that `activity.status == MasterStatus.ACTIVE` (cannot record against inactive or archived activities).
+  - Validates organizational boundary alignment (Site's parent company must match the Reporting Period's governing company).
+- **Composite Indexes**:
+  - `idx_rec_site_period`: `['site', 'reporting_period']` — optimizes scoped dashboard queries and period aggregations.
+  - `idx_rec_act_date`: `['activity', 'measurement_date']` — accelerates chronological emissions calculations and trend charting.
+  - `idx_rec_status`: `['status']` — optimizes workflow triage and review queues.
+  - `idx_rec_created`: `['-created_at']` — accelerates ledger pagination and recent activity feeds.
+- **Workflow State Machine (`RecordStatus`)**:
+  - `DRAFT`: Editable and deletable by assigned Site Manager.
+  - `READY`: Marked ready for subsidiary submission review; editable by Site Manager.
+  - `SUBMITTED`: Forwarded for Subsidiary Manager verification; locked from Site Manager modification.
+  - `VERIFIED`: Formally verified by Subsidiary Manager; immutable.
+  - `APPROVED`: Included in enterprise calculation and BRSR consolidation; immutable.
+  - `REJECTED`: Flagged during review with feedback; re-editable by Site Manager.
+- **Audit Lineage**:
+  - `AuthAuditLog.EventType.ACTIVITY_RECORD_CREATED`
+  - `AuthAuditLog.EventType.ACTIVITY_RECORD_UPDATED`
+  - `AuthAuditLog.EventType.ACTIVITY_RECORD_DELETED`
+- **Migration**:
+  - `apps/core/migrations/0006_alter_authauditlog_event_type_activityrecord.py`
+
+---
+
+## 10. Evidence Management & Audit Traceability (Phase 09)
+
+Phase 09 establishes the auditable supporting document layer linking physical invoices, utility bills, meter readings, manifests, and lab reports directly to specific ESG `ActivityRecord` entries.
+
+```text
++-------------------------------------------------------------------------------------------------+
+|                                             Evidence                                            |
+|  - id (BigAutoField, PK)                                                                        |
+|  - activity_record_id (FK -> ActivityRecord.id, PROTECT, INDEX, related_name="evidence_files")    |
+|  - file (FileField -> upload_to=evidence_file_upload_path)                                       |
+|  - evidence_type (VARCHAR(30), INVOICE/UTILITY_BILL/METER_READING/FUEL_CHALLAN/..., INDEX)      |
+|  - original_filename (VARCHAR(255))                                                             |
+|  - file_type (VARCHAR(100), MIME content type)                                                  |
+|  - file_size (POSITIVE BIGINT, CHECK: file_size > 0)                                            |
+|  - file_hash (VARCHAR(64), SHA-256 cryptographic checksum, INDEX)                               |
+|  - description (TEXT, BLANK)                                                                    |
+|  - status (VARCHAR(20), ACTIVE/RETIRED, DEFAULT: ACTIVE, INDEX)                                 |
+|  - retirement_reason (TEXT, BLANK)                                                              |
+|  - retired_at (TIMESTAMPTZ, NULL)                                                               |
+|  - retired_by (FK -> User.id, SET_NULL, NULL, related_name="retired_evidence_set")              |
+|  - ocr_metadata (JSONField, DEFAULT: dict, BLANK)                                               |
+|  - validation_metadata (JSONField, DEFAULT: dict, BLANK)                                        |
+|  - uploaded_by (FK -> User.id, SET_NULL, NULL, related_name="uploaded_evidence_set")            |
+|  - created_at, updated_at (TIMESTAMPTZ)                                                         |
++-------------------------------------------------------------------------------------------------+
+```
+
+### Constraints & Integrity Rules (Phase 09)
+- **CheckConstraint (`check_evidence_file_size_positive`)**: `check=Q(file_size__gt=0)` guarantees no 0-byte or negative-size file entries are recorded in the database.
+- **FK Deletion Safety (`on_delete=models.PROTECT`)**: Prevents accidental deletion of parent `ActivityRecord` while supporting audit evidence is attached.
+- **Cryptographic Fingerprint (`file_hash`)**: 64-character SHA-256 hash computed on upload stream ensures end-to-end tamper-evident audit traceability.
+- **Safe Storage Partitioning (`evidence_file_upload_path`)**: Files are stored at `evidence/<site_code>/<period_code>/rec_<record_id>/<uuid12>_<safe_filename>` preventing path traversal and name collisions.
+- **Magic Bytes Validation**: Enforces MIME verification via magic byte inspection for PDF (`%PDF-`), JPEG (`\xff\xd8\xff`), PNG (`\x89PNG`), and ZIP/OOXML (`PK\x03\x04`). Rejects executable extensions (`.exe`, `.sh`, `.bat`, `.py`, `.js`, `.bin`, `.msi`).
+- **Composite & Filter Indexes**:
+  - `idx_ev_rec_status`: `['activity_record', 'status']` — optimizes fetching active supporting evidence for an activity record.
+  - `idx_ev_type`: `['evidence_type']` — accelerates taxonomy queries across the evidence repository.
+  - `idx_ev_created`: `['-created_at']` — powers chronological repository views and pagination.
+  - `idx_ev_hash`: `['file_hash']` — enables audit deduplication and cryptographic verification lookups.
+- **Lifecycle & Retirement**:
+  - `ACTIVE`: Current audit-supporting document.
+  - `RETIRED`: Soft-retired with mandatory reason, timestamp, and actor; preserved immutably for historical audits. Hard deletion is restricted to DRAFT records by record owner or operator.
+- **Audit Lineage**:
+  - `AuthAuditLog.EventType.EVIDENCE_UPLOADED`
+  - `AuthAuditLog.EventType.EVIDENCE_DOWNLOADED`
+  - `AuthAuditLog.EventType.EVIDENCE_RETIRED`
+  - `AuthAuditLog.EventType.EVIDENCE_DELETED`
+- **Migration**:
+  - `apps/core/migrations/0007_alter_authauditlog_event_type_evidence.py`
+
+---
+
+## 11. ESG Validation Engine & Data Quality Ledger (Phase 10)
+
+Phase 10 establishes the deterministic validation engine evaluating ESG activity records and supporting evidence across Layers 1–7 (Structural, Scope, Period, Activity, Evidence, Consistency, Workflow Readiness) prior to downstream review, anomaly analysis, and BRSR calculation.
+
+```text
++----------------------------------------------------------------------------------------------------+
+|                                           ValidationRule                                           |
+|  - id (BigAutoField, PK)                                                                           |
+|  - code (VARCHAR(64), UNIQUE, INDEX)                                                               |
+|  - name (VARCHAR(255))                                                                             |
+|  - description (TEXT)                                                                              |
+|  - category (VARCHAR(32), STRUCTURAL/SCOPE/PERIOD/ACTIVITY/EVIDENCE/CONSISTENCY/WORKFLOW, INDEX)   |
+|  - severity (VARCHAR(16), ERROR/WARNING/INFO, DEFAULT: ERROR, INDEX)                               |
+|  - is_active (BOOLEAN, DEFAULT: True, INDEX)                                                       |
+|  - is_blocking (BOOLEAN, DEFAULT: True)                                                            |
+|  - applicable_activity (FK -> ActivityMaster.id, NULL, ON_DELETE: SET_NULL)                        |
+|  - rule_parameters (JSONField, DEFAULT: dict, BLANK)                                               |
+|  - version (POSITIVE INT, DEFAULT: 1)                                                              |
+|  - effective_from (DATE, DEFAULT: current_date)                                                    |
+|  - created_at, updated_at (TIMESTAMPTZ)                                                            |
++----------------------------------------------------------------------------------------------------+
+                                      ▲ 1
+                                      │ evaluates
+                                      ▼ N
++----------------------------------------------------------------------------------------------------+
+|                                           ValidationResult                                         |
+|  - id (BigAutoField, PK)                                                                           |
+|  - validation_run_id (FK -> ValidationRun.id, CASCADE, INDEX, related_name="results")              |
+|  - activity_record_id (FK -> ActivityRecord.id, CASCADE, INDEX, related_name="validation_results")  |
+|  - rule_id (FK -> ValidationRule.id, PROTECT, INDEX, related_name="results")                       |
+|  - severity (VARCHAR(16), ERROR/WARNING/INFO, INDEX)                                               |
+|  - is_blocking (BOOLEAN, DEFAULT: True)                                                            |
+|  - field_name (VARCHAR(64), BLANK, INDEX)                                                          |
+|  - message (TEXT)                                                                                  |
+|  - context_data (JSONField, DEFAULT: dict, BLANK)                                                  |
+|  - created_at (TIMESTAMPTZ)                                                                        |
++----------------------------------------------------------------------------------------------------+
+                                      ▲ N
+                                      │ belongs to
+                                      │ 1
++----------------------------------------------------------------------------------------------------+
+|                                            ValidationRun                                           |
+|  - id (BigAutoField, PK)                                                                           |
+|  - activity_record_id (FK -> ActivityRecord.id, CASCADE, INDEX, related_name="validation_runs")     |
+|  - run_number (POSITIVE INT)                                                                       |
+|  - status (VARCHAR(20), UNVALIDATED/VALID/WARNING/INVALID, INDEX)                                  |
+|  - total_rules_evaluated (POSITIVE INT, DEFAULT: 0)                                                |
+|  - error_count (POSITIVE INT, DEFAULT: 0)                                                          |
+|  - warning_count (POSITIVE INT, DEFAULT: 0)                                                        |
+|  - info_count (POSITIVE INT, DEFAULT: 0)                                                           |
+|  - summary_message (TEXT, BLANK)                                                                   |
+|  - executed_by (FK -> User.id, SET_NULL, NULL, related_name="validation_runs_executed")             |
+|  - executed_at (TIMESTAMPTZ)                                                                        |
+|  - execution_duration_ms (POSITIVE INT, DEFAULT: 0)                                                |
+|  - rule_version_snapshot (JSONField, DEFAULT: dict, BLANK)                                         |
+|  - created_at (TIMESTAMPTZ)                                                                        |
++----------------------------------------------------------------------------------------------------+
+```
+
+### Constraints, Integrity Rules & Field Additions (Phase 10)
+- **`ActivityRecord.validation_status`**: Added `VARCHAR(20)` with choices `UNVALIDATED`, `VALID`, `WARNING`, `INVALID` (Default: `UNVALIDATED`), indexed via `idx_rec_val_status`.
+- **`ActivityRecord.last_validated_at`**: Nullable `DateTimeField` capturing the timestamp of the latest validation run.
+- **UniqueConstraint (`unique_record_run_number`)**: `UniqueConstraint(fields=['activity_record', 'run_number'])` guarantees strictly monotonic, collision-free run numbering per record.
+- **FK Deletion Safety (`on_delete=models.PROTECT`)**: Prevents deleting historical `ValidationRule` definitions that have associated results in the audit ledger.
+- **Composite Indexes**:
+  - `idx_vrun_rec_status`: `['activity_record', 'status']` — accelerates latest-run lookups and workflow readiness gates.
+  - `idx_vrun_rec_num`: `['activity_record', '-run_number']` — powers chronological run history display.
+  - `idx_vres_run_sev`: `['validation_run', 'severity']` — accelerates filtering blocking errors vs non-blocking warnings per run.
+  - `idx_vres_rec_rule`: `['activity_record', 'rule']` — enables cross-run rule failure telemetry.
+  - `idx_vrule_active_cat`: `['is_active', 'category']` — optimizes in-memory rule engine compilation.
+- **Audit Lineage**:
+  - `AuthAuditLog.EventType.VALIDATION_EXECUTED`
+  - `AuthAuditLog.EventType.VALIDATION_RULE_CREATED`
+  - `AuthAuditLog.EventType.VALIDATION_RULE_UPDATED`
+- **Migration**:
+  - `apps/core/migrations/0008_validationresult_validationrule_validationrun_and_more.py`

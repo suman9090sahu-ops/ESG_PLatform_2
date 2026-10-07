@@ -1,0 +1,617 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block page_actions %}
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'core:activity_record_list' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="icon-arrow-left me-1"></i> Activity Ledger
+    </a>
+    {% if can_validate %}
+      <form method="post" action="{% url 'core:activity_record_validate' record_id=record.id %}" class="d-inline">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm btn-success" title="Execute Phase 10 Validation Engine">
+          <i class="icon-check me-1"></i> Run Validation
+        </button>
+      </form>
+    {% endif %}
+    {% if can_edit %}
+      <a href="{% url 'core:activity_record_edit' record_id=record.id %}" class="btn btn-sm btn-primary">
+        <i class="icon-pencil me-1"></i> Edit Record
+      </a>
+    {% endif %}
+    {% if can_delete %}
+      <a href="{% url 'core:activity_record_delete' record_id=record.id %}" class="btn btn-sm btn-outline-danger">
+        <i class="icon-trash me-1"></i> Delete Draft
+      </a>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+  <!-- Summary KPI Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-sm-6 col-lg">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body p-3">
+          <div class="text-muted small text-uppercase fw-semibold">Measured Consumption</div>
+          <div class="h3 fw-bold mb-0 text-dark mt-1 font-monospace">
+            {{ record.quantity|floatformat:2 }} <span class="fs-6 text-muted">{{ record.unit.symbol }}</span>
+          </div>
+          <small class="text-muted">{{ record.unit.name }}</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg">
+      <div class="card border-0 shadow-sm h-100 border-start border-4 border-primary">
+        <div class="card-body p-3">
+          <div class="text-muted small text-uppercase fw-semibold">Measurement Date</div>
+          <div class="h4 fw-bold mb-0 text-primary mt-1">
+            {{ record.measurement_date|date:"d M Y" }}
+          </div>
+          <small class="text-muted">Cycle: {{ record.reporting_period.code }}</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg">
+      <div class="card border-0 shadow-sm h-100 border-start border-4 border-info">
+        <div class="card-body p-3">
+          <div class="text-muted small text-uppercase fw-semibold">Scope Classification</div>
+          <div class="mt-1">
+            <span class="badge {{ record.activity.scope_badge_class }} fs-6 py-1 px-2">
+              {{ record.activity.get_scope_classification_display }}
+            </span>
+          </div>
+          <small class="text-muted mt-1 d-block">{{ record.activity.category.name }}</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg">
+      <div class="card border-0 shadow-sm h-100 border-start border-4 border-warning">
+        <div class="card-body p-3">
+          <div class="text-muted small text-uppercase fw-semibold">Workflow Status</div>
+          <div class="mt-1">
+            <span class="badge {{ record.status_badge_class }} fs-6 py-1 px-2">
+              {{ record.get_status_display }}
+            </span>
+          </div>
+          <small class="text-muted mt-1 d-block">
+            {% if record.is_editable_by_site_manager %}
+              <i class="icon-pencil text-warning me-1"></i> Editable by Site Manager
+            {% else %}
+              <i class="icon-lock text-success me-1"></i> Protected Record
+            {% endif %}
+          </small>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg">
+      <div class="card border-0 shadow-sm h-100 border-start border-4 {% if record.validation_status == 'VALID' %}border-success{% elif record.validation_status == 'INVALID' %}border-danger{% elif record.validation_status == 'WARNING' %}border-warning{% else %}border-secondary{% endif %}">
+        <div class="card-body p-3">
+          <div class="text-muted small text-uppercase fw-semibold">Validation Engine</div>
+          <div class="mt-1">
+            <span class="badge {{ record.validation_badge_class }} fs-6 py-1 px-2">
+              {{ record.get_validation_status_display }}
+            </span>
+          </div>
+          <small class="text-muted mt-1 d-block">
+            {% if record.last_validated_at %}
+              <i class="icon-clock text-muted me-1"></i> {{ record.last_validated_at|date:"d M H:i" }}
+            {% else %}
+              <i class="icon-info text-muted me-1"></i> Not Evaluated
+            {% endif %}
+          </small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Main Column: Operational Details -->
+    <div class="col-lg-8">
+
+      <!-- Card 1: Telemetry & Activity Specification -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-speedometer text-primary me-2"></i> Operational Telemetry &amp; Activity Specification
+          </h6>
+          <span class="badge bg-light text-dark border">
+            <code>{{ record.activity.code }}</code>
+          </span>
+        </div>
+        <div class="card-body p-4">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <span class="text-muted small d-block">ESG Activity Master</span>
+              <strong class="fs-6 text-dark">{{ record.activity.name }}</strong>
+            </div>
+            <div class="col-md-6">
+              <span class="text-muted small d-block">Governing Category</span>
+              <span class="badge bg-light text-dark border fs-6">{{ record.activity.category.name }}</span>
+            </div>
+            <div class="col-md-6">
+              <span class="text-muted small d-block">Consumption Quantity</span>
+              <span class="h4 fw-bold text-dark font-monospace">{{ record.quantity|floatformat:4 }}</span>
+            </div>
+            <div class="col-md-6">
+              <span class="text-muted small d-block">Reporting Unit</span>
+              <span class="fs-6 fw-bold text-primary">{{ record.unit.name }} ({{ record.unit.symbol }})</span>
+              <div class="small text-muted">Physical Dimension: {{ record.unit.get_dimension_display }}</div>
+            </div>
+            <div class="col-md-6">
+              <span class="text-muted small d-block">Activity Classification</span>
+              <span class="fw-semibold text-dark">{{ record.activity.activity_type|default:"Operational Combustion / Telemetry" }}</span>
+            </div>
+            <div class="col-md-6">
+              <span class="text-muted small d-block">Collection Cadence</span>
+              <span class="fw-semibold text-dark">{{ record.activity.get_collection_frequency_display }}</span>
+            </div>
+            {% if record.notes %}
+              <div class="col-12 mt-3 pt-3 border-top">
+                <span class="text-muted small d-block mb-1">Operational Notes / Remarks</span>
+                <div class="p-3 bg-light rounded text-dark small font-monospace">
+                  {{ record.notes }}
+                </div>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Phase 10 — ESG Validation Engine & Data Quality Audit -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <div class="d-flex align-items-center">
+            <i class="icon-shield text-primary me-2 fs-5"></i>
+            <div>
+              <h6 class="mb-0 fw-bold text-dark">ESG Validation Engine &amp; Data Quality</h6>
+              <span class="small text-muted">Deterministic Layers 1–7 Rule Evaluation</span>
+            </div>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge {{ record.validation_badge_class }} fs-6 py-1 px-3">
+              {{ record.get_validation_status_display }}
+            </span>
+            {% if can_validate %}
+              <form method="post" action="{% url 'core:activity_record_validate' record.id %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-primary" title="Execute validation engine against latest state">
+                  <i class="icon-refresh me-1"></i> {% if latest_validation_run %}Re-Validate{% else %}Run Validation{% endif %}
+                </button>
+              </form>
+            {% endif %}
+          </div>
+        </div>
+        <div class="card-body p-4">
+          {% if latest_validation_run %}
+            <!-- Summary Banner -->
+            {% if latest_validation_run.status == 'INVALID' %}
+              <div class="alert alert-danger d-flex align-items-start mb-3 border-0 shadow-sm">
+                <i class="icon-close fs-4 text-danger me-3 mt-1"></i>
+                <div class="flex-grow-1">
+                  <div class="fw-bold">Validation Non-Conformance Detected (Run #{{ latest_validation_run.run_number }})</div>
+                  <div class="small">{{ latest_validation_run.summary_message }}</div>
+                  <div class="small text-danger mt-1 fw-semibold">
+                    <i class="icon-lock me-1"></i> Record progression to READY or SUBMITTED is prohibited until blocking errors are resolved.
+                  </div>
+                </div>
+              </div>
+            {% elif latest_validation_run.status == 'WARNING' %}
+              <div class="alert alert-warning d-flex align-items-start mb-3 border-0 shadow-sm">
+                <i class="icon-exclamation fs-4 text-warning me-3 mt-1"></i>
+                <div class="flex-grow-1">
+                  <div class="fw-bold">Valid with Operational Advisory Notices (Run #{{ latest_validation_run.run_number }})</div>
+                  <div class="small">{{ latest_validation_run.summary_message }}</div>
+                  <div class="small text-dark mt-1">
+                    <i class="icon-info me-1"></i> Record satisfies baseline rules and is eligible for review and submission.
+                  </div>
+                </div>
+              </div>
+            {% else %}
+              <div class="alert alert-success d-flex align-items-start mb-3 border-0 shadow-sm">
+                <i class="icon-check fs-4 text-success me-3 mt-1"></i>
+                <div class="flex-grow-1">
+                  <div class="fw-bold">All Deterministic Rules Satisfied (Run #{{ latest_validation_run.run_number }})</div>
+                  <div class="small">{{ latest_validation_run.summary_message }}</div>
+                  <div class="small text-success mt-1">
+                    <i class="icon-check me-1"></i> Operational data is verified, complete, and ready for submission.
+                  </div>
+                </div>
+              </div>
+            {% endif %}
+
+            <!-- Metric Counters Row -->
+            <div class="row g-2 mb-3 text-center">
+              <div class="col-6 col-md-3">
+                <div class="p-2 border rounded bg-light">
+                  <span class="text-muted d-block small">Rules Evaluated</span>
+                  <span class="fw-bold fs-6 text-dark">{{ latest_validation_run.total_rules_evaluated }}</span>
+                </div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="p-2 border rounded bg-light">
+                  <span class="text-muted d-block small">Errors</span>
+                  <span class="fw-bold fs-6 {% if latest_validation_run.error_count > 0 %}text-danger{% else %}text-muted{% endif %}">
+                    {{ latest_validation_run.error_count }}
+                  </span>
+                </div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="p-2 border rounded bg-light">
+                  <span class="text-muted d-block small">Warnings</span>
+                  <span class="fw-bold fs-6 {% if latest_validation_run.warning_count > 0 %}text-warning{% else %}text-muted{% endif %}">
+                    {{ latest_validation_run.warning_count }}
+                  </span>
+                </div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="p-2 border rounded bg-light">
+                  <span class="text-muted d-block small">Latency</span>
+                  <span class="fw-bold fs-6 text-muted font-monospace">{{ latest_validation_run.execution_duration_ms }} ms</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Granular Findings Table -->
+            {% if validation_results %}
+              <h6 class="fw-bold text-dark mb-2 small text-uppercase">Rule Findings &amp; Diagnostic Details</h6>
+              <div class="table-responsive mb-3">
+                <table class="table table-sm table-hover align-middle mb-0">
+                  <thead class="table-light small">
+                    <tr>
+                      <th style="width: 100px;">Severity</th>
+                      <th style="width: 160px;">Rule</th>
+                      <th style="width: 120px;">Field</th>
+                      <th>Diagnostic Finding</th>
+                      <th class="text-end" style="width: 110px;">Submission</th>
+                    </tr>
+                  </thead>
+                  <tbody class="small">
+                    {% for res in validation_results %}
+                      <tr>
+                        <td>
+                          <span class="badge {{ res.badge_class }}">{{ res.get_severity_display }}</span>
+                        </td>
+                        <td>
+                          <a href="{% url 'core:validation_rule_detail' res.rule.id %}" class="fw-semibold text-dark text-decoration-none" title="{{ res.rule.name }}">
+                            <code>{{ res.rule.code }}</code>
+                          </a>
+                        </td>
+                        <td>
+                          {% if res.field_name %}
+                            <span class="badge bg-light text-dark border">{{ res.field_name }}</span>
+                          {% else %}
+                            <span class="text-muted fst-italic">Record</span>
+                          {% endif %}
+                        </td>
+                        <td>
+                          <div class="text-dark">{{ res.message }}</div>
+                          {% if res.context_data %}
+                            <div class="text-muted font-monospace" style="font-size: 0.75rem;">
+                              Context: {{ res.context_data }}
+                            </div>
+                          {% endif %}
+                        </td>
+                        <td class="text-end">
+                          {% if res.is_blocking %}
+                            <span class="badge bg-danger">Blocking</span>
+                          {% else %}
+                            <span class="badge bg-secondary">Advisory</span>
+                          {% endif %}
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% else %}
+              <div class="p-3 bg-light rounded text-center small text-success mb-3">
+                <i class="icon-check me-1"></i> No rule violations, warnings, or anomalies detected.
+              </div>
+            {% endif %}
+
+            <!-- Historical Lineage Dropdown/Accordion -->
+            {% if validation_runs|length > 1 %}
+              <div class="border-top pt-3">
+                <div class="d-flex align-items-center justify-content-between">
+                  <span class="text-muted small">
+                    <i class="icon-clock me-1"></i> Evaluation History: <strong>{{ validation_runs|length }} runs recorded</strong>
+                  </span>
+                  <a class="small text-primary text-decoration-none" data-bs-toggle="collapse" href="#validationHistoryCollapse" role="button">
+                    View Run History <i class="icon-arrow-down small ms-1"></i>
+                  </a>
+                </div>
+                <div class="collapse mt-2" id="validationHistoryCollapse">
+                  <div class="list-group list-group-flush border rounded small">
+                    {% for hrun in validation_runs %}
+                      <div class="list-group-item d-flex align-items-center justify-content-between p-2 {% if forloop.first %}bg-light{% endif %}">
+                        <div>
+                          <strong>Run #{{ hrun.run_number }}</strong>
+                          <span class="badge {{ hrun.badge_class }} ms-2">{{ hrun.get_status_display }}</span>
+                          <span class="text-muted ms-2">({{ hrun.executed_at|date:"d M Y H:i:s" }})</span>
+                          <span class="text-muted small ms-2">by {{ hrun.executed_by.username|default:"System" }}</span>
+                        </div>
+                        <div>
+                          <span class="text-muted small me-2">{{ hrun.error_count }} errors, {{ hrun.warning_count }} warnings</span>
+                          <a href="{% url 'core:validation_run_detail' hrun.id %}" class="btn btn-xs btn-outline-secondary py-0 px-2" style="font-size: 0.75rem;">Inspect</a>
+                        </div>
+                      </div>
+                    {% endfor %}
+                  </div>
+                </div>
+              </div>
+            {% endif %}
+
+          {% else %}
+            <!-- Unvalidated State Prompt -->
+            <div class="p-4 bg-light rounded text-center">
+              <div class="mb-2"><i class="icon-shield text-muted display-6"></i></div>
+              <h6 class="fw-bold text-dark mb-1">Record Not Yet Validated</h6>
+              <p class="small text-muted mb-3" style="max-width: 480px; margin: 0 auto;">
+                Execute the validation engine to verify structural integrity, unit compatibility, date boundaries, and required audit evidence before submission.
+              </p>
+              {% if can_validate %}
+                <form method="post" action="{% url 'core:activity_record_validate' record.id %}">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="icon-check me-1"></i> Run Validation Engine
+                  </button>
+                </form>
+              {% else %}
+                <span class="badge bg-secondary">Validation locked for current role</span>
+              {% endif %}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Card 3: Supporting Audit Evidence (Phase 09 Implemented) -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center">
+            <i class="icon-docs text-primary me-2 fs-5"></i>
+            <div>
+              <h6 class="mb-0 fw-bold text-dark">Supporting Audit Evidence</h6>
+              <span class="small text-muted">{{ evidence_files.count }} Document{% if evidence_files.count != 1 %}s{% endif %} Attached</span>
+            </div>
+          </div>
+          <div>
+            {% if can_upload_evidence %}
+              <a href="{% url 'core:evidence_upload' record.id %}" class="btn btn-sm btn-primary">
+                <i class="icon-cloud-upload me-1"></i> Attach Evidence
+              </a>
+            {% endif %}
+          </div>
+        </div>
+        <div class="card-body p-4">
+          <div class="mb-3 d-flex align-items-center justify-content-between">
+            <div>
+              <span class="text-muted small d-block">Document Reference / Invoice ID:</span>
+              {% if record.evidence_reference %}
+                <code class="fs-6 fw-bold text-primary">{{ record.evidence_reference }}</code>
+              {% else %}
+                <span class="text-muted fst-italic small">No primary reference code specified</span>
+              {% endif %}
+            </div>
+            {% if record.has_evidence %}
+              <span class="badge bg-success"><i class="icon-check me-1"></i> Evidence Verified</span>
+            {% else %}
+              <span class="badge bg-warning text-dark"><i class="icon-exclamation me-1"></i> Evidence Missing</span>
+            {% endif %}
+          </div>
+
+          {% if evidence_files %}
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="table-light small">
+                  <tr>
+                    <th>Document</th>
+                    <th>Type</th>
+                    <th>Size</th>
+                    <th>Uploaded By</th>
+                    <th>Status</th>
+                    <th class="text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody class="small">
+                  {% for ev in evidence_files %}
+                    <tr>
+                      <td>
+                        <div class="d-flex align-items-center">
+                          {% if ev.is_pdf %}
+                            <i class="icon-doc text-danger fs-5 me-2"></i>
+                          {% elif ev.is_image %}
+                            <i class="icon-picture text-info fs-5 me-2"></i>
+                          {% else %}
+                            <i class="icon-paper-clip text-primary fs-5 me-2"></i>
+                          {% endif %}
+                          <div>
+                            <a href="{% url 'core:evidence_detail' ev.id %}" class="fw-bold text-dark text-decoration-none d-block">
+                              {{ ev.original_filename }}
+                            </a>
+                            {% if ev.description %}
+                              <span class="text-muted small d-block text-truncate" style="max-width: 200px;">{{ ev.description }}</span>
+                            {% endif %}
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span class="badge bg-light text-dark border">{{ ev.get_evidence_type_display }}</span>
+                      </td>
+                      <td class="text-muted">{{ ev.file_size_formatted }}</td>
+                      <td>
+                        <span class="text-dark">{{ ev.uploaded_by.username|default:"System" }}</span>
+                        <span class="text-muted d-block small">{{ ev.created_at|date:"M d, Y" }}</span>
+                      </td>
+                      <td>
+                        <span class="badge {{ ev.status_badge_class }}">{{ ev.get_status_display }}</span>
+                      </td>
+                      <td class="text-end">
+                        <div class="btn-group btn-group-sm">
+                          {% if ev.is_previewable %}
+                            <a href="{% url 'core:evidence_preview' ev.id %}" target="_blank" class="btn btn-outline-info" title="Preview document in browser">
+                              <i class="icon-eye"></i>
+                            </a>
+                          {% endif %}
+                          <a href="{% url 'core:evidence_download' ev.id %}" class="btn btn-outline-primary" title="Download file">
+                            <i class="icon-cloud-download"></i>
+                          </a>
+                          <a href="{% url 'core:evidence_detail' ev.id %}" class="btn btn-outline-secondary" title="View details and audit lineage">
+                            <i class="icon-info"></i>
+                          </a>
+                          {% if record.is_draft and ev.uploaded_by_id == request.user.id or request.user.is_superuser %}
+                            <form method="post" action="{% url 'core:evidence_delete' record.id ev.id %}" class="d-inline" onsubmit="return confirm('Delete this draft evidence file?');">
+                              {% csrf_token %}
+                              <button type="submit" class="btn btn-outline-danger" title="Delete draft file">
+                                <i class="icon-trash"></i>
+                              </button>
+                            </form>
+                          {% elif ev.is_active and can_upload_evidence %}
+                            <a href="{% url 'core:evidence_retire' ev.id %}" class="btn btn-outline-warning" title="Retire/supersede document">
+                              <i class="icon-ban"></i>
+                            </a>
+                          {% endif %}
+                        </div>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="p-4 bg-light rounded text-center">
+              <div class="mb-2"><i class="icon-docs text-muted display-6"></i></div>
+              <h6 class="fw-bold text-dark mb-1">No Supporting Documents Attached</h6>
+              <p class="small text-muted mb-3" style="max-width: 450px; margin: 0 auto;">
+                To ensure regulatory audit traceability, attach corresponding utility bills, fuel delivery invoices, weighbridge receipts, or meter logs.
+              </p>
+              {% if can_upload_evidence %}
+                <a href="{% url 'core:evidence_upload' record.id %}" class="btn btn-sm btn-primary">
+                  <i class="icon-cloud-upload me-1"></i> Upload Supporting Document
+                </a>
+              {% else %}
+                <span class="badge bg-secondary">Upload locked (Record in {{ record.get_status_display }} status)</span>
+              {% endif %}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Side Column: Hierarchy & Temporal Lineage -->
+    <div class="col-lg-4">
+
+      <!-- Side Card 1: Operational Site Boundary -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-location-pin text-success me-2"></i> Operational Boundary
+          </h6>
+        </div>
+        <div class="card-body p-3">
+          <ul class="list-group list-group-flush small">
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Site:</span>
+              <strong class="text-dark">{{ record.site.name }}</strong>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Site Code:</span>
+              <code>{{ record.site.code }}</code>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Infrastructure Project:</span>
+              <span class="fw-semibold text-dark">{{ record.site.project.name }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Subsidiary Division:</span>
+              <span>{{ record.site.project.subsidiary.name }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Enterprise Group:</span>
+              <span>{{ record.site.project.subsidiary.company.name }}</span>
+            </li>
+            {% if record.site.location %}
+              <li class="list-group-item d-flex justify-content-between px-0">
+                <span class="text-muted">Location:</span>
+                <span>{{ record.site.location }}</span>
+              </li>
+            {% endif %}
+          </ul>
+        </div>
+      </div>
+
+      <!-- Side Card 2: Reporting Period Boundary -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-calendar text-info me-2"></i> Temporal Governance
+          </h6>
+        </div>
+        <div class="card-body p-3">
+          <ul class="list-group list-group-flush small">
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Reporting Period:</span>
+              <strong class="text-dark">{{ record.reporting_period.name }}</strong>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Period Code:</span>
+              <code>{{ record.reporting_period.code }}</code>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Window Start:</span>
+              <span>{{ record.reporting_period.start_date|date:"d M Y" }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Window End:</span>
+              <span>{{ record.reporting_period.end_date|date:"d M Y" }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Period Lifecycle:</span>
+              <span class="badge {{ record.reporting_period.status_badge_class }}">
+                {{ record.reporting_period.get_status_display }}
+              </span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Side Card 3: Audit Traceability & Lineage -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-shield text-primary me-2"></i> Audit Lineage
+          </h6>
+        </div>
+        <div class="card-body p-3">
+          <ul class="list-group list-group-flush small">
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Created By:</span>
+              <span>{% if record.created_by %}{{ record.created_by.get_full_name|default:record.created_by.username }}{% else %}System{% endif %}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Created At:</span>
+              <span>{{ record.created_at|date:"d M Y H:i:s" }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Last Updated By:</span>
+              <span>{% if record.updated_by %}{{ record.updated_by.get_full_name|default:record.updated_by.username }}{% else %}—{% endif %}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Last Updated At:</span>
+              <span>{{ record.updated_at|date:"d M Y H:i:s" }}</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}

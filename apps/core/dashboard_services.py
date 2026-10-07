@@ -17,16 +17,21 @@ from django.db import models
 from django.db.models import Count, Q
 from django.utils import timezone
 
+from django.urls import reverse
+
 from apps.core.activity_services import (
     get_accessible_activity_categories,
     get_accessible_activity_masters,
 )
+from apps.core.data_entry_services import get_accessible_activity_records
 from apps.core.models import (
     AuthAuditLog,
+    EvidenceStatus,
     MasterStatus,
     OrganizationStatus,
     PeriodStatus,
     Project,
+    RecordStatus,
     ReportingPeriod,
     Role,
     Site,
@@ -141,17 +146,29 @@ def get_site_manager_dashboard_context(user, as_of_date=None):
     accessible_categories = get_accessible_activity_categories(user)
     active_categories_count = accessible_categories.filter(status=MasterStatus.ACTIVE).count()
 
-    # 6. Workflow Status & Real Pending Actions (Phase 08-12 integration hooks)
-    # ESG data entry and submissions are built in Phase 08 and Phase 12.
-    # We do NOT fabricate fake records. Real counts reflect actual database states.
+    # 6. Workflow Status & Real Pending Actions (Phase 08 Integration)
+    records_qs = get_accessible_activity_records(user)
+    draft_records_count = records_qs.filter(status=RecordStatus.DRAFT).count()
+    ready_records_count = records_qs.filter(status=RecordStatus.READY).count()
+    submitted_records_count = records_qs.filter(
+        status__in=[RecordStatus.SUBMITTED, RecordStatus.VERIFIED, RecordStatus.APPROVED]
+    ).count()
+
+    # Phase 09 Integration: Real pending evidence calculation
+    pending_evidence_count = records_qs.exclude(
+        evidence_files__status=EvidenceStatus.ACTIVE
+    ).distinct().count()
+
     workflow_status = {
         "is_data_entry_ready": bool(current_period and current_period.status == PeriodStatus.OPEN and sites_count > 0),
-        "draft_records_count": 0,
-        "submitted_records_count": 0,
+        "draft_records_count": draft_records_count,
+        "ready_records_count": ready_records_count,
+        "submitted_records_count": submitted_records_count,
+        "total_records_count": records_qs.count(),
         "corrections_count": 0,
-        "pending_evidence_count": 0,
+        "pending_evidence_count": pending_evidence_count,
         "validation_issues_count": 0,
-        "phase_note": "ESG Data Entry and Submission workflows will be activated in Phase 08.",
+        "phase_note": "ESG Data Entry & Evidence Management active (Phase 09).",
     }
 
     pending_actions_list = []
@@ -163,6 +180,15 @@ def get_site_manager_dashboard_context(user, as_of_date=None):
             "category": "Site Governance",
             "level": "warning",
             "url": "#",
+        })
+
+    if draft_records_count > 0:
+        pending_actions_list.append({
+            "title": f"{draft_records_count} Draft Activity Record(s)",
+            "description": "You have saved draft activity records awaiting completion or review.",
+            "category": "ESG Data Entry",
+            "level": "info",
+            "url": reverse("core:activity_record_list") + f"?status={RecordStatus.DRAFT}",
         })
 
     pending_actions_count = len(pending_actions_list)

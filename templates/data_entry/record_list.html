@@ -1,0 +1,291 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block page_actions %}
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'core:site_manager_dashboard' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="icon-screen-desktop me-1"></i> Site Dashboard
+    </a>
+    {% if can_create %}
+      <a href="{% url 'core:activity_record_create' %}" class="btn btn-sm btn-primary">
+        <i class="icon-plus me-1"></i> New Data Entry
+      </a>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <!-- Metric KPI Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body p-3">
+          <div class="text-muted small text-uppercase fw-semibold">Total Records</div>
+          <div class="h3 fw-bold mb-0 text-dark mt-1">{{ total_count }}</div>
+          <small class="text-muted">Scoped Activity Entries</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+      <div class="card border-0 shadow-sm h-100 border-start border-4 border-secondary">
+        <div class="card-body p-3">
+          <div class="text-muted small text-uppercase fw-semibold">Draft Records</div>
+          <div class="h3 fw-bold mb-0 text-secondary mt-1">{{ draft_count }}</div>
+          <small class="text-muted">Editable by Site Manager</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+      <div class="card border-0 shadow-sm h-100 border-start border-4 border-info">
+        <div class="card-body p-3">
+          <div class="text-muted small text-uppercase fw-semibold">Ready for Review</div>
+          <div class="h3 fw-bold mb-0 text-info mt-1">{{ ready_count }}</div>
+          <small class="text-info"><i class="icon-check me-1"></i>Pending Submission</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+      <div class="card border-0 shadow-sm h-100 border-start border-4 border-success">
+        <div class="card-body p-3">
+          <div class="text-muted small text-uppercase fw-semibold">Submitted &amp; Approved</div>
+          <div class="h3 fw-bold mb-0 text-success mt-1">{{ submitted_count }}</div>
+          <small class="text-success"><i class="icon-lock me-1"></i>Protected Lineage</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter & Search Toolbar Card -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+      <h6 class="mb-0 fw-bold text-dark">
+        <i class="icon-filter me-2 text-primary"></i> Filter Activity Records Ledger
+      </h6>
+      <span class="badge bg-light text-muted border">
+        Server-Enforced Scope
+      </span>
+    </div>
+    <div class="card-body p-3">
+      <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label small text-muted mb-1">Operational Site</label>
+          {{ filter_form.site }}
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small text-muted mb-1">Reporting Period</label>
+          {{ filter_form.reporting_period }}
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small text-muted mb-1">ESG Category</label>
+          {{ filter_form.category }}
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small text-muted mb-1">Workflow Status</label>
+          {{ filter_form.status }}
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small text-muted mb-1">Validation Status</label>
+          {{ filter_form.validation_status }}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small text-muted mb-1">Search Keywords</label>
+          {{ filter_form.search }}
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small text-muted mb-1">Date From</label>
+          {{ filter_form.date_from }}
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small text-muted mb-1">Date To</label>
+          {{ filter_form.date_to }}
+        </div>
+        <div class="col-md-5 d-flex gap-2">
+          <button type="submit" class="btn btn-sm btn-primary">
+            <i class="icon-magnifier me-1"></i> Apply Filters
+          </button>
+          <a href="{% url 'core:activity_record_list' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="icon-refresh me-1"></i> Reset
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Activity Records Table Card -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center gap-2">
+        <h6 class="mb-0 fw-bold text-dark">
+          <i class="icon-docs me-2 text-primary"></i> Activity Telemetry Records
+        </h6>
+        <span class="badge bg-light text-dark border">{{ page_obj.paginator.count }} Total</span>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <form method="post" action="{% url 'core:activity_record_batch_validate' %}" class="d-inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-xs btn-outline-success" title="Validate all unvalidated records in your scope">
+            <i class="icon-check me-1"></i> Batch Validate
+          </button>
+        </form>
+        {% if can_create %}
+          <a href="{% url 'core:activity_record_create' %}" class="btn btn-xs btn-outline-primary">
+            <i class="icon-plus me-1"></i> New Entry
+          </a>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card-body p-0">
+      {% if records %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0" id="activity-records-table">
+            <thead class="bg-light">
+              <tr class="small text-muted text-uppercase">
+                <th># ID</th>
+                <th>Measurement Date</th>
+                <th>Site &amp; Division</th>
+                <th>Activity &amp; Category</th>
+                <th class="text-end">Quantity</th>
+                <th>Unit</th>
+                <th>Period</th>
+                <th>Status</th>
+                <th>Validation</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for rec in records %}
+                <tr>
+                  <td>
+                    <code class="fw-bold">#{{ rec.id }}</code>
+                  </td>
+                  <td>
+                    <span class="fw-semibold text-dark">{{ rec.measurement_date|date:"d M Y" }}</span>
+                  </td>
+                  <td>
+                    <strong>{{ rec.site.name }}</strong>
+                    <div class="small text-muted">
+                      <span class="badge bg-light text-secondary border me-1">{{ rec.site.code }}</span>
+                      {{ rec.site.project.subsidiary.short_name|default:rec.site.project.subsidiary.name }}
+                    </div>
+                  </td>
+                  <td>
+                    <span class="fw-bold text-dark">{{ rec.activity.name }}</span>
+                    <div class="small text-muted">
+                      <span class="badge bg-light text-dark border me-1">{{ rec.activity.category.name }}</span>
+                      <span class="badge {{ rec.activity.scope_badge_class }}">{{ rec.activity.get_scope_classification_display }}</span>
+                    </div>
+                  </td>
+                  <td class="text-end">
+                    <span class="fw-bold font-monospace fs-6 text-dark">{{ rec.quantity|floatformat:2 }}</span>
+                  </td>
+                  <td>
+                    <span class="badge bg-light text-dark border font-monospace">{{ rec.unit.symbol }}</span>
+                    <small class="text-muted d-block">{{ rec.unit.name }}</small>
+                  </td>
+                  <td>
+                    <span class="badge bg-light text-secondary border">{{ rec.reporting_period.code }}</span>
+                  </td>
+                  <td>
+                    <span class="badge {{ rec.status_badge_class }} px-2 py-1">
+                      {{ rec.get_status_display }}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="badge {{ rec.validation_badge_class }} px-2 py-1">
+                      {{ rec.get_validation_status_display }}
+                    </span>
+                  </td>
+                  <td class="text-end text-nowrap">
+                    <div class="btn-group btn-group-sm" role="group">
+                      <a href="{% url 'core:activity_record_detail' record_id=rec.id %}" class="btn btn-sm btn-outline-primary" title="View Details">
+                        <i class="icon-eye me-1"></i> View
+                      </a>
+                      {% if rec.is_editable_by_site_manager %}
+                        <a href="{% url 'core:activity_record_edit' record_id=rec.id %}" class="btn btn-sm btn-outline-warning" title="Edit Record">
+                          <i class="icon-pencil me-1"></i> Edit
+                        </a>
+                      {% endif %}
+                      {% if rec.is_draft and rec.reporting_period.allows_data_modification %}
+                        <a href="{% url 'core:activity_record_delete' record_id=rec.id %}" class="btn btn-sm btn-outline-danger" title="Delete Draft">
+                          <i class="icon-trash"></i>
+                        </a>
+                      {% endif %}
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination Controls -->
+        {% if page_obj.has_other_pages %}
+          <div class="card-footer bg-white py-3 border-top d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="small text-muted">
+              Showing page <strong>{{ page_obj.number }}</strong> of <strong>{{ page_obj.paginator.num_pages }}</strong> ({{ page_obj.paginator.count }} items)
+            </div>
+            <nav aria-label="Page navigation">
+              <ul class="pagination pagination-sm mb-0">
+                {% if page_obj.has_previous %}
+                  <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                      &laquo; Previous
+                    </a>
+                  </li>
+                {% else %}
+                  <li class="page-item disabled"><span class="page-link">&laquo; Previous</span></li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                  {% if page_obj.number == num %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                  {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                      <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                    </li>
+                  {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                  <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                      Next &raquo;
+                    </a>
+                  </li>
+                {% else %}
+                  <li class="page-item disabled"><span class="page-link">Next &raquo;</span></li>
+                {% endif %}
+              </ul>
+            </nav>
+          </div>
+        {% endif %}
+
+      {% else %}
+        <div class="p-5 text-center">
+          <div class="mb-3">
+            <i class="icon-docs display-4 text-muted"></i>
+          </div>
+          <h5 class="fw-bold text-dark">No Activity Records Found</h5>
+          <p class="text-muted small mb-3">
+            {% if request.GET %}
+              No records match your selected filters. Try clearing some criteria.
+            {% else %}
+              You have not entered any operational activity records yet. Start logging fuel, power, water, or waste data.
+            {% endif %}
+          </p>
+          {% if can_create %}
+            <a href="{% url 'core:activity_record_create' %}" class="btn btn-sm btn-primary">
+              <i class="icon-plus me-1"></i> Record First Activity
+            </a>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

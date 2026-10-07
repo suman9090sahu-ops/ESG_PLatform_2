@@ -1,0 +1,78 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block page_actions %}
+  <a href="{% url 'core:evidence_detail' evidence.id %}" class="btn btn-sm btn-outline-secondary">
+    <i class="icon-arrow-left me-1"></i> Cancel &amp; Return
+  </a>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="row justify-content-center">
+    <div class="col-lg-7">
+      <div class="card border-0 shadow-sm border-start border-4 border-warning mb-4">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h5 class="mb-0 fw-bold text-dark">
+            <i class="icon-exclamation text-warning me-2"></i> Retire Supporting Evidence Document
+          </h5>
+        </div>
+        <div class="card-body p-4">
+          <div class="alert alert-warning small mb-4">
+            <i class="icon-info me-1"></i>
+            <strong>Regulatory Audit Notice:</strong> Retiring an evidence document changes its status to <code>RETIRED</code> and marks it as superseded. To preserve complete regulatory audit lineage, the original physical file is <em>not destroyed</em> and remains accessible for compliance assurance investigations.
+          </div>
+
+          <div class="p-3 bg-light rounded border mb-4">
+            <div class="row g-2 small">
+              <div class="col-sm-6">
+                <span class="text-muted d-block">Document Filename:</span>
+                <strong class="text-dark">{{ evidence.original_filename }}</strong>
+              </div>
+              <div class="col-sm-6">
+                <span class="text-muted d-block">Evidence Category:</span>
+                <strong class="text-dark">{{ evidence.get_evidence_type_display }}</strong>
+              </div>
+              <div class="col-sm-6">
+                <span class="text-muted d-block">Activity Record:</span>
+                <strong class="text-dark">#{{ evidence.activity_record.id }}: {{ evidence.activity_record.activity.name }}</strong>
+              </div>
+              <div class="col-sm-6">
+                <span class="text-muted d-block">Operational Site:</span>
+                <strong class="text-dark">{{ evidence.site.name }}</strong>
+              </div>
+            </div>
+          </div>
+
+          <form method="post" novalidate>
+            {% csrf_token %}
+
+            <div class="mb-4">
+              <label for="{{ form.reason.id_for_label }}" class="form-label fw-bold text-dark small">
+                Audit Justification / Retirement Reason <span class="text-danger">*</span>
+              </label>
+              {{ form.reason }}
+              <div class="form-text small text-muted">{{ form.reason.help_text }}</div>
+              {% if form.reason.errors %}
+                <div class="text-danger small mt-1">{{ form.reason.errors.0 }}</div>
+              {% endif %}
+            </div>
+
+            <div class="d-flex align-items-center justify-content-end gap-2">
+              <a href="{% url 'core:evidence_detail' evidence.id %}" class="btn btn-secondary">
+                Cancel
+              </a>
+              <button type="submit" class="btn btn-warning px-4">
+                <i class="icon-ban me-1"></i> Confirm Document Retirement
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
