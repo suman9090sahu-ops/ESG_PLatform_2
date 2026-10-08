@@ -1,0 +1,546 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}{{ transport.transport_reference }}{% endblock %}
+{% block page_subtitle %}Transport &amp; Logistics Transaction Dossier | {{ transport.site.name }} ({{ transport.reporting_period.name }}){% endblock %}
+
+{% block page_actions %}
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'core:transport_list' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="icon-arrow-left me-1"></i> Back to Ledger
+    </a>
+
+    <!-- Validation & Anomaly Actions -->
+    <a href="{% url 'core:transport_validate' transport.id %}" class="btn btn-sm btn-outline-info" title="Re-run Deterministic Validation">
+      <i class="icon-check me-1"></i> Validate
+    </a>
+    <a href="{% url 'core:transport_anomaly_detect' transport.id %}" class="btn btn-sm btn-outline-warning" title="Run Anomaly Diagnostics">
+      <i class="icon-flag me-1"></i> Scan Anomalies
+    </a>
+
+    <!-- Evidence Upload -->
+    {% if can_upload_evidence %}
+      <a href="{% url 'core:transport_evidence_upload' transport.id %}" class="btn btn-sm btn-outline-primary">
+        <i class="icon-cloud-upload me-1"></i> Attach Evidence
+      </a>
+    {% endif %}
+
+    <!-- Submission / Review / Correction -->
+    {% if can_submit %}
+      <form method="post" action="{% url 'core:transport_submit' transport.id %}" class="d-inline">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Submit this transport record for subsidiary review?');">
+          <i class="icon-paper-plane me-1"></i> Submit Record
+        </button>
+      </form>
+    {% endif %}
+
+    {% if can_review %}
+      <a href="{% url 'core:transport_review' transport.id %}" class="btn btn-sm btn-warning text-dark">
+        <i class="icon-check me-1"></i> Review Record
+      </a>
+    {% endif %}
+
+    {% if transport.status == 'CORRECTION_REQUESTED' and can_modify %}
+      <a href="{% url 'core:transport_correction' transport.id %}" class="btn btn-sm btn-danger">
+        <i class="icon-action-undo me-1"></i> Address Correction
+      </a>
+    {% endif %}
+
+    {% if can_modify and transport.status == 'DRAFT' %}
+      <a href="{% url 'core:transport_edit' transport.id %}" class="btn btn-sm btn-primary">
+        <i class="icon-pencil me-1"></i> Edit
+      </a>
+    {% endif %}
+
+    {% if can_delete %}
+      <form method="post" action="{% url 'core:transport_delete' transport.id %}" class="d-inline" onsubmit="return confirm('Permanently delete this draft transport record?');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm btn-outline-danger">
+          <i class="icon-trash me-1"></i>
+        </button>
+      </form>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <!-- Status Banner -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+      <div class="d-flex align-items-center gap-3">
+        <div class="fs-4 fw-bold font-monospace text-dark">{{ transport.transport_reference }}</div>
+        <div>
+          {% if transport.status == 'DRAFT' %}
+            <span class="badge bg-secondary-subtle text-secondary border">Draft Lifecycle</span>
+          {% elif transport.status == 'SUBMITTED' %}
+            <span class="badge bg-primary-subtle text-primary border border-primary">Submitted for Verification</span>
+          {% elif transport.status == 'UNDER_REVIEW' %}
+            <span class="badge bg-warning-subtle text-warning border border-warning">Under Subsidiary Review</span>
+          {% elif transport.status == 'VERIFIED' %}
+            <span class="badge bg-success-subtle text-success border border-success">Verified &amp; Approved</span>
+          {% elif transport.status == 'CORRECTION_REQUESTED' %}
+            <span class="badge bg-danger-subtle text-danger border border-danger">Correction Requested</span>
+          {% elif transport.status == 'REJECTED' %}
+            <span class="badge bg-danger text-white">Rejected</span>
+          {% endif %}
+        </div>
+        <div>
+          {% if transport.validation_status == 'VALID' %}
+            <span class="badge bg-success-subtle text-success border border-success"><i class="icon-check me-1"></i>Validation: Valid</span>
+          {% elif transport.validation_status == 'WARNING' %}
+            <span class="badge bg-warning-subtle text-warning border border-warning"><i class="icon-exclamation me-1"></i>Validation: Warning</span>
+          {% elif transport.validation_status == 'INVALID' %}
+            <span class="badge bg-danger-subtle text-danger border border-danger"><i class="icon-close me-1"></i>Validation: Invalid</span>
+          {% else %}
+            <span class="badge bg-secondary-subtle text-secondary border">Validation: Pending</span>
+          {% endif %}
+        </div>
+        <div>
+          {% if transport.has_anomalies %}
+            <span class="badge bg-danger text-white"><i class="icon-flag me-1"></i>Anomalous Diagnostics</span>
+          {% else %}
+            <span class="badge bg-light text-muted border"><i class="icon-shield me-1"></i>No Anomalies Detected</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="text-muted small">
+        Created on <strong>{{ transport.created_at|date:"d M Y, H:i" }}</strong> by <strong>{{ transport.created_by.get_full_name|default:transport.created_by.username }}</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- Review / Correction Callout if applicable -->
+  {% if transport.status == 'CORRECTION_REQUESTED' and transport.review_comments %}
+    <div class="alert alert-danger border-danger shadow-sm mb-4">
+      <h6 class="alert-heading fw-bold mb-1"><i class="icon-action-undo me-2"></i>Correction Requested by Reviewer</h6>
+      <p class="mb-0">{{ transport.review_comments }}</p>
+    </div>
+  {% elif transport.status == 'VERIFIED' and transport.review_comments %}
+    <div class="alert alert-success border-success shadow-sm mb-4">
+      <h6 class="alert-heading fw-bold mb-1"><i class="icon-check me-2"></i>Reviewer Verification Note</h6>
+      <p class="mb-0">{{ transport.review_comments }}</p>
+    </div>
+  {% endif %}
+
+  <!-- Core Details Cards -->
+  <div class="row g-3 mb-4">
+    <!-- Operational Context -->
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-location-pin me-2 text-primary"></i> Operational Context
+          </h6>
+        </div>
+        <div class="card-body p-3">
+          <table class="table table-sm table-borderless mb-0">
+            <tr>
+              <th class="text-muted w-40">Operating Site:</th>
+              <td class="fw-semibold text-dark">{{ transport.site.name }}</td>
+            </tr>
+            <tr>
+              <th class="text-muted">Parent Project:</th>
+              <td>{{ transport.project.name }}</td>
+            </tr>
+            <tr>
+              <th class="text-muted">Company:</th>
+              <td>{{ transport.company.name }}</td>
+            </tr>
+            <tr>
+              <th class="text-muted">Reporting Period:</th>
+              <td><span class="badge bg-light text-dark border">{{ transport.reporting_period.name }}</span></td>
+            </tr>
+            <tr>
+              <th class="text-muted">Transport Date:</th>
+              <td class="fw-bold">{{ transport.transport_date|date:"d F Y" }}</td>
+            </tr>
+            <tr>
+              <th class="text-muted">Scope Category:</th>
+              <td><span class="badge bg-info-subtle text-info border border-info">{{ transport.get_scope_category_display }}</span></td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Carrier & Route Parameters -->
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-cursor me-2 text-info"></i> Transport &amp; Route
+          </h6>
+        </div>
+        <div class="card-body p-3">
+          <table class="table table-sm table-borderless mb-0">
+            <tr>
+              <th class="text-muted w-40">Carrier Provider:</th>
+              <td>
+                <a href="{% url 'core:carrier_detail' transport.carrier.id %}" class="fw-bold text-decoration-none">
+                  {{ transport.carrier.name }}
+                </a>
+              </td>
+            </tr>
+            <tr>
+              <th class="text-muted">Transport Mode:</th>
+              <td><span class="badge bg-light text-dark border">{{ transport.get_mode_display }}</span></td>
+            </tr>
+            <tr>
+              <th class="text-muted">Assigned Vehicle:</th>
+              <td>
+                {% if transport.vehicle %}
+                  <a href="{% url 'core:vehicle_detail' transport.vehicle.id %}" class="font-monospace fw-bold text-decoration-none">
+                    {{ transport.vehicle.registration_number }}
+                  </a>
+                  <small class="text-muted d-block">({{ transport.vehicle.get_vehicle_type_display }})</small>
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+            </tr>
+            <tr>
+              <th class="text-muted">Origin Location:</th>
+              <td>{{ transport.origin_location }}</td>
+            </tr>
+            <tr>
+              <th class="text-muted">Destination Location:</th>
+              <td>{{ transport.destination_location }}</td>
+            </tr>
+            <tr>
+              <th class="text-muted">Route Distance:</th>
+              <td class="font-monospace fw-bold">{{ transport.distance }} {{ transport.distance_unit }}</td>
+            </tr>
+            <tr>
+              <th class="text-muted">Distance Source:</th>
+              <td><span class="badge bg-light text-muted">{{ transport.get_distance_source_display }}</span></td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Commercials & Activity Link -->
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-energy me-2 text-warning"></i> Commercial &amp; ESG Link
+          </h6>
+        </div>
+        <div class="card-body p-3">
+          <table class="table table-sm table-borderless mb-0">
+            <tr>
+              <th class="text-muted w-40">Freight Cost:</th>
+              <td class="font-monospace fw-bold">
+                {% if transport.freight_cost %}
+                  {{ transport.currency }} {{ transport.freight_cost|floatformat:2 }}
+                {% else %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+            </tr>
+            <tr>
+              <th class="text-muted">Linked Activity:</th>
+              <td>
+                {% if transport.activity_record %}
+                  <span class="fw-semibold text-primary">
+                    {{ transport.activity_record.activity_master.name }}
+                  </span>
+                  <div class="font-monospace small text-muted">Rec #{{ transport.activity_record.id }} ({{ transport.activity_record.quantity }} {{ transport.activity_record.unit }})</div>
+                {% else %}
+                  <span class="text-muted small">No direct activity ledger link</span>
+                {% endif %}
+              </td>
+            </tr>
+            <tr>
+              <th class="text-muted">Parent Leg:</th>
+              <td>
+                {% if transport.parent_transport %}
+                  <a href="{% url 'core:transport_detail' transport.parent_transport.id %}" class="font-monospace text-decoration-none">
+                    {{ transport.parent_transport.transport_reference }}
+                  </a>
+                  <span class="badge bg-light text-dark">Leg {{ transport.leg_number }}</span>
+                {% else %}
+                  <span class="badge bg-light text-dark">Leg {{ transport.leg_number }} (Primary)</span>
+                {% endif %}
+              </td>
+            </tr>
+            <tr>
+              <th class="text-muted">Waybill / LR:</th>
+              <td class="font-monospace">{{ transport.waybill_number|default:"—" }}</td>
+            </tr>
+          </table>
+          {% if transport.notes %}
+            <div class="mt-3 p-2 bg-light rounded small text-muted">
+              <strong>Notes:</strong> {{ transport.notes }}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shipment Cargo Details -->
+  {% if shipment %}
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-white py-3 border-bottom">
+        <h6 class="mb-0 fw-bold text-dark">
+          <i class="icon-bag me-2 text-success"></i> Cargo &amp; Shipment Information
+        </h6>
+      </div>
+      <div class="card-body p-3">
+        <div class="row g-3">
+          <div class="col-md-3">
+            <div class="text-muted small">Shipment Reference</div>
+            <div class="font-monospace fw-bold text-dark">{{ shipment.shipment_reference }}</div>
+          </div>
+          <div class="col-md-3">
+            <div class="text-muted small">Cargo Description</div>
+            <div class="fw-semibold text-dark">{{ shipment.material_description }}</div>
+          </div>
+          <div class="col-md-2">
+            <div class="text-muted small">Quantity Moved</div>
+            <div class="font-monospace">{{ shipment.quantity }} {{ shipment.unit }}</div>
+          </div>
+          <div class="col-md-2">
+            <div class="text-muted small">Gross Weight (kg)</div>
+            <div class="font-monospace">{{ shipment.gross_weight_kg|default:"—" }}</div>
+          </div>
+          <div class="col-md-2">
+            <div class="text-muted small">Procurement Link</div>
+            <div>
+              {% if shipment.procurement_record %}
+                <a href="{% url 'core:procurement_detail' shipment.procurement_record.id %}" class="font-monospace text-decoration-none">
+                  {{ shipment.procurement_record.procurement_number }}
+                </a>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Multi-Leg Breakdown if children exist -->
+  {% if legs %}
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-white py-3 border-bottom">
+        <h6 class="mb-0 fw-bold text-dark">
+          <i class="icon-layers me-2 text-primary"></i> Multi-Leg Transport Journey ({{ legs|length }} Legs)
+        </h6>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light small text-uppercase">
+            <tr>
+              <th>Leg</th>
+              <th>Reference</th>
+              <th>Mode</th>
+              <th>Carrier</th>
+              <th>Route</th>
+              <th>Distance</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for leg in legs %}
+              <tr>
+                <td><span class="badge bg-light text-dark border">Leg {{ leg.leg_number }}</span></td>
+                <td>
+                  <a href="{% url 'core:transport_detail' leg.id %}" class="font-monospace fw-bold text-decoration-none">
+                    {{ leg.transport_reference }}
+                  </a>
+                </td>
+                <td>{{ leg.get_mode_display }}</td>
+                <td>{{ leg.carrier.name }}</td>
+                <td>{{ leg.origin_location }} &rarr; {{ leg.destination_location }}</td>
+                <td class="font-monospace">{{ leg.distance }} {{ leg.distance_unit }}</td>
+                <td><span class="badge bg-light text-dark border">{{ leg.get_status_display }}</span></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Validation & Anomaly Diagnostics Section -->
+  <div class="row g-3 mb-4">
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-check me-2 text-info"></i> Deterministic Validation Diagnostics
+          </h6>
+          <a href="{% url 'core:transport_validate' transport.id %}" class="btn btn-xs btn-outline-info">
+            Re-run Check
+          </a>
+        </div>
+        <div class="card-body p-3">
+          {% if transport.validation_errors %}
+            <div class="alert alert-danger mb-0">
+              <h6 class="fw-bold small mb-2 text-danger">Validation Issues Detected:</h6>
+              <ul class="mb-0 small ps-3">
+                {% for err in transport.validation_errors %}
+                  <li>{{ err }}</li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% else %}
+            <div class="text-success small p-3 bg-success-subtle rounded border border-success">
+              <i class="icon-check me-2"></i> All deterministic validation checks passed successfully.
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-flag me-2 text-warning"></i> Anomaly Signal Detection
+          </h6>
+          <a href="{% url 'core:transport_anomaly_detect' transport.id %}" class="btn btn-xs btn-outline-warning">
+            Run Anomaly Scan
+          </a>
+        </div>
+        <div class="card-body p-3">
+          {% if transport.anomaly_details %}
+            <div class="alert alert-warning mb-0">
+              <h6 class="fw-bold small mb-2 text-warning-emphasis">Anomaly Signals Detected:</h6>
+              <ul class="mb-0 small ps-3">
+                {% for anom in transport.anomaly_details %}
+                  <li>
+                    <strong>{{ anom.type }}:</strong> {{ anom.message }}
+                    <span class="badge bg-warning text-dark ms-1">{{ anom.severity }}</span>
+                  </li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% else %}
+            <div class="text-success small p-3 bg-light rounded border">
+              <i class="icon-shield me-2"></i> No distance, payload overload, or duplicate transport anomalies identified.
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Evidence Management & OCR Comparison -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+      <h6 class="mb-0 fw-bold text-dark">
+        <i class="icon-docs me-2 text-primary"></i> Supporting Evidence &amp; OCR Verification ({{ evidence_files|length }})
+      </h6>
+      {% if can_upload_evidence %}
+        <a href="{% url 'core:transport_evidence_upload' transport.id %}" class="btn btn-xs btn-primary">
+          <i class="icon-cloud-upload me-1"></i> Attach Document
+        </a>
+      {% endif %}
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light small text-uppercase">
+          <tr>
+            <th>Document Type</th>
+            <th>File Name</th>
+            <th>Uploaded By</th>
+            <th>Uploaded At</th>
+            <th>SHA-256 Checksum</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ev in evidence_files %}
+            <tr>
+              <td>
+                <span class="badge bg-light text-dark border">{{ ev.get_evidence_type_display }}</span>
+              </td>
+              <td>
+                <div class="fw-semibold text-dark">{{ ev.file_name }}</div>
+                <small class="text-muted">{{ ev.file_size_display }}</small>
+              </td>
+              <td>{{ ev.uploaded_by.get_full_name|default:ev.uploaded_by.username }}</td>
+              <td>{{ ev.uploaded_at|date:"d M Y, H:i" }}</td>
+              <td>
+                <span class="font-monospace small text-muted" title="{{ ev.sha256_hash }}">
+                  {{ ev.sha256_hash|slice:":12" }}...
+                </span>
+              </td>
+              <td class="text-end">
+                <div class="btn-group btn-group-sm">
+                  <a href="{{ ev.file.url }}" target="_blank" class="btn btn-outline-secondary" title="View / Download Document">
+                    <i class="icon-cloud-download"></i>
+                  </a>
+                  <a href="{% url 'core:transport_ocr_compare' transport.id ev.id %}" class="btn btn-outline-info" title="OCR Field Reconciliation">
+                    <i class="icon-refresh"></i> OCR
+                  </a>
+                </div>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="6" class="text-center py-4 text-muted">
+                <i class="icon-docs d-block display-5 mb-2 text-secondary"></i>
+                <div>No evidence documents attached to this transport event yet.</div>
+                {% if can_upload_evidence %}
+                  <div class="mt-2">
+                    <a href="{% url 'core:transport_evidence_upload' transport.id %}" class="btn btn-sm btn-outline-primary">
+                      Attach Waybill / Lorry Receipt / Invoice
+                    </a>
+                  </div>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Audit Trail History -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white py-3 border-bottom">
+      <h6 class="mb-0 fw-bold text-dark">
+        <i class="icon-shield me-2 text-danger"></i> Compliance Audit Trail
+      </h6>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light small text-uppercase">
+          <tr>
+            <th>Timestamp</th>
+            <th>Event Action</th>
+            <th>Actor</th>
+            <th>IP Address</th>
+            <th>Description &amp; Metadata</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in audit_logs %}
+            <tr>
+              <td class="font-monospace small">{{ log.created_at|date:"d M Y, H:i:s" }}</td>
+              <td><span class="badge bg-light text-dark border">{{ log.get_event_type_display }}</span></td>
+              <td>{{ log.actor.get_full_name|default:log.actor.username|default:"System" }}</td>
+              <td class="font-monospace small text-muted">{{ log.ip_address|default:"—" }}</td>
+              <td class="small">{{ log.description }}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="5" class="text-center py-3 text-muted">
+                No security audit logs recorded yet.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

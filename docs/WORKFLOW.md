@@ -389,4 +389,56 @@ ANOMALY GOVERNANCE                     CORRECTION WORKFLOW
 3. **No Silent Overwrite:** OCR extractions provide verification assistance only; extracted figures never mutate commercial data automatically.
 4. **Permanent Lineage:** Historical records are locked upon submission; corrections and reviews are tracked in the immutable `AuthAuditLog`.
 
+---
+
+## 7. Phase 17: Transport & Logistics Governance Workflow
+
+```text
+===================================================================================
+PHASE 17 — TRANSPORT & LOGISTICS GOVERNANCE STATE MACHINE
+===================================================================================
+
+[Site Manager / Operator]
+  1. Create Transport ─────────────► Status: DRAFT
+     - Select Site & Open Period            (Record unlocked, editable)
+     - Designate Carrier / Vehicle
+     - Record Cargo / Link Shipment
+     - Enter Route & Distance
+     - Link Canonical ActivityRecord
+     │
+  2. Attach Evidence Document ────► Status: DRAFT
+     - Lorry Receipt / Weighbridge Slip
+     - Trigger Optional OCR Run
+     - Compare Extracted Plate/Distance (Zero Silent Overwrite)
+     │
+  3. Formally Submit ──────────────► Status: SUBMITTED
+     - Pre-flight Validation Check          (Record locked against Site edits)
+     - Anomaly Signals Evaluated            (Duplicate, distance spike, overload)
+     │
+[Subsidiary Manager Review Desk]
+  4. Governance Review Decisions:
+     │
+     ├──► VERIFY ──────────────────► Status: VERIFIED (Permanently locked)
+     │
+     ├──► REQUEST_CORRECTION ──────► Status: CORRECTION_REQUESTED (Unlocked for Site Mgr)
+     │    │
+     │    ▼
+     │    [Site Manager Remediation]
+     │    - Adjust Distance / Payload
+     │    - Provide Audit Explanation
+     │    - Resubmits ─────────────► Status: SUBMITTED (Preserves revision history)
+     │
+     └──► REJECT ──────────────────► Status: REJECTED (Movement record rejected with notes)
+===================================================================================
+```
+
+### Architectural Principles & Scope Controls:
+1. **Transport ≠ Procurement:** Procurement records commercial transactions; Transport records physical cargo and fleet movement. A shipment may reference its originating procurement order without duplicating purchase data.
+2. **Transport ≠ Fuel Ledger:** Vehicle fuel is an operational activity. Transport movements record fuel metadata while directly linking to canonical `ActivityRecord` for formal GHG calculations without creating duplicate fuel ledgers.
+3. **Carrier ≠ Vehicle:** Carriers represent logistics partners operating across multiple projects. Vehicles represent individual mobile combustion assets classified as Owned (Scope 1) vs Third-Party (Scope 3).
+4. **Zero Silent Overwrite:** OCR telemetry automatically compares consignment notes with entered values. Discrepancies generate review signals without altering source data.
+5. **Anti-IDOR & Scope Isolation:** Site Managers may only create and correct transports for assigned sites. Subsidiary Managers may only verify transports within their subsidiary corporate boundary. Auditors retain strictly read-only access.
+6. **Immutable Audit Lineage:** All state transitions and document attachments create corresponding `AuthAuditLog` entries.
+
+
 

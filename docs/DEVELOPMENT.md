@@ -138,6 +138,12 @@ The platform includes seed users with defined operational scopes:
 # Phase 16 Live End-to-End Verification
 .\python.bat tests\verify_phase16_live.py
 
+# Phase 17 Transport & Logistics Management tests
+.\python.bat manage.py test tests.test_phase17_transport_logistics
+
+# Phase 17 Live End-to-End Verification
+.\python.bat tests\verify_phase17_live.py
+
 # Live End-to-End HTTP Verification against running server
 .\python.bat tests\test_live_e2e.py
 ```
@@ -262,5 +268,129 @@ verified_proc = review_procurement(
     comments="Invoices and physical delivery receipts verified.",
 )
 ```
+
+---
+
+## Phase 17 — Transport & Logistics Management Developer Guide
+
+### Service Layer Operations (`apps/core/transport_services.py`)
+
+```python
+from decimal import Decimal
+from datetime import date
+from apps.core.transport_services import (
+    create_carrier,
+    create_vehicle,
+    create_shipment,
+    create_transport_record,
+    link_transport_activity,
+    upload_transport_evidence,
+    compare_ocr_with_transport,
+    validate_transport,
+    detect_transport_anomalies,
+    submit_transport_record,
+    review_transport_record,
+)
+
+# 1. Register a Carrier / Logistics Provider
+carrier = create_carrier(
+    name="VRL Logistics Limited",
+    carrier_code="CAR-VRL-001",
+    provider_type="3PL",
+    company=company,
+    contact_person="Ramesh Patil",
+    email="operations@vrllogistics.com",
+    actor=user,
+)
+
+# 2. Register a Vehicle Asset (Owned -> Scope 1, Hired -> Scope 3 Cat 4)
+vehicle = create_vehicle(
+    registration_number="KA-25-D-8822",
+    vehicle_type="HEAVY_TRUCK",
+    fuel_type="DIESEL",
+    carrier=carrier,
+    company=company,
+    is_owned=False,  # Scope 3 Upstream Transportation
+    payload_capacity_tonnes=Decimal("25.00"),
+    actor=user,
+)
+
+# 3. Create a Shipment (Optional link to Phase 16 Procurement Record)
+shipment = create_shipment(
+    shipment_reference="SHIP-2026-001",
+    material_description="TMT Steel Reinforcement Bars",
+    quantity=Decimal("20.00"),
+    unit="Tonne",
+    weight_tonnes=Decimal("20.00"),
+    site=site,
+    procurement_record=procurement,
+    actor=user,
+)
+
+# 4. Create a Transport / Logistics Event Record
+transport = create_transport_record(
+    transport_reference="TR-2026-001",
+    site=site,
+    reporting_period=period,
+    transport_date=date(2026, 10, 5),
+    transport_mode="ROAD",
+    origin="Jindal Steel Plant, Bellary",
+    destination="Polavaram Hydro Dam Site 101",
+    distance_km=Decimal("420.50"),
+    distance_source="DOCUMENT",
+    carrier=carrier,
+    vehicle=vehicle,
+    shipment=shipment,
+    scope_category="SCOPE_3_CAT_04",
+    freight_cost=Decimal("45000.00"),
+    currency="INR",
+    actor=user,
+)
+
+# 5. Link / Create Canonical ESG Activity Record (Zero Duplicate Fuel Ledger)
+activity = link_transport_activity(
+    transport=transport,
+    activity_type=diesel_transport_activity_type,
+    quantity=Decimal("120.00"),
+    unit="Litre",
+    actor=user,
+)
+
+# 6. Upload Evidence & OCR Intelligence (Zero Silent Overwrite)
+evidence = upload_transport_evidence(
+    transport=transport,
+    uploaded_file=consignment_note_pdf,
+    category="LORRY_RECEIPT",
+    actor=user,
+)
+ocr_comparison = compare_ocr_with_transport(transport)
+# Returns structured comparison:
+# {
+#     "has_ocr": True,
+#     "fields": [
+#         {"field": "Vehicle Number", "stored": "KA-25-D-8822", "ocr": "KA-25-D-8822", "match": True, "confidence": 0.98},
+#         ...
+#     ]
+# }
+
+# 7. Deterministic Validation & Non-Destructive Anomaly Detection
+val_results = validate_transport(transport)
+# Checks: transport_reference, carrier, vehicle, site/period scoping, positive distance, weight capacity
+anomalies = detect_transport_anomalies(transport)
+# Evaluates: DUPLICATE_TRANSPORT, UNUSUAL_DISTANCE (>2500 km or historical +150%), PAYLOAD_OVERLOAD
+
+# 8. Governance Workflow (Submit -> Subsidiary Review -> Resubmit)
+submitted_tr = submit_transport_record(transport, actor=site_mgr)
+# Status: DRAFT -> SUBMITTED
+
+verified_tr = review_transport_record(
+    transport=submitted_tr,
+    action="VERIFY",
+    reviewer=sub_mgr,
+    comments="Bilty and weighbridge slip verified against consignment note.",
+)
+# Status: SUBMITTED -> VERIFIED (or REVISION_REQUESTED if changes are required)
+```
+
 
 

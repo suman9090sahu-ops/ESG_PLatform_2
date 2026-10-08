@@ -9,6 +9,7 @@ Establishes:
 5. Audit-Ready Authentication and Authorization Event Logging (AuthAuditLog)
 """
 
+import re
 from decimal import Decimal
 from django.contrib.auth.models import AbstractUser
 from django.db import models
@@ -692,6 +693,22 @@ class AuthAuditLog(models.Model):
         PROCUREMENT_CORRECTED = "PROCUREMENT_CORRECTED", "Procurement Corrected"
         PROCUREMENT_RESUBMITTED = "PROCUREMENT_RESUBMITTED", "Procurement Resubmitted"
         PROCUREMENT_ANOMALY_DETECTED = "PROCUREMENT_ANOMALY_DETECTED", "Procurement Anomaly Detected"
+        CARRIER_CREATED = "CARRIER_CREATED", "Transport Carrier Created"
+        CARRIER_UPDATED = "CARRIER_UPDATED", "Transport Carrier Updated"
+        CARRIER_ARCHIVED = "CARRIER_ARCHIVED", "Transport Carrier Archived"
+        VEHICLE_CREATED = "VEHICLE_CREATED", "Vehicle Master Created"
+        VEHICLE_UPDATED = "VEHICLE_UPDATED", "Vehicle Master Updated"
+        VEHICLE_ARCHIVED = "VEHICLE_ARCHIVED", "Vehicle Master Archived"
+        TRANSPORT_CREATED = "TRANSPORT_CREATED", "Transport Record Created"
+        TRANSPORT_UPDATED = "TRANSPORT_UPDATED", "Transport Record Updated"
+        TRANSPORT_DELETED = "TRANSPORT_DELETED", "Transport Record Deleted"
+        TRANSPORT_SUBMITTED = "TRANSPORT_SUBMITTED", "Transport Record Submitted"
+        TRANSPORT_REVIEWED = "TRANSPORT_REVIEWED", "Transport Record Reviewed"
+        TRANSPORT_VERIFIED = "TRANSPORT_VERIFIED", "Transport Record Verified"
+        TRANSPORT_REJECTED = "TRANSPORT_REJECTED", "Transport Record Rejected"
+        TRANSPORT_CORRECTED = "TRANSPORT_CORRECTED", "Transport Record Corrected"
+        TRANSPORT_RESUBMITTED = "TRANSPORT_RESUBMITTED", "Transport Record Resubmitted"
+        TRANSPORT_ANOMALY_DETECTED = "TRANSPORT_ANOMALY_DETECTED", "Transport Anomaly Detected"
 
     user = models.ForeignKey(
         User,
@@ -1631,6 +1648,11 @@ def evidence_file_upload_path(instance, filename):
         site_code = re.sub(r"[^a-zA-Z0-9_\-]", "_", proc.site.code.lower()) if proc.site else "proc_corp"
         period_code = re.sub(r"[^a-zA-Z0-9_\-]", "_", proc.reporting_period.code.lower()) if proc.reporting_period else "period_gen"
         record_id = f"proc_{proc.id}"
+    elif instance and getattr(instance, "transport_record_id", None):
+        trn = instance.transport_record
+        site_code = re.sub(r"[^a-zA-Z0-9_\-]", "_", trn.site.code.lower()) if trn.site else "trn_corp"
+        period_code = re.sub(r"[^a-zA-Z0-9_\-]", "_", trn.reporting_period.code.lower()) if trn.reporting_period else "period_gen"
+        record_id = f"trn_{trn.id}"
 
     return f"evidence/{site_code}/{period_code}/rec_{record_id}/{safe_filename}"
 
@@ -1642,6 +1664,9 @@ class EvidenceType(models.TextChoices):
     FUEL_CHALLAN = "FUEL_CHALLAN", "Fuel Delivery Challan / DG Log"
     WASTE_MANIFEST = "WASTE_MANIFEST", "Waste Manifest / Weighbridge Slip"
     TRANSPORT_RECORD = "TRANSPORT_RECORD", "Transport / Logistics Record"
+    LORRY_RECEIPT = "LORRY_RECEIPT", "Lorry Receipt / Consignment Note / Bilty"
+    WEIGHBRIDGE_SLIP = "WEIGHBRIDGE_SLIP", "Weighbridge / Weight Slip"
+    TRIP_SHEET = "TRIP_SHEET", "Vehicle Trip Sheet / Log Book"
     TRAVEL_RECORD = "TRAVEL_RECORD", "Business Travel Record"
     PURCHASE_DOCUMENT = "PURCHASE_DOCUMENT", "Purchase Order / Goods Receipt Note"
     SUPPLIER_CERTIFICATE = "SUPPLIER_CERTIFICATE", "Supplier Certificate / Spec Sheet"
@@ -1680,6 +1705,14 @@ class Evidence(models.Model):
         blank=True,
         related_name="evidence_files",
         help_text="Procurement record supported by this evidence document.",
+    )
+    transport_record = models.ForeignKey(
+        "TransportRecord",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="evidence_files",
+        help_text="Transport record supported by this evidence document.",
     )
     file = models.FileField(
         upload_to=evidence_file_upload_path,
@@ -1779,14 +1812,21 @@ class Evidence(models.Model):
         ]
 
     def __str__(self):
-        ref = f"Record #{self.activity_record_id}" if self.activity_record_id else f"Procurement #{self.procurement_record_id}"
+        if self.activity_record_id:
+            ref = f"Record #{self.activity_record_id}"
+        elif self.procurement_record_id:
+            ref = f"Procurement #{self.procurement_record_id}"
+        elif self.transport_record_id:
+            ref = f"Transport #{self.transport_record_id}"
+        else:
+            ref = "Unlinked"
         return f"{self.get_evidence_type_display()}: {self.original_filename} ({ref})"
 
     def clean(self):
         super().clean()
-        if not self.activity_record_id and not self.procurement_record_id:
+        if not self.activity_record_id and not self.procurement_record_id and not self.transport_record_id:
             from django.core.exceptions import ValidationError
-            raise ValidationError("Evidence document must be linked to either an ActivityRecord or a ProcurementRecord.")
+            raise ValidationError("Evidence document must be linked to an ActivityRecord, ProcurementRecord, or TransportRecord.")
 
     @property
     def is_active(self):
@@ -1802,6 +1842,8 @@ class Evidence(models.Model):
             return self.activity_record.site
         if self.procurement_record:
             return self.procurement_record.site
+        if self.transport_record:
+            return self.transport_record.site
         return None
 
     @property
@@ -1810,6 +1852,8 @@ class Evidence(models.Model):
             return self.activity_record.site.project
         if self.procurement_record:
             return self.procurement_record.project
+        if self.transport_record:
+            return self.transport_record.project
         return None
 
     @property
@@ -1818,6 +1862,8 @@ class Evidence(models.Model):
             return self.activity_record.site.project.subsidiary
         if self.procurement_record and self.procurement_record.project:
             return self.procurement_record.project.subsidiary
+        if self.transport_record and self.transport_record.project:
+            return self.transport_record.project.subsidiary
         return None
 
     @property
@@ -1826,6 +1872,8 @@ class Evidence(models.Model):
             return self.activity_record.site.project.subsidiary.company
         if self.procurement_record:
             return self.procurement_record.company
+        if self.transport_record:
+            return self.transport_record.company
         return None
 
     @property
@@ -1834,6 +1882,8 @@ class Evidence(models.Model):
             return self.activity_record.reporting_period
         if self.procurement_record:
             return self.procurement_record.reporting_period
+        if self.transport_record:
+            return self.transport_record.reporting_period
         return None
 
     @property
@@ -3884,6 +3934,821 @@ class ProcurementItem(models.Model):
     def __str__(self):
         unit_str = self.unit.symbol if self.unit else self.unit_custom
         return f"Line {self.line_number}: {self.item_name} ({self.quantity} {unit_str}) - {self.total_amount}"
+
+
+# -----------------------------------------------------------------------------
+# PHASE 17: TRANSPORT & LOGISTICS MANAGEMENT
+# -----------------------------------------------------------------------------
+
+class CarrierType(models.TextChoices):
+    ROAD_CARRIER = "ROAD_CARRIER", "Road Freight / Fleet Carrier"
+    RAIL_OPERATOR = "RAIL_OPERATOR", "Rail Freight Operator"
+    SHIPPING_LINE = "SHIPPING_LINE", "Ocean / Coastal Shipping Line"
+    AIR_CARGO = "AIR_CARGO", "Air Cargo Carrier"
+    LOGISTICS_3PL = "LOGISTICS_3PL", "3PL / Integrated Logistics Partner"
+    INTERNAL_FLEET = "INTERNAL_FLEET", "Internal / Captive Fleet"
+    OTHER = "OTHER", "Other Transport Provider"
+
+
+class CarrierStatus(models.TextChoices):
+    ACTIVE = "ACTIVE", "Active"
+    INACTIVE = "INACTIVE", "Inactive"
+    BLOCKED = "BLOCKED", "Blocked"
+    ARCHIVED = "ARCHIVED", "Archived"
+
+
+class Carrier(models.Model):
+    """
+    Authoritative Transport Provider & Logistics Carrier Master.
+    Centralized master for all transport carriers, freight forwarders, and logistics operators
+    moving materials, goods, and fleet resources across projects, sites, and enterprise boundaries.
+    Reuses Phase 16 Supplier where the carrier is also a commercial vendor.
+    """
+    carrier_code = models.CharField(
+        max_length=50,
+        unique=True,
+        db_index=True,
+        help_text="Unique stable internal identifier for the carrier (e.g. CARR-001).",
+    )
+    name = models.CharField(
+        max_length=255,
+        db_index=True,
+        help_text="Carrier trade name or common business designation.",
+    )
+    legal_name = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Registered corporate legal entity name.",
+    )
+    carrier_type = models.CharField(
+        max_length=50,
+        choices=CarrierType.choices,
+        default=CarrierType.ROAD_CARRIER,
+        db_index=True,
+        help_text="Primary transportation modality classification.",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=CarrierStatus.choices,
+        default=CarrierStatus.ACTIVE,
+        db_index=True,
+        help_text="Operational lifecycle state.",
+    )
+    supplier = models.ForeignKey(
+        Supplier,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="carriers",
+        help_text="Linked commercial vendor from Phase 16 Supplier Master if third-party.",
+    )
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="carriers",
+        help_text="Parent Enterprise or Company entity. If null, carrier operates enterprise-wide.",
+    )
+    contact_person = models.CharField(
+        max_length=150,
+        blank=True,
+        help_text="Primary dispatcher or operations contact.",
+    )
+    contact_email = models.EmailField(
+        blank=True,
+        help_text="Official operations or dispatch email.",
+    )
+    contact_phone = models.CharField(
+        max_length=32,
+        blank=True,
+        help_text="Official operations contact phone.",
+    )
+    notes = models.TextField(
+        blank=True,
+        help_text="Operational remarks, contract terms, or fleet capabilities.",
+    )
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_carriers",
+        help_text="User who registered this carrier master record.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Transport Carrier"
+        verbose_name_plural = "Transport Carriers"
+        ordering = ["name"]
+        indexes = [
+            models.Index(fields=["status", "name"], name="idx_carr_status_name"),
+            models.Index(fields=["company", "status"], name="idx_carr_co_status"),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.carrier_code})"
+
+    @property
+    def is_active(self):
+        return self.status == CarrierStatus.ACTIVE
+
+    @property
+    def vehicles_count(self):
+        return self.vehicles.count()
+
+    @property
+    def active_vehicles_count(self):
+        return self.vehicles.filter(status="ACTIVE").count()
+
+    @property
+    def transports_count(self):
+        return self.transports.count()
+
+    def archive(self, actor=None):
+        """Soft-archives carrier to safeguard historical transport integrity."""
+        self.status = CarrierStatus.ARCHIVED
+        self.save(update_fields=["status", "updated_at"])
+
+
+class VehicleOwnershipType(models.TextChoices):
+    OWNED = "OWNED", "Company Owned (Scope 1 Mobile Combustion)"
+    LEASED = "LEASED", "Long-Term Leased / Controlled (Scope 1)"
+    THIRD_PARTY = "THIRD_PARTY", "Third-Party / Carrier Operated (Scope 3.4 Upstream)"
+    CONTRACTED = "CONTRACTED", "Contractor Dedicated (Scope 3)"
+
+
+class VehicleType(models.TextChoices):
+    TRUCK_HEAVY = "TRUCK_HEAVY", "Heavy Duty Truck / Multi-Axle Trailer (>16 MT)"
+    TRUCK_MEDIUM = "TRUCK_MEDIUM", "Medium Duty Truck (7.5 - 16 MT)"
+    TRUCK_LIGHT = "TRUCK_LIGHT", "Light Commercial Vehicle (LCV < 7.5 MT)"
+    TIPPER_DUMPER = "TIPPER_DUMPER", "Tipper / Dumper / Quarry Hauler"
+    TANKER = "TANKER", "Tanker (Fuel / Water / Chemical)"
+    TRAILER = "TRAILER", "Flatbed / Lowbed Trailer"
+    VAN = "VAN", "Delivery Van / Courier Vehicle"
+    BUS_STAFF = "BUS_STAFF", "Staff Bus / Crew Transport"
+    CAR_UTILITY = "CAR_UTILITY", "Site Utility Car / Inspection SUV"
+    EARTH_MOVER = "EARTH_MOVER", "Specialized Heavy Earth Mover Transport"
+    LOCOMOTIVE = "LOCOMOTIVE", "Rail Locomotive / Rake"
+    VESSEL = "VESSEL", "Barge / Coastal Vessel"
+    OTHER = "OTHER", "Other Vehicle Type"
+
+
+class FuelType(models.TextChoices):
+    DIESEL = "DIESEL", "High Speed Diesel (HSD)"
+    PETROL = "PETROL", "Motor Spirit / Petrol"
+    CNG = "CNG", "Compressed Natural Gas (CNG)"
+    LNG = "LNG", "Liquefied Natural Gas (LNG)"
+    ELECTRIC = "ELECTRIC", "Battery Electric Vehicle (BEV)"
+    HYBRID = "HYBRID", "Hybrid Electric (HEV/PHEV)"
+    BIOFUEL = "BIOFUEL", "Biodiesel / Bio-Ethanol"
+    HYDROGEN = "HYDROGEN", "Hydrogen Fuel Cell"
+    NONE_OTHER = "NONE_OTHER", "None / Non-Motorized / Other"
+
+
+class VehicleStatus(models.TextChoices):
+    ACTIVE = "ACTIVE", "Active"
+    INACTIVE = "INACTIVE", "Inactive"
+    MAINTENANCE = "MAINTENANCE", "Under Maintenance"
+    RETIRED = "RETIRED", "Retired"
+    ARCHIVED = "ARCHIVED", "Archived"
+
+
+class Vehicle(models.Model):
+    """
+    Authoritative Vehicle Master.
+    Maintains vehicle-level registration, operational technical attributes, fuel type,
+    carrying payload capacity, and carrier/ownership linkage.
+    Distinguishes owned fleet (Scope 1) vs carrier/third-party freight (Scope 3).
+    """
+    vehicle_identifier = models.CharField(
+        max_length=50,
+        unique=True,
+        db_index=True,
+        help_text="Unique internal vehicle asset code (e.g. VEH-001, MEIL-TRK-102).",
+    )
+    registration_number = models.CharField(
+        max_length=50,
+        unique=True,
+        db_index=True,
+        help_text="Official vehicle registration number (e.g. AP-04-TX-1234, normalized uppercase).",
+    )
+    carrier = models.ForeignKey(
+        Carrier,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="vehicles",
+        help_text="Operating carrier or transport provider. Optional if company-owned fleet.",
+    )
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="vehicles",
+        help_text="Owning or managing enterprise company.",
+    )
+    ownership_type = models.CharField(
+        max_length=30,
+        choices=VehicleOwnershipType.choices,
+        default=VehicleOwnershipType.THIRD_PARTY,
+        db_index=True,
+        help_text="Vehicle ownership classification determining Scope 1 vs Scope 3 greenhouse accounting.",
+    )
+    vehicle_type = models.CharField(
+        max_length=40,
+        choices=VehicleType.choices,
+        default=VehicleType.TRUCK_HEAVY,
+        db_index=True,
+        help_text="Vehicle body and functional classification.",
+    )
+    fuel_type = models.CharField(
+        max_length=30,
+        choices=FuelType.choices,
+        default=FuelType.DIESEL,
+        db_index=True,
+        help_text="Primary motor fuel / energy carrier.",
+    )
+    capacity_payload = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Rated payload carrying capacity.",
+    )
+    capacity_unit = models.CharField(
+        max_length=20,
+        default="MT",
+        choices=[
+            ("MT", "Metric Tons (MT)"),
+            ("KG", "Kilograms (kg)"),
+            ("L", "Liters (L)"),
+            ("PASSENGERS", "Passengers"),
+            ("OTHER", "Other"),
+        ],
+        help_text="Capacity measurement unit.",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=VehicleStatus.choices,
+        default=VehicleStatus.ACTIVE,
+        db_index=True,
+        help_text="Operational lifecycle state.",
+    )
+    notes = models.TextField(
+        blank=True,
+        help_text="Technical specifications, emissions standard (BS-VI/Euro 6), or asset history.",
+    )
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_vehicles",
+        help_text="User who registered this vehicle master record.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Vehicle"
+        verbose_name_plural = "Vehicles"
+        ordering = ["registration_number"]
+        indexes = [
+            models.Index(fields=["status", "registration_number"], name="idx_veh_stat_reg"),
+            models.Index(fields=["carrier", "status"], name="idx_veh_carr_status"),
+            models.Index(fields=["ownership_type", "status"], name="idx_veh_owner_status"),
+        ]
+
+    def __str__(self):
+        return f"{self.registration_number} ({self.get_vehicle_type_display()}) - {self.vehicle_identifier}"
+
+    def clean(self):
+        super().clean()
+        if self.registration_number:
+            self.registration_number = re.sub(r"\s+", " ", self.registration_number.strip().upper())
+
+    @property
+    def is_active(self):
+        return self.status == VehicleStatus.ACTIVE
+
+    @property
+    def is_owned(self):
+        return self.ownership_type in [VehicleOwnershipType.OWNED, VehicleOwnershipType.LEASED]
+
+    def archive(self, actor=None):
+        """Soft-archives vehicle without deleting historical transport records."""
+        self.status = VehicleStatus.ARCHIVED
+        self.save(update_fields=["status", "updated_at"])
+
+
+class Shipment(models.Model):
+    """
+    Shipment / Consignment Entity.
+    Represents the cargo, consignment, materials, or equipment transported during logistics events.
+    Integrates directly with Phase 16 Procurement where transportation relates to commercial purchasing.
+    """
+    shipment_reference = models.CharField(
+        max_length=64,
+        unique=True,
+        db_index=True,
+        help_text="Unique shipment / consignment tracking number (e.g. SHP-2026-POL-0001).",
+    )
+    procurement = models.ForeignKey(
+        ProcurementRecord,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="shipments",
+        help_text="Governing procurement purchasing transaction from Phase 16 if applicable.",
+    )
+    material_description = models.CharField(
+        max_length=255,
+        help_text="Cargo description (e.g. TMT Steel Rebars, Portland Pozzolana Cement, Excavator Spares).",
+    )
+    quantity = models.DecimalField(
+        max_digits=14,
+        decimal_places=4,
+        default=Decimal("0.0000"),
+        help_text="Transported material quantity.",
+    )
+    unit = models.ForeignKey(
+        UnitOfMeasure,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        help_text="Standardized unit of measure from Activity Master taxonomy.",
+    )
+    unit_custom = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Custom commercial unit if not in UnitOfMeasure master.",
+    )
+    weight_gross = models.DecimalField(
+        max_digits=14,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text="Gross payload weight including tare.",
+    )
+    weight_net = models.DecimalField(
+        max_digits=14,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text="Net cargo payload weight (critical for ton-km calculations).",
+    )
+    weight_unit = models.CharField(
+        max_length=20,
+        default="MT",
+        choices=[
+            ("MT", "Metric Tons (MT)"),
+            ("KG", "Kilograms (kg)"),
+            ("TON", "Short Tons (ton)"),
+        ],
+        help_text="Weight unit.",
+    )
+    delivery_reference = models.CharField(
+        max_length=100,
+        blank=True,
+        db_index=True,
+        help_text="Delivery Challan (DC), Lorry Receipt (LR) number, or Goods Receipt Note (GRN).",
+    )
+    consignment_value = models.DecimalField(
+        max_digits=16,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Declared commercial consignment value.",
+    )
+    currency = models.CharField(
+        max_length=10,
+        default="INR",
+        help_text="Commercial currency code.",
+    )
+    notes = models.TextField(
+        blank=True,
+        help_text="Handling instructions, hazardous materials flags, or packing details.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Shipment Cargo"
+        verbose_name_plural = "Shipments Cargo"
+        ordering = ["-created_at"]
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(quantity__gte=0),
+                name="check_shipment_qty_non_negative",
+            ),
+            models.CheckConstraint(
+                check=models.Q(consignment_value__isnull=True) | models.Q(consignment_value__gte=0),
+                name="check_shipment_val_non_negative",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["procurement", "delivery_reference"], name="idx_shp_proc_deliv"),
+        ]
+
+    def __str__(self):
+        qty_str = f"{self.quantity} {self.unit.symbol if self.unit else self.unit_custom or ''}".strip()
+        return f"{self.shipment_reference}: {self.material_description} ({qty_str})"
+
+
+class TransportMode(models.TextChoices):
+    ROAD = "ROAD", "Road Transport (Truck / Trailer / Utility)"
+    RAIL = "RAIL", "Rail Freight"
+    SEA = "SEA", "Sea / Coastal Shipping / Barge"
+    AIR = "AIR", "Air Freight Cargo"
+    PIPELINE = "PIPELINE", "Pipeline Transmission"
+    OTHER = "OTHER", "Other Transport Mode"
+
+
+class TransportStatus(models.TextChoices):
+    DRAFT = "DRAFT", "Draft"
+    SUBMITTED = "SUBMITTED", "Submitted"
+    UNDER_REVIEW = "UNDER_REVIEW", "Under Review"
+    VERIFIED = "VERIFIED", "Verified / Approved"
+    CORRECTION_REQUESTED = "CORRECTION_REQUESTED", "Correction Requested"
+    REJECTED = "REJECTED", "Rejected"
+    CANCELLED = "CANCELLED", "Cancelled"
+
+
+class DistanceUnit(models.TextChoices):
+    KM = "KM", "Kilometers (km)"
+    MILES = "MILES", "Miles (mi)"
+    NM = "NM", "Nautical Miles (nm)"
+
+
+class DistanceSource(models.TextChoices):
+    USER_PROVIDED = "USER_PROVIDED", "User Provided / Odometer Entry"
+    DOCUMENT = "DOCUMENT", "Document / Lorry Receipt / Consignment Note"
+    CARRIER = "CARRIER", "Carrier Telemetry / GPS System"
+    SYSTEM = "SYSTEM", "Standard Distance Route Table"
+    CALCULATED = "CALCULATED", "Calculated / Geocoded"
+
+
+class TransportScopeCategory(models.TextChoices):
+    SCOPE_1 = "SCOPE_1", "Scope 1 (Owned / Leased Mobile Combustion)"
+    SCOPE_3_CAT_04 = "SCOPE_3_CAT_04", "Scope 3.4 (Upstream Transportation & Distribution)"
+    SCOPE_3_CAT_09 = "SCOPE_3_CAT_09", "Scope 3.9 (Downstream Transportation & Distribution)"
+    NOT_APPLICABLE = "NOT_APPLICABLE", "Not Applicable / Operational Support"
+
+
+class TransportLocationType(models.TextChoices):
+    SUPPLIER_FACILITY = "SUPPLIER_FACILITY", "Supplier / Vendor Facility"
+    SITE = "SITE", "Operational Project Site"
+    PROJECT = "PROJECT", "Project Infrastructure Boundary"
+    WAREHOUSE = "WAREHOUSE", "Central / Regional Warehouse"
+    PORT = "PORT", "Sea Port / Dry Port"
+    CUSTOMER = "CUSTOMER", "Client / Offtaker Facility"
+    OTHER_LOCATION = "OTHER_LOCATION", "Other Location"
+
+
+class TransportRecord(models.Model):
+    """
+    Authoritative Transport & Logistics Event Record.
+    Captures ESG-relevant physical transportation movements across infrastructure projects,
+    operational sites, commercial materials, and heavy fleet operations.
+    Maintains:
+    - Organization & project site hierarchy
+    - Temporal reporting period boundary
+    - Modality (Road, Rail, Sea, Air)
+    - Carrier and Vehicle association
+    - Shipment cargo and Phase 16 Procurement connection
+    - Multi-leg movement support
+    - Origin, Destination, Route distance, and Distance source
+    - Freight commercial cost
+    - Fuel and canonical ESG ActivityRecord linkage (without duplicate fuel ledgers!)
+    - Scope 1 vs Scope 3 classification metadata
+    - Evidence, OCR, deterministic Validation, and Anomaly detection results
+    - Complete workflow lifecycle (DRAFT -> SUBMITTED -> UNDER_REVIEW -> VERIFIED / CORRECTION)
+    """
+    transport_reference = models.CharField(
+        max_length=64,
+        unique=True,
+        db_index=True,
+        help_text="Unique institutional transaction reference (e.g. TRN-2026-POL-0001).",
+    )
+    reporting_period = models.ForeignKey(
+        ReportingPeriod,
+        on_delete=models.PROTECT,
+        related_name="transports",
+        help_text="Governing reporting period temporal boundary.",
+    )
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.PROTECT,
+        related_name="transports",
+        help_text="Operating enterprise company responsible for the transport activity.",
+    )
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="transports",
+        help_text="Infrastructure project boundary. Optional for enterprise-wide logistics.",
+    )
+    site = models.ForeignKey(
+        Site,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="transports",
+        help_text="Operational site boundary receiving or dispatching the shipment.",
+    )
+    transport_date = models.DateField(
+        db_index=True,
+        help_text="Official date of movement execution or consignment departure.",
+    )
+    transport_mode = models.CharField(
+        max_length=30,
+        choices=TransportMode.choices,
+        default=TransportMode.ROAD,
+        db_index=True,
+        help_text="Transportation mode.",
+    )
+    carrier = models.ForeignKey(
+        Carrier,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="transports",
+        help_text="Transport provider or carrier executing the trip.",
+    )
+    vehicle = models.ForeignKey(
+        Vehicle,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="transports",
+        help_text="Specific vehicle asset deployed (mandatory for road fleet where vehicle-level tracking applies).",
+    )
+    shipment = models.ForeignKey(
+        Shipment,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="transports",
+        help_text="Cargo consignment transported during this movement.",
+    )
+    procurement = models.ForeignKey(
+        ProcurementRecord,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="transports",
+        help_text="Direct link to procurement purchase from Phase 16 if transport is vendor-driven.",
+    )
+
+    # Multi-Leg Transport Support
+    leg_number = models.PositiveIntegerField(
+        default=1,
+        help_text="Leg sequence index for multi-modal / multi-leg logistics routes.",
+    )
+    total_legs = models.PositiveIntegerField(
+        default=1,
+        help_text="Total planned transportation legs in the complete journey.",
+    )
+    parent_transport = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="legs",
+        help_text="Primary parent transport record if this is a subsequent leg.",
+    )
+
+    # Route Origin & Destination
+    origin_type = models.CharField(
+        max_length=40,
+        choices=TransportLocationType.choices,
+        default=TransportLocationType.SUPPLIER_FACILITY,
+        help_text="Classification of trip origin.",
+    )
+    origin_location = models.CharField(
+        max_length=255,
+        help_text="Origin location description, address, city, or facility name.",
+    )
+    origin_site = models.ForeignKey(
+        Site,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="origin_transports",
+        help_text="Assigned operational site if origin is an internal site.",
+    )
+    destination_type = models.CharField(
+        max_length=40,
+        choices=TransportLocationType.choices,
+        default=TransportLocationType.SITE,
+        help_text="Classification of trip destination.",
+    )
+    destination_location = models.CharField(
+        max_length=255,
+        help_text="Destination location description, site name, or facility address.",
+    )
+    destination_site = models.ForeignKey(
+        Site,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="destination_transports",
+        help_text="Assigned operational site if destination is an internal site.",
+    )
+
+    # Distance & Measurement Source
+    distance = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        help_text="Trip distance traversed (must be >= 0).",
+    )
+    distance_unit = models.CharField(
+        max_length=10,
+        choices=DistanceUnit.choices,
+        default=DistanceUnit.KM,
+        help_text="Distance measurement unit.",
+    )
+    distance_source = models.CharField(
+        max_length=30,
+        choices=DistanceSource.choices,
+        default=DistanceSource.USER_PROVIDED,
+        help_text="Authoritative source or method for distance determination.",
+    )
+
+    # Commercial Freight Values
+    freight_amount = models.DecimalField(
+        max_digits=16,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        help_text="Gross freight / transportation charges (must be >= 0).",
+    )
+    currency = models.CharField(
+        max_length=10,
+        default="INR",
+        choices=[
+            ("INR", "INR - Indian Rupee"),
+            ("USD", "USD - US Dollar"),
+            ("EUR", "EUR - Euro"),
+            ("GBP", "GBP - British Pound"),
+        ],
+        help_text="Currency of freight invoice.",
+    )
+
+    # ESG Activity & Fuel Integration (NO duplicate fuel ledgers!)
+    activity_record = models.ForeignKey(
+        ActivityRecord,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="transport_sources",
+        help_text="Linked canonical ESG operational ActivityRecord (e.g. Fuel Consumption or Freight Activity).",
+    )
+    fuel_quantity = models.DecimalField(
+        max_digits=14,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text="Direct fuel consumed during this specific trip if metered/issued.",
+    )
+    fuel_unit = models.CharField(
+        max_length=20,
+        default="L",
+        blank=True,
+        help_text="Fuel measurement unit (e.g. L, kg, m3).",
+    )
+
+    # Future GHG Protocol & BRSR Scope Classification
+    scope_category = models.CharField(
+        max_length=30,
+        choices=TransportScopeCategory.choices,
+        default=TransportScopeCategory.SCOPE_3_CAT_04,
+        db_index=True,
+        help_text="GHG Protocol classification for Scope 1 vs Scope 3 emissions mapping.",
+    )
+
+    # Operational Status & Workflow
+    status = models.CharField(
+        max_length=30,
+        choices=TransportStatus.choices,
+        default=TransportStatus.DRAFT,
+        db_index=True,
+        help_text="Controlled workflow lifecycle state.",
+    )
+    is_locked = models.BooleanField(
+        default=False,
+        help_text="Locks record from Site Manager edits once submitted or verified.",
+    )
+    validation_status = models.CharField(
+        max_length=30,
+        choices=ValidationStatus.choices,
+        default=ValidationStatus.UNVALIDATED,
+        db_index=True,
+        help_text="Deterministic validation evaluation status.",
+    )
+    has_anomalies = models.BooleanField(
+        default=False,
+        help_text="Whether anomaly detection engine flagged distance, payload, or duplicate anomalies.",
+    )
+    review_comments = models.TextField(
+        blank=True,
+        help_text="Subsidiary Manager review rationale or rejection reasoning.",
+    )
+    correction_notes = models.TextField(
+        blank=True,
+        help_text="Site Manager correction remarks upon resubmitting.",
+    )
+
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_transports",
+        help_text="User who initiated this transport record.",
+    )
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="updated_transports",
+        help_text="User who last updated this transport record.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Transport Record"
+        verbose_name_plural = "Transport Records"
+        ordering = ["-transport_date", "-created_at"]
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(distance__gte=0),
+                name="check_transport_dist_non_negative",
+            ),
+            models.CheckConstraint(
+                check=models.Q(freight_amount__gte=0),
+                name="check_transport_amt_non_negative",
+            ),
+            models.CheckConstraint(
+                check=models.Q(fuel_quantity__isnull=True) | models.Q(fuel_quantity__gte=0),
+                name="check_transport_fuel_non_negative",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["company", "status"], name="idx_trn_co_status"),
+            models.Index(fields=["site", "status"], name="idx_trn_site_status"),
+            models.Index(fields=["carrier", "status"], name="idx_trn_carr_status"),
+            models.Index(fields=["vehicle", "status"], name="idx_trn_veh_status"),
+            models.Index(fields=["reporting_period", "status"], name="idx_trn_period_status"),
+            models.Index(fields=["transport_date"], name="idx_trn_date"),
+        ]
+
+    def __str__(self):
+        carrier_name = self.carrier.name if self.carrier else "Internal Fleet"
+        veh_str = f" [{self.vehicle.registration_number}]" if self.vehicle else ""
+        return f"{self.transport_reference} - {carrier_name}{veh_str} ({self.origin_location} -> {self.destination_location})"
+
+    @property
+    def evidence_count(self):
+        return self.evidence_files.filter(status=EvidenceStatus.ACTIVE).count()
+
+    @property
+    def has_evidence(self):
+        return self.evidence_count > 0
+
+    @property
+    def is_editable(self):
+        return self.status in [TransportStatus.DRAFT, TransportStatus.CORRECTION_REQUESTED] and not self.is_locked
+
+    @property
+    def status_badge_class(self):
+        return {
+            TransportStatus.DRAFT: "badge-secondary",
+            TransportStatus.SUBMITTED: "badge-primary",
+            TransportStatus.UNDER_REVIEW: "badge-info",
+            TransportStatus.VERIFIED: "badge-success",
+            TransportStatus.CORRECTION_REQUESTED: "badge-warning",
+            TransportStatus.REJECTED: "badge-danger",
+            TransportStatus.CANCELLED: "badge-dark",
+        }.get(self.status, "badge-secondary")
+
+    @property
+    def validation_badge_class(self):
+        return {
+            ValidationStatus.VALID: "badge-success",
+            ValidationStatus.WARNING: "badge-warning",
+            ValidationStatus.INVALID: "badge-danger",
+            ValidationStatus.UNVALIDATED: "badge-secondary",
+        }.get(self.validation_status, "badge-secondary")
+
 
 
 

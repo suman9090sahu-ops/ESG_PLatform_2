@@ -17,6 +17,7 @@ from apps.core import (
     procurement_views,
     review_views,
     submission_views,
+    transport_views,
     validation_views,
     views,
 )
@@ -231,6 +232,40 @@ urlpatterns = [
     path("procurement/<int:procurement_id>/review/", procurement_views.procurement_review_view, name="procurement_review"),
     path("procurement/<int:procurement_id>/correction/", procurement_views.procurement_correction_view, name="procurement_correction"),
     path("procurement/<int:procurement_id>/ocr-compare/<int:evidence_id>/", procurement_views.procurement_ocr_compare_view, name="procurement_ocr_compare"),
+
+    # -------------------------------------------------------------------------
+    # Phase 17 Transport & Logistics Routes (/carriers/... /vehicles/... /transport/...)
+    # -------------------------------------------------------------------------
+    path("carriers/", transport_views.carrier_list_view, name="carrier_list"),
+    path("carriers/create/", transport_views.carrier_create_view, name="carrier_create"),
+    path("carriers/<int:carrier_id>/", transport_views.carrier_detail_view, name="carrier_detail"),
+    path("carriers/<int:carrier_id>/edit/", transport_views.carrier_edit_view, name="carrier_edit"),
+    path("carriers/<int:carrier_id>/archive/", transport_views.carrier_archive_view, name="carrier_archive"),
+
+    path("vehicles/", transport_views.vehicle_list_view, name="vehicle_list"),
+    path("vehicles/create/", transport_views.vehicle_create_view, name="vehicle_create"),
+    path("vehicles/<int:vehicle_id>/", transport_views.vehicle_detail_view, name="vehicle_detail"),
+    path("vehicles/<int:vehicle_id>/edit/", transport_views.vehicle_edit_view, name="vehicle_edit"),
+    path("vehicles/<int:vehicle_id>/archive/", transport_views.vehicle_archive_view, name="vehicle_archive"),
+
+    path("transport/", transport_views.transport_list_view, name="transport_list"),
+    path("transport/create/", transport_views.transport_create_view, name="transport_create"),
+    path("transport/inbox/", transport_views.transport_review_inbox_view, name="transport_review_inbox"),
+    path("transport/<int:transport_id>/", transport_views.transport_detail_view, name="transport_detail"),
+    path("transport/<int:transport_id>/edit/", transport_views.transport_edit_view, name="transport_edit"),
+    path("transport/<int:transport_id>/delete/", transport_views.transport_delete_view, name="transport_delete"),
+    path("transport/<int:transport_id>/evidence/upload/", transport_views.transport_evidence_upload_view, name="transport_evidence_upload"),
+    path("transport/<int:transport_id>/validate/", transport_views.transport_validate_view, name="transport_validate"),
+    path("transport/<int:transport_id>/anomalies/detect/", transport_views.transport_anomaly_detect_view, name="transport_anomaly_detect"),
+    path("transport/<int:transport_id>/submit/", transport_views.transport_submit_view, name="transport_submit"),
+    path("transport/<int:transport_id>/review/", transport_views.transport_review_view, name="transport_review"),
+    path("transport/<int:transport_id>/correction/", transport_views.transport_correction_view, name="transport_correction"),
+    path("transport/<int:transport_id>/ocr-compare/<int:evidence_id>/", transport_views.transport_ocr_compare_view, name="transport_ocr_compare"),
+
+    # Logistics aliases
+    path("logistics/", transport_views.transport_list_view, name="logistics_list"),
+    path("logistics/carriers/", transport_views.carrier_list_view, name="logistics_carrier_list"),
+    path("logistics/vehicles/", transport_views.vehicle_list_view, name="logistics_vehicle_list"),
 ]
 
 

@@ -738,4 +738,137 @@ Phase 16 establishes a centralized master vendor and commercial procurement repo
 - **Migration**:
   - `apps/core/migrations/0014_supplier_alter_authauditlog_event_type_and_more.py`
 
+---
+
+## Phase 17: Transport & Logistics Management
+
+### Overview
+Phase 17 establishes the authoritative domain foundation for capturing physical transport movements, logistics cargo consignments, and fleet asset operations across infrastructure sites and corporate supply chains without duplicating fuel or activity ledgers.
+
+### Entity Relationship Diagram
+```text
++----------------------------------------------------------------------------------------------------+
+|                                              Carrier                                               |
+|  - id (BigAutoField, PK)                                                                           |
+|  - carrier_code (VARCHAR(50), UNIQUE, INDEX)                                                      |
+|  - name (VARCHAR(255), INDEX)                                                                      |
+|  - legal_name (VARCHAR(255), BLANK)                                                                |
+|  - carrier_type (VARCHAR(30), CHOICES: CarrierType, DEFAULT: ROAD_CARRIER)                         |
+|  - status (VARCHAR(20), CHOICES: CarrierStatus, DEFAULT: ACTIVE, INDEX)                            |
+|  - company (FK -> Company.id, PROTECT, NULL, BLANK)                                                |
+|  - supplier (FK -> Supplier.id, SET_NULL, NULL, BLANK)                                             |
+|  - contact_person, contact_email, contact_phone (VARCHAR, BLANK)                                   |
+|  - is_active (BOOLEAN, DEFAULT: True)                                                              |
+|  - created_by, updated_by (FK -> User.id, SET_NULL, NULL, BLANK)                                   |
+|  - created_at, updated_at (TIMESTAMPTZ)                                                            |
++----------------------------------------------------------------------------------------------------+
+                                       ▲ 1
+                                       │ operates
+                                       ▼ N
++----------------------------------------------------------------------------------------------------+
+|                                              Vehicle                                               |
+|  - id (BigAutoField, PK)                                                                           |
+|  - vehicle_identifier (VARCHAR(50), UNIQUE, INDEX)                                                 |
+|  - registration_number (VARCHAR(50), UNIQUE, INDEX)                                                |
+|  - carrier (FK -> Carrier.id, SET_NULL, NULL, BLANK, related_name="vehicles")                      |
+|  - company (FK -> Company.id, PROTECT, NULL, BLANK)                                                |
+|  - ownership_type (VARCHAR(30), CHOICES: VehicleOwnershipType, DEFAULT: THIRD_PARTY)               |
+|  - vehicle_type (VARCHAR(40), CHOICES: VehicleType, DEFAULT: TRUCK_HEAVY)                          |
+|  - fuel_type (VARCHAR(30), CHOICES: FuelType, DEFAULT: DIESEL)                                     |
+|  - capacity_payload (DECIMAL(12,4), NULL, BLANK)                                                   |
+|  - capacity_unit (VARCHAR(20), DEFAULT: "MT")                                                      |
+|  - status (VARCHAR(20), CHOICES: VehicleStatus, DEFAULT: ACTIVE, INDEX)                            |
+|  - created_by, updated_by (FK -> User.id, SET_NULL, NULL, BLANK)                                   |
+|  - created_at, updated_at (TIMESTAMPTZ)                                                            |
++----------------------------------------------------------------------------------------------------+
+                                       ▲ 1
+                                       │ executes
+                                       ▼ N
++----------------------------------------------------------------------------------------------------+
+|                                          TransportRecord                                           |
+|  - id (BigAutoField, PK)                                                                           |
+|  - transport_reference (VARCHAR(64), UNIQUE, INDEX)                                                |
+|  - reporting_period_id (FK -> ReportingPeriod.id, PROTECT, INDEX)                                  |
+|  - company_id (FK -> Company.id, PROTECT, INDEX)                                                   |
+|  - project_id (FK -> Project.id, PROTECT, NULL, BLANK, INDEX)                                      |
+|  - site_id (FK -> Site.id, PROTECT, NULL, BLANK, INDEX, related_name="transports")                 |
+|  - transport_date (DATE, INDEX)                                                                    |
+|  - transport_mode (VARCHAR(20), CHOICES: TransportMode, DEFAULT: ROAD)                             |
+|  - carrier_id (FK -> Carrier.id, PROTECT, NULL, BLANK, related_name="transport_records")           |
+|  - vehicle_id (FK -> Vehicle.id, PROTECT, NULL, BLANK, related_name="transport_records")           |
+|  - shipment_id (FK -> Shipment.id, SET_NULL, NULL, BLANK, related_name="transport_records")        |
+|  - procurement_id (FK -> ProcurementRecord.id, SET_NULL, NULL, BLANK)                             |
+|  - leg_number (POSITIVE_INT, DEFAULT: 1)                                                           |
+|  - total_legs (POSITIVE_INT, DEFAULT: 1)                                                           |
+|  - parent_transport_id (FK -> TransportRecord.id, SET_NULL, NULL, BLANK, related_name="legs")      |
+|  - origin_type (VARCHAR(30), CHOICES: TransportLocationType)                                       |
+|  - origin_location (VARCHAR(255))                                                                  |
+|  - origin_site_id (FK -> Site.id, SET_NULL, NULL, BLANK)                                           |
+|  - destination_type (VARCHAR(30), CHOICES: TransportLocationType)                                  |
+|  - destination_location (VARCHAR(255))                                                             |
+|  - destination_site_id (FK -> Site.id, SET_NULL, NULL, BLANK)                                      |
+|  - distance (DECIMAL(12,2), DEFAULT: 0.00)                                                         |
+|  - distance_unit (VARCHAR(20), CHOICES: DistanceUnit, DEFAULT: KM)                                 |
+|  - distance_source (VARCHAR(30), CHOICES: DistanceSource, DEFAULT: USER_PROVIDED)                  |
+|  - freight_amount (DECIMAL(18,2), DEFAULT: 0.00)                                                   |
+|  - currency (VARCHAR(10), DEFAULT: "INR")                                                          |
+|  - fuel_quantity (DECIMAL(12,4), NULL, BLANK)                                                      |
+|  - fuel_unit (VARCHAR(20), DEFAULT: "L")                                                           |
+|  - activity_record_id (FK -> ActivityRecord.id, SET_NULL, NULL, BLANK, related_name="transports")   |
+|  - scope_category (VARCHAR(40), CHOICES: TransportScopeCategory, DEFAULT: SCOPE_3_CAT_04)          |
+|  - status (VARCHAR(30), CHOICES: TransportStatus, DEFAULT: DRAFT, INDEX)                           |
+|  - is_locked (BOOLEAN, DEFAULT: False, INDEX)                                                      |
+|  - validation_status (VARCHAR(20), CHOICES: ValidationStatus, DEFAULT: UNVALIDATED, INDEX)          |
+|  - has_anomalies (BOOLEAN, DEFAULT: False, INDEX)                                                  |
+|  - review_comments, correction_notes (TEXT, BLANK)                                                 |
+|  - created_by, updated_by (FK -> User.id, SET_NULL, NULL, BLANK)                                   |
+|  - created_at, updated_at (TIMESTAMPTZ)                                                            |
++----------------------------------------------------------------------------------------------------+
+            │ contains                                                            ▲ 1
+            ▼ 1                                                                   │ supports
++-------------------------------------------------------+  +-----------------------------------------+
+|                       Shipment                        |  |                 Evidence                |
+|  - id (BigAutoField, PK)                              |  |  - id (BigAutoField, PK)                |
+|  - shipment_reference (VARCHAR(64), UNIQUE, INDEX)    |  |  - activity_record_id (FK, NULL, BLANK) |
+|  - procurement_id (FK -> Procurement, SET_NULL)       |  |  - procurement_record_id (FK, NULL)     |
+|  - material_description (VARCHAR(255))                |  |  - transport_record_id (FK, NULL)       |
+|  - quantity (DECIMAL(14,4), DEFAULT: 0.0000)          |  |  - file, sha256_hash, evidence_type     |
+|  - unit (FK -> UnitOfMeasure, SET_NULL, NULL)         |  |  - file_size, status, uploaded_by       |
+|  - weight_gross, weight_net (DECIMAL(14,4), NULL)     |  |  - created_at, updated_at               |
+|  - delivery_reference (VARCHAR(100), BLANK)           |  +-----------------------------------------+
+|  - consignment_value (DECIMAL(18,2), NULL, BLANK)     |
+|  - currency (VARCHAR(10), DEFAULT: "INR")             |
+|  - created_at, updated_at (TIMESTAMPTZ)               |
++-------------------------------------------------------+
+```
+
+### Constraints, Integrity Rules & Field Additions (Phase 17)
+- **Carrier & Vehicle Master Architecture**:
+  - `Carrier.carrier_code`: Persistent internal unique identifier (e.g. `CARR-001`, `CARR-DIV-002`).
+  - `CarrierStatus`: `ACTIVE`, `INACTIVE`, `SUSPENDED`, `ARCHIVED`. Soft archival via `.archive(actor)` preserves historical trip references without foreign key cascading breaks.
+  - `Vehicle.registration_number`: Unique normalized registration plate (e.g. `TS-09-UB-1001`), trimmed and uppercased in `.clean()`.
+  - `VehicleOwnershipType`: `OWNED` (Scope 1 Mobile Combustion), `LEASED` (Scope 1), `CONTRACTED` (Scope 3), `THIRD_PARTY` (Scope 3 Category 4 / 9).
+- **Shipment & Procurement Traceability**:
+  - `Shipment.shipment_reference`: Canonical institutional cargo consignment code.
+  - Direct relational link to Phase 16 `ProcurementRecord` for end-to-end supply chain visibility.
+  - Dual mass/volume telemetry with `weight_gross` and `weight_net` in Metric Tons (MT) or kilograms.
+- **Transport Movement Transaction**:
+  - `TransportRecord.transport_reference`: Sequential institutional transaction tracking code (e.g. `TRN-202610-POL-0001`).
+  - Zero Duplicate Fuel Ledger: Fuel consumption optionally recorded as metadata while linking directly to canonical `ActivityRecord` for formal GHG accounting.
+  - Multi-leg movement hierarchy via `leg_number`, `total_legs`, and self-referencing `parent_transport_id`.
+  - Controlled lifecycle: `DRAFT` -> `SUBMITTED` -> `UNDER_REVIEW` -> `VERIFIED` / `CORRECTION_REQUESTED` / `REJECTED` / `CANCELLED`.
+- **Evidence Triple-Parent Integration**:
+  - `Evidence.transport_record`: Added `ForeignKey(TransportRecord, null=True, blank=True, on_delete=models.PROTECT, related_name="evidence_files")`.
+  - `Evidence.clean()` validates that at least one of `activity_record`, `procurement_record`, or `transport_record` is linked.
+- **OCR Comparison Telemetry (Zero Silent Overwrite)**:
+  - Extracted plate numbers, carrier names, distance, and freight charges are cross-referenced with `TransportRecord` stored values. Mismatches are highlighted in review without altering source data.
+- **Deterministic Validation & Non-Destructive Anomalies**:
+  - Validates date boundaries within open reporting periods, site-to-project hierarchy integrity, positive route distances, active carrier/vehicle states, and positive freight charges.
+  - Anomaly detection flags duplicate trips on identical dates and routes (`DUPLICATE_TRANSPORT`), distance spikes exceeding 2.5x historical route averages (`UNUSUAL_DISTANCE`), and payload overloading exceeding 120% vehicle capacity (`PAYLOAD_OVERLOAD`).
+- **Audit Lineage**:
+  - Event types: `CARRIER_CREATED`, `CARRIER_UPDATED`, `CARRIER_ARCHIVED`, `VEHICLE_CREATED`, `VEHICLE_UPDATED`, `VEHICLE_ARCHIVED`, `TRANSPORT_CREATED`, `TRANSPORT_UPDATED`, `TRANSPORT_DELETED`, `TRANSPORT_SUBMITTED`, `TRANSPORT_REVIEWED`, `TRANSPORT_VERIFIED`, `TRANSPORT_REJECTED`, `TRANSPORT_CORRECTED`, `TRANSPORT_RESUBMITTED`, `TRANSPORT_ANOMALY_DETECTED`.
+- **Migration**:
+  - `apps/core/migrations/0016_alter_authauditlog_event_type_and_more.py`
+
+
 

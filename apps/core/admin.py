@@ -40,6 +40,10 @@ from apps.core.models import (
     Supplier,
     ProcurementRecord,
     ProcurementItem,
+    Carrier,
+    Vehicle,
+    Shipment,
+    TransportRecord,
 )
 
 
@@ -1120,3 +1124,79 @@ class ProcurementItemAdmin(admin.ModelAdmin):
     list_filter = ("category", "scope3_category")
     search_fields = ("item_name", "procurement__procurement_number")
     ordering = ("procurement", "line_number")
+
+
+# -----------------------------------------------------------------------------
+# PHASE 17: TRANSPORT & LOGISTICS ADMIN
+# -----------------------------------------------------------------------------
+
+@admin.register(Carrier)
+class CarrierAdmin(admin.ModelAdmin):
+    list_display = (
+        "carrier_code",
+        "name",
+        "carrier_type",
+        "status",
+        "company",
+        "supplier",
+        "contact_phone",
+        "created_at",
+    )
+    list_filter = ("status", "carrier_type", "company")
+    search_fields = ("carrier_code", "name", "legal_name", "contact_person", "contact_email")
+    ordering = ("name",)
+
+
+@admin.register(Vehicle)
+class VehicleAdmin(admin.ModelAdmin):
+    list_display = (
+        "vehicle_identifier",
+        "registration_number",
+        "carrier",
+        "ownership_type",
+        "vehicle_type",
+        "fuel_type",
+        "capacity_payload",
+        "status",
+    )
+    list_filter = ("status", "ownership_type", "vehicle_type", "fuel_type")
+    search_fields = ("vehicle_identifier", "registration_number", "carrier__name")
+    ordering = ("registration_number",)
+
+
+@admin.register(Shipment)
+class ShipmentAdmin(admin.ModelAdmin):
+    list_display = (
+        "shipment_reference",
+        "material_description",
+        "quantity",
+        "unit",
+        "weight_gross",
+        "procurement",
+        "created_at",
+    )
+    search_fields = ("shipment_reference", "material_description", "procurement__procurement_number")
+    ordering = ("-created_at",)
+
+
+@admin.register(TransportRecord)
+class TransportRecordAdmin(admin.ModelAdmin):
+    list_display = (
+        "transport_reference",
+        "site",
+        "reporting_period",
+        "transport_date",
+        "transport_mode",
+        "carrier",
+        "vehicle",
+        "distance",
+        "distance_unit",
+        "status",
+        "validation_status",
+        "has_anomalies",
+    )
+    list_filter = ("status", "validation_status", "has_anomalies", "transport_mode", "company", "reporting_period")
+    search_fields = ("transport_reference", "origin_location", "destination_location", "carrier__name", "vehicle__registration_number")
+    ordering = ("-transport_date", "-created_at")
+
+

@@ -357,4 +357,34 @@ The Supplier and Procurement Management module (`/procurement/...` and `/supplie
    - Once submitted or verified, records are locked (`is_locked=True`) and mutations require the formal correction and resubmission workflow.
    - Suppliers cannot be hard-deleted if referenced by historical procurement records; soft-archiving (`archive()`) changes status to `ARCHIVED` while keeping historical linkages intact.
 
+---
+
+## 17. Transport & Logistics Management RBAC (Phase 17)
+
+The Transport & Logistics module (`/transport/...`, `/carriers/...`, `/vehicles/...`) enforces strict organizational boundaries, fleet ownership differentiation, and governance separation of duties:
+
+| Role | Carrier Directory (`/carriers/`) | Register / Edit Carrier | Vehicle Catalog (`/vehicles/`) | Register Vehicle | Transport Ledger (`/transport/`) | Create Transport | Submit Transport | Review / Verify | Request Correction |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `SITE_MANAGER` | View Directory | **Prohibited (403)** | Scoped to Company | Permitted (Site fleet) | Scoped to Assigned Sites | Permitted for assigned sites | Permitted | **Prohibited (403)** | Remediation workspace |
+| `SUBSIDIARY_MANAGER` | Scoped to Company | Permitted in scope | Scoped to Company | Permitted in scope | Scoped to Division Sites | **Prohibited (403)** | **Prohibited (403)** | Permitted in scope | Permitted |
+| `MEIL_OPERATOR` | Universal Scope | Full CRUD | Universal Scope | Full CRUD | Universal Enterprise Scope | Permitted | Permitted | Permitted | Permitted |
+| `ESG_MANAGER` | Universal Scope | Full CRUD | Universal Scope | Full CRUD | Universal Enterprise Scope | Permitted | Permitted | Permitted | Permitted |
+| `AUDITOR` | Universal (Read-Only) | **Prohibited (403)** | Universal (Read-Only) | **Prohibited (403)** | Universal Scope (Read-Only) | **Prohibited (403)** | **Prohibited (403)** | **Prohibited (403)** | **Prohibited (403)** |
+
+### Server-Side Guards & Anti-IDOR Protections:
+1. **Queryset Scoping (`get_accessible_transports`, `get_accessible_carriers`, `get_accessible_vehicles`)**:
+   - Site Managers can query only transport movements bound to their explicitly assigned operational sites.
+   - Subsidiary Managers query transport records belonging to operational sites and infrastructure projects within their authorized corporate subsidiary boundary.
+   - ESG Managers, MEIL Operators, and Auditors maintain universal enterprise visibility.
+2. **Object Authorization (`user_can_access_transport`, `user_can_modify_transport`, `user_can_review_transport`)**:
+   - Attempting to inspect, modify, submit, or review transport records outside the user's jurisdictional scope raises `PermissionDenied` (`403 Forbidden`) or `Http404` and dispatches `AuthAuditLog.EventType.UNAUTHORIZED_ACCESS_ATTEMPT`.
+3. **Separation of Duties**:
+   - Site Managers are strictly prohibited from evaluating or verifying their own transport movements (`user_can_review_transport` evaluates to `False`).
+   - Subsidiary Managers conduct independent governance reviews but cannot create raw physical transport movements, ensuring clean separation of data entry and verification.
+4. **Historical Preservation & Safe Deletion**:
+   - Only `DRAFT` movement records can be hard-deleted by their creator, MEIL Operator, or Superuser.
+   - Once submitted or verified, records are immutably locked (`is_locked=True`).
+   - Carriers and Vehicles referenced by historical transport movements cannot be hard-deleted; soft-archival (`archive()`) preserves all relational foreign keys for longitudinal audit and future Scope 1 / Scope 3 accounting.
+
+
 

@@ -1,0 +1,138 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}{% if is_create %}Register Carrier / Logistics Provider{% else %}Edit Carrier: {{ carrier.name }}{% endif %}{% endblock %}
+{% block page_subtitle %}Enterprise carrier master record for freight, transport logistics, and Scope 3.4/1 mobile fleet operations.{% endblock %}
+
+{% block page_actions %}
+  <a href="{% if is_create %}{% url 'core:carrier_list' %}{% else %}{% url 'core:carrier_detail' carrier.id %}{% endif %}" class="btn btn-sm btn-outline-secondary">
+    <i class="icon-arrow-left me-1"></i> Cancel
+  </a>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-globe me-2 text-primary"></i>
+            {% if is_create %}New Carrier Master Profile{% else %}Update Carrier Information{% endif %}
+          </h6>
+        </div>
+        <div class="card-body p-4">
+          <form method="post" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger mb-4">
+                {{ form.non_field_errors }}
+              </div>
+            {% endif %}
+
+            <h6 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2">Primary Identification</h6>
+            <div class="row g-3 mb-4">
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Carrier Code</label>
+                {{ form.code }}
+                <div class="form-text small text-muted">Unique identifier. Leave blank to auto-generate.</div>
+                {% if form.code.errors %}<div class="text-danger small">{{ form.code.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-8">
+                <label class="form-label small fw-semibold">Carrier / Business Name <span class="text-danger">*</span></label>
+                {{ form.name }}
+                {% if form.name.errors %}<div class="text-danger small">{{ form.name.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-semibold">Legal Registered Name</label>
+                {{ form.legal_name }}
+                {% if form.legal_name.errors %}<div class="text-danger small">{{ form.legal_name.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Carrier Type</label>
+                {{ form.carrier_type }}
+                {% if form.carrier_type.errors %}<div class="text-danger small">{{ form.carrier_type.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Status</label>
+                {{ form.status }}
+                {% if form.status.errors %}<div class="text-danger small">{{ form.status.errors }}</div>{% endif %}
+              </div>
+            </div>
+
+            <h6 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2">Corporate Scope &amp; Vendor Integration</h6>
+            <div class="row g-3 mb-4">
+              <div class="col-md-6">
+                <label class="form-label small fw-semibold">Operating Company</label>
+                {{ form.company }}
+                <div class="form-text small text-muted">Leave empty for enterprise-wide availability.</div>
+                {% if form.company.errors %}<div class="text-danger small">{{ form.company.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-semibold">Link to Registered Supplier</label>
+                {{ form.supplier }}
+                <div class="form-text small text-muted">Optional: link to existing commercial vendor from Procurement.</div>
+                {% if form.supplier.errors %}<div class="text-danger small">{{ form.supplier.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-semibold">Tax Identifier / GSTIN</label>
+                {{ form.tax_identifier }}
+                {% if form.tax_identifier.errors %}<div class="text-danger small">{{ form.tax_identifier.errors }}</div>{% endif %}
+              </div>
+            </div>
+
+            <h6 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2">Contact &amp; Headquarters</h6>
+            <div class="row g-3 mb-4">
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Contact Person</label>
+                {{ form.contact_name }}
+                {% if form.contact_name.errors %}<div class="text-danger small">{{ form.contact_name.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Email</label>
+                {{ form.contact_email }}
+                {% if form.contact_email.errors %}<div class="text-danger small">{{ form.contact_email.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Phone</label>
+                {{ form.contact_phone }}
+                {% if form.contact_phone.errors %}<div class="text-danger small">{{ form.contact_phone.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">City</label>
+                {{ form.city }}
+                {% if form.city.errors %}<div class="text-danger small">{{ form.city.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">State / Province</label>
+                {{ form.state }}
+                {% if form.state.errors %}<div class="text-danger small">{{ form.state.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Country</label>
+                {{ form.country }}
+                {% if form.country.errors %}<div class="text-danger small">{{ form.country.errors }}</div>{% endif %}
+              </div>
+              <div class="col-12">
+                <label class="form-label small fw-semibold">Administrative Notes</label>
+                {{ form.notes }}
+                {% if form.notes.errors %}<div class="text-danger small">{{ form.notes.errors }}</div>{% endif %}
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 border-top pt-3">
+              <a href="{% if is_create %}{% url 'core:carrier_list' %}{% else %}{% url 'core:carrier_detail' carrier.id %}{% endif %}" class="btn btn-secondary">
+                Cancel
+              </a>
+              <button type="submit" class="btn btn-primary">
+                <i class="icon-check me-1"></i> {% if is_create %}Register Carrier{% else %}Save Changes{% endif %}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

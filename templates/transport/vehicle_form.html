@@ -1,0 +1,117 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}{% if is_create %}Register Fleet Vehicle{% else %}Edit Vehicle: {{ vehicle.registration_number }}{% endif %}{% endblock %}
+{% block page_subtitle %}Central fleet master record for vehicle tracking, Scope 1 fuel accounting, and Scope 3 freight operations.{% endblock %}
+
+{% block page_actions %}
+  <a href="{% if is_create %}{% url 'core:vehicle_list' %}{% else %}{% url 'core:vehicle_detail' vehicle.id %}{% endif %}" class="btn btn-sm btn-outline-secondary">
+    <i class="icon-arrow-left me-1"></i> Cancel
+  </a>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-speedometer me-2 text-primary"></i>
+            {% if is_create %}New Fleet Vehicle Entry{% else %}Update Vehicle Master{% endif %}
+          </h6>
+        </div>
+        <div class="card-body p-4">
+          <form method="post" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger mb-4">
+                {{ form.non_field_errors }}
+              </div>
+            {% endif %}
+
+            <h6 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2">Vehicle Identification</h6>
+            <div class="row g-3 mb-4">
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Vehicle Identifier</label>
+                {{ form.vehicle_identifier }}
+                <div class="form-text small text-muted">Internal ID. Leave blank to auto-generate.</div>
+                {% if form.vehicle_identifier.errors %}<div class="text-danger small">{{ form.vehicle_identifier.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Registration Number / Plate <span class="text-danger">*</span></label>
+                {{ form.registration_number }}
+                {% if form.registration_number.errors %}<div class="text-danger small">{{ form.registration_number.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Carrier / Fleet Provider</label>
+                {{ form.carrier }}
+                {% if form.carrier.errors %}<div class="text-danger small">{{ form.carrier.errors }}</div>{% endif %}
+              </div>
+            </div>
+
+            <h6 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2">Ownership &amp; Technical Attributes</h6>
+            <div class="row g-3 mb-4">
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Ownership Classification</label>
+                {{ form.ownership_type }}
+                {% if form.ownership_type.errors %}<div class="text-danger small">{{ form.ownership_type.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Vehicle Type</label>
+                {{ form.vehicle_type }}
+                {% if form.vehicle_type.errors %}<div class="text-danger small">{{ form.vehicle_type.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Fuel Type</label>
+                {{ form.fuel_type }}
+                {% if form.fuel_type.errors %}<div class="text-danger small">{{ form.fuel_type.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Status</label>
+                {{ form.status }}
+                {% if form.status.errors %}<div class="text-danger small">{{ form.status.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-semibold">Make &amp; Model</label>
+                {{ form.make_model }}
+                {% if form.make_model.errors %}<div class="text-danger small">{{ form.make_model.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold">Payload Cap (kg)</label>
+                {{ form.payload_capacity_kg }}
+                {% if form.payload_capacity_kg.errors %}<div class="text-danger small">{{ form.payload_capacity_kg.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold">GVW (kg)</label>
+                {{ form.gross_vehicle_weight_kg }}
+                {% if form.gross_vehicle_weight_kg.errors %}<div class="text-danger small">{{ form.gross_vehicle_weight_kg.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold">Mfg Year</label>
+                {{ form.manufacture_year }}
+                {% if form.manufacture_year.errors %}<div class="text-danger small">{{ form.manufacture_year.errors }}</div>{% endif %}
+              </div>
+              <div class="col-12">
+                <label class="form-label small fw-semibold">Notes</label>
+                {{ form.notes }}
+                {% if form.notes.errors %}<div class="text-danger small">{{ form.notes.errors }}</div>{% endif %}
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 border-top pt-3">
+              <a href="{% if is_create %}{% url 'core:vehicle_list' %}{% else %}{% url 'core:vehicle_detail' vehicle.id %}{% endif %}" class="btn btn-secondary">
+                Cancel
+              </a>
+              <button type="submit" class="btn btn-primary">
+                <i class="icon-check me-1"></i> {% if is_create %}Register Vehicle{% else %}Save Changes{% endif %}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

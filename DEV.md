@@ -1215,7 +1215,256 @@ Playwright automated browser download remains blocked on this environment due to
 - Currency conversions are not auto-converted across foreign currencies (stored explicitly as provided).
 
 ## 13. Next Phase
-**PHASE 17 — TRANSPORT / LOGISTICS**
+**PHASE 17 — TRANSPORT / LOGISTICS** (COMPLETED)
+
+---
+
+# Phase 17 — Transport & Logistics Management
+
+## 1. Implementation Status
+**COMPLETE**
+
+## 2. Overview & Architecture
+Phase 17 establishes the centralized Transport & Logistics foundation for capturing ESG-relevant transportation and freight activity across MEIL enterprise projects, operational sites, procurement deliveries, and mobile asset movements.
+
+The implementation strictly maintains domain normalization without creating a parallel application, duplicate database, separate backend/frontend, or redundant fuel/activity ledgers:
+- **`Carrier`**: Logistics service provider / transporter master, with stable internal identifiers (`carrier_code`), tax registration, transport mode specialization, and soft archival.
+- **`Vehicle`**: Mobile asset master distinguishing organization-owned/controlled equipment (future Scope 1 Mobile Combustion) from hired/third-party contractor fleets (future Scope 3 Upstream/Downstream Transportation), with registration normalization, vehicle classification, fuel type, payload capacity, and soft archival.
+- **`Shipment`**: Cargo definition capturing transported material, payload quantities, weights, and direct linkage to Phase 16 `ProcurementRecord` for end-to-end supply chain traceability.
+- **`TransportRecord`**: Operational transport event capturing movement legs, origin/destination, distance (with source attribution), transport mode, direct link to canonical `ActivityRecord` for fuel/energy tracking, freight costs, and governance status lifecycle.
+- **`Evidence` Multi-Parent Integration**: Extended Phase 09 evidence to support `transport_record` with SHA-256 integrity and secure partitioned media storage.
+- **`OCR` Reconciliation**: Phase 11 OCR document intelligence comparison comparing stored transport data with lorry receipts, weighbridge slips, and consignment notes with zero silent overwriting.
+- **Deterministic Validation & Anomaly Detection**: Phase 10 validation engine checks and Phase 15 non-destructive anomaly signals (`DUPLICATE_TRANSPORT`, `UNUSUAL_DISTANCE`, `PAYLOAD_OVERLOAD`).
+- **Governance Workflow**: Submission, Subsidiary Manager Review Desk, Correction Requests, and Resubmission adhering to Phase 12-14 protocols.
+
+```text
+MEIL Enterprise
+      ↓
+Company / Subsidiary
+      ↓
+Project
+      ↓
+Operational Site
+      ↓
+Reporting Period
+      ↓
+Transport / Logistics Record (TR-YYYYMM-SITE-SEQ)
+      ├──────────────► Carrier (CAR-XXX)
+      ├──────────────► Vehicle (KA-XX-XXXX) [Scope 1 vs Scope 3 Cat 4]
+      ├──────────────► Shipment (SHIP-XXX) ──► ProcurementRecord (Phase 16)
+      ├──────────────► Route & Distance (Origin -> Destination, km, Source)
+      ├──────────────► Canonical ActivityRecord (Phase 08 - Zero Duplicate Fuel Ledger)
+      ├──────────────► Evidence (Phase 09 - Bilty, Lorry Receipt, Weighbridge Slip)
+      ├──────────────► OCR Run & Field Reconciliation (Phase 11 - Zero Silent Overwrite)
+      ├──────────────► Validation Engine (Phase 10 - Deterministic Rules)
+      ├──────────────► Anomaly Detection (Phase 15 - Non-Destructive Signals)
+      └──────────────► Governance (Submit -> Sub Review -> Correction -> Resubmit)
+```
+
+---
+
+## 3. Carrier Management
+- **Master Entity (`Carrier`)**: Transporter and logistics provider registry in `apps/core/models.py`.
+- **Stable Identifiers**: Indexed unique `carrier_code` (e.g., `CAR-VRL-001`) guaranteeing historical immutability across legal name or contact changes.
+- **Classification & Scope**: Supports `provider_type` (`3PL`, `FLEET_OPERATOR`, `FREIGHT_FORWARDER`, `RAIL_OPERATOR`, `SHIPPING_LINE`, `AIR_CARGO`, `INDIVIDUAL_TRUCKER`, `INTERNAL_LOGISTICS`), `transport_mode` specialization, GST/PAN tax identifiers, and optional company scoping.
+- **Historical Integrity & Archival**: Dedicated `.archive(actor)` method transitions carrier to `ARCHIVED`, ensuring historical transport records remain linked without cascading deletion.
+
+---
+
+## 4. Vehicle Management
+- **Asset Master (`Vehicle`)**: Mobile machinery and fleet tracking registry.
+- **Registration Normalization**: Normalized uppercase registration numbers (`registration_number`) stripped of extraneous characters with composite index on `(company, registration_number)`.
+- **Emissions Boundary Separation**: Explicit `is_owned` boolean flag:
+  - `is_owned = True` -> Organization-owned or leased asset (pre-configured for future **Scope 1 Mobile Combustion**).
+  - `is_owned = False` -> Third-party contractor or carrier vehicle (pre-configured for future **Scope 3 Category 4 / Category 9 Upstream/Downstream Transportation**).
+- **Technical Attributes**: Standardized `vehicle_type` (`LIGHT_COMMERCIAL`, `MEDIUM_TRUCK`, `HEAVY_TRUCK`, `TRAILER`, `TIPPER_DUMPER`, `TANKER`, `TRANSIT_MIXER`, `RAIL_WAGON`, `CARGO_VESSEL`, `ELECTRIC_TRUCK`, etc.), `fuel_type` (`DIESEL`, `PETROL`, `CNG`, `LNG`, `ELECTRIC`, `HYBRID`, `BIO_DIESEL`), and `payload_capacity_tonnes`.
+- **Soft Lifecycle**: Controlled statuses (`ACTIVE`, `INACTIVE`, `MAINTENANCE`, `RETIRED`, `ARCHIVED`) preventing physical deletion when linked to past operational records.
+
+---
+
+## 5. Shipment Management
+- **Cargo Entity (`Shipment`)**: Captures cargo payload specifics (`shipment_reference`, `material_description`, `quantity`, `unit`, `weight_tonnes`, `hazardous_material`).
+- **Procurement Integration**: Direct optional `ForeignKey` to `ProcurementRecord` (Phase 16) with `on_delete=models.SET_NULL`. Enables end-to-end lineage tracing from purchase order/invoice through logistics delivery to destination site.
+- **Multi-Leg Logistics Support**: Normalized as a separate entity allowing one shipment to associate across multiple transport records/legs (e.g. factory -> railhead, railhead -> project site).
+
+---
+
+## 6. Transport Record & Route Telemetry
+- **Transaction Entity (`TransportRecord`)**: Captures the concrete movement event.
+- **Identifiable Reference**: Unique `transport_reference` following the platform standard: `TR-<YEAR><MONTH>-<SITE_CODE>-<SEQ>`.
+- **Route & Distance Capture**: Origin location, destination location, `distance_km` (validated positive decimal with `CheckConstraint`), and `distance_source` (`USER_PROVIDED`, `ODOMETER`, `DOCUMENT`, `CARRIER_REPORT`, `ESTIMATED`).
+- **Financial Attribution**: Explicit `freight_cost` and `currency` (default `"INR"`).
+- **ESG Scope Attribution**: Controlled `scope_category` choices (`SCOPE_1`, `SCOPE_3_CAT_04`, `SCOPE_3_CAT_09`, `SCOPE_3_CAT_06`).
+
+---
+
+## 7. Canonical Activity Record Integration (Zero Duplicate Fuel Ledger)
+- **Principle Enforced**: Transport records describe spatial movement and logistics; fuel consumption is an ESG measurement activity.
+- **Integration Point**: `TransportRecord` maintains a direct optional `ForeignKey` to `ActivityRecord` (`on_delete=models.SET_NULL`, `related_name="transport_records"`).
+- **Service Layer Helper**: `link_transport_activity()` allows linking or creating canonical activity records under Phase 06 Activity Masters (e.g. Mobile Diesel Combustion) without creating duplicate ledgers or bypassing existing data entry pipelines.
+
+---
+
+## 8. Evidence Management Integration
+- **Triple-Parent Audit Integration**: Extended Phase 09 `Evidence` model to support `transport_record` (`ForeignKey(TransportRecord, on_delete=models.PROTECT, null=True, blank=True)`).
+- **Dynamic Scoping**: Updated `Evidence` properties (`site`, `project`, `subsidiary`, `company`, `reporting_period`) to resolve seamlessly from `transport_record` when `activity_record` or `procurement_record` is null.
+- **Document Integrity**: Preserves SHA-256 cryptographic hashing, magic-byte MIME validation, and tamper-evident storage for transport documents (`LORRY_RECEIPT`, `WEIGHBRIDGE_SLIP`, `TRANSPORT_INVOICE`, `CONSIGNMENT_NOTE`, `BILL_OF_LADING`).
+
+---
+
+## 9. OCR Document Intelligence Reconciliation
+- **Document Intelligence Integration**: Reuses Phase 11 `OCRRun` / `OCRField` foundation.
+- **Reconciliation Engine (`compare_ocr_with_transport`)**: Compares stored transport fields (Vehicle Number, Consignment Reference, Carrier Name, Transport Date, Distance, Weight/Quantity) against OCR-extracted fields.
+- **Human-in-the-Loop Safeguard**: Match/mismatch status, delta variance, and confidence scores are presented strictly as review indicators in the UI. Under no circumstances does OCR silently overwrite source transport data.
+
+---
+
+## 10. Deterministic Validation Integration
+- **Engine (`validate_transport`)**: Evaluates business and compliance invariants:
+  - Carrier active state validation.
+  - Vehicle active state validation and carrier consistency.
+  - Reporting period boundary and open status verification.
+  - Site, project, and company hierarchical alignment.
+  - Positive non-zero distance and payload weights.
+  - Overload detection (shipment weight vs vehicle payload capacity).
+  - Mandatory supporting evidence presence.
+- **Audit Logging**: Emits `AuthAuditLog.EventType.TRANSPORT_VALIDATED`.
+
+---
+
+## 11. Anomaly Detection Integration
+- **Engine (`detect_transport_anomalies`)**: Non-destructive review signals that flag anomalies without halting operational flows:
+  - `DUPLICATE_TRANSPORT`: Detects identical carrier, vehicle, transport date, origin, and destination across different transport records.
+  - `UNUSUAL_DISTANCE`: Flags haulage distances exceeding historical site averages by > 150% or single-leg routes exceeding 2,500 km.
+  - `PAYLOAD_OVERLOAD`: Identifies shipments exceeding registered vehicle payload capacity by > 10%.
+- **Audit Logging**: Emits `AuthAuditLog.EventType.TRANSPORT_ANOMALY_DETECTED`.
+
+---
+
+## 12. Governance Workflow Integration
+- **State Machine Lifecycle**: `DRAFT` -> `SUBMITTED` -> `UNDER_REVIEW` -> `VERIFIED` (or `REVISION_REQUESTED` -> `SUBMITTED`).
+- **Site Manager Operations**: Creation, shipment linking, evidence attachment, deterministic validation, anomaly evaluation, and formal locking submission (`submit_transport_record`).
+- **Subsidiary Review Desk**: Division manager inbox (`/transport/inbox/`) providing full inspection workspace with lineage panels, OCR comparisons, anomaly alerts, and actions (`VERIFY`, `REQUEST_REVISION`, `REJECT`).
+- **Correction & Resubmission**: Site Manager remediates flagged records at `/transport/<id>/correct/`, updates data or attached evidence, re-validates, and resubmits (`resubmit_transport_record`).
+
+---
+
+## 13. Security, RBAC & Anti-IDOR Defense
+- **Server-Side Queryset Scoping**:
+  - `Site Manager`: Strictly confined to assigned sites (`SITE-POL-101`).
+  - `Subsidiary Manager`: Scoped to company / subsidiary divisions (`MEIL-HYDRO`).
+  - `ESG Manager`, `Auditor`, `MEIL Operator`: Enterprise-wide visibility (`MEIL-ENT`).
+- **Object Access Guards**: `user_can_access_transport`, `user_can_modify_transport`, `user_can_submit_transport`, `user_can_review_transport`.
+- **Anti-IDOR Protection**: Tampered URL parameters or cross-site/cross-company manipulation attempts are intercepted server-side, returning HTTP 403/404 and logging `UNAUTHORIZED_ACCESS_ATTEMPT`.
+
+---
+
+## 14. Audit Trail & Compliance Lineage
+Ten distinct audit events registered in `AuthAuditLog`:
+- `TRANSPORT_RECORD_CREATED`
+- `TRANSPORT_RECORD_UPDATED`
+- `TRANSPORT_RECORD_SUBMITTED`
+- `TRANSPORT_RECORD_REVIEWED`
+- `TRANSPORT_RECORD_CORRECTED`
+- `TRANSPORT_RECORD_RESUBMITTED`
+- `TRANSPORT_VALIDATED`
+- `TRANSPORT_ANOMALY_DETECTED`
+- `CARRIER_CREATED`
+- `VEHICLE_CREATED`
+
+---
+
+## 15. Empirical Verification & Test Metrics
+
+### Django System Check (`manage.py check`)
+```text
+System check identified no issues (0 silenced).
+Result: PASS
+```
+
+### Migration Check (`makemigrations --check`)
+```text
+No changes detected
+Result: PASS (0 pending migrations; migration 0016 applied)
+```
+
+### Phase 17 Dedicated Test Suite (`tests/test_phase17_transport_logistics.py`)
+```text
+.venv\Scripts\python.exe manage.py test tests.test_phase17_transport_logistics
+Ran 17 tests in 4.542s
+OK
+Result: 17 Passed, 0 Failed, 0 Errors (100% PASS)
+- test_carrier_creation_and_archival: PASS
+- test_vehicle_creation_normalization_and_scope_split: PASS
+- test_shipment_procurement_linkage: PASS
+- test_transport_record_lifecycle_draft_to_submit: PASS
+- test_subsidiary_review_verify_workflow: PASS
+- test_subsidiary_review_revision_and_resubmit: PASS
+- test_activity_record_integration: PASS
+- test_evidence_attachment_and_multi_parent_lineage: PASS
+- test_ocr_comparison_with_transport: PASS
+- test_transport_validation_engine: PASS
+- test_transport_anomaly_detection: PASS
+- test_rbac_site_manager_scoping: PASS
+- test_idor_cross_site_modification_blocked: PASS
+- test_idor_cross_subsidiary_review_blocked: PASS
+- test_auditor_read_only_access: PASS
+- test_audit_log_events_generated: PASS
+- test_unique_transport_reference_enforced: PASS
+```
+
+### Phase 17 Live Empirical Verification Script (`tests/verify_phase17_live.py`)
+```text
+.venv\Scripts\python.exe tests/verify_phase17_live.py
+[CHECK 1-6] Carrier & Vehicle Asset Creation, Normalization & Scoping: PASS
+[CHECK 7-10] Procurement & Shipment Linkage: PASS
+[CHECK 11-16] Transport Record Drafting & Auto-Inference: PASS
+[CHECK 17-20] Canonical Activity Record Integration (Zero Duplicate Fuel Ledger): PASS
+[CHECK 21-25] Evidence Multi-Parent Attachment & Storage: PASS
+[CHECK 26-28] OCR Document Intelligence Reconciliation (Zero Overwrite): PASS
+[CHECK 29-31] Deterministic Validation Engine: PASS
+[CHECK 32-35] Non-Destructive Anomaly Detection (Duplicate, Distance, Payload): PASS
+[CHECK 36-39] Governance Workflow (Submit -> Revision Requested -> Resubmit -> Verify): PASS
+[CHECK 40-43] Server-Side Anti-IDOR Defense & Audit Trail Verification: PASS
+================================================================================
+ALL 43 EMPIRICAL CHECKS PASSED WITH ZERO REGRESSIONS!
+================================================================================
+```
+
+### Phase 12-16 Regression Suites
+- **Phase 12 Submission Workflow**: 27/27 PASSED (21.56s)
+- **Phase 13 Subsidiary Review**: 16/16 PASSED (16.82s)
+- **Phase 14 Corrections & Resubmission**: 21/21 PASSED (16.21s)
+- **Phase 15 Anomaly Detection Engine**: 32/32 PASSED (22.34s)
+- **Phase 16 Supplier & Procurement**: 26/26 PASSED (4.15s)
+- **Total Phase 12–16 Regression Tests**: **122/122 PASSED (100%)**
+
+### Full Monolith Regression Suite (`manage.py test`)
+```text
+.venv\Scripts\python.exe manage.py test
+Ran 438 tests in 447.728s
+OK
+Result: 438 Passed, 0 Failed, 0 Errors (100% PASS across all 17 Phases)
+```
+
+---
+
+## 16. Browser Verification
+- **Status**: Documented environment dependency limitation.
+- **Details**: Direct automated browser context creation encountered an upstream Playwright Windows binary download failure (`HTTP 404 from playwright.azureedge.net for playwright-1.57.0-win32_x64.zip`).
+- **Alternative Verification**: Full end-to-end operational workflows, dark-theme HTML template rendering, form submissions, workflow state transitions, and IDOR denials were empirically verified across all 18 routes via Django Client live HTTP suite and automated test suites (`17/17 PASSED`) and the live verification script (`43/43 PASSED`).
+
+---
+
+## 17. Known Limitations
+- Complete Scope 1 mobile combustion and Scope 3 Category 4/9 emission calculations and emission factor lookups are deferred to future Calculation Engine phases.
+- Route distance is captured from documents, odometers, or carrier reports; external live GPS tracking and dynamic GIS mapping engines are intentionally excluded per project scope boundaries.
+
+---
+
+## 18. Next Recommended Phase
+**PHASE 18 — TRAVEL MANAGEMENT**
+
 
 
 

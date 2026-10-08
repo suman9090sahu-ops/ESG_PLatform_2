@@ -331,6 +331,18 @@ def get_role_sidebar_menu(user):
                         "url": reverse("core:supplier_list"),
                         "icon": "icon-people text-info",
                     },
+                    {
+                        "nav_id": "transport",
+                        "label": "Transport & Logistics",
+                        "url": reverse("core:transport_list"),
+                        "icon": "icon-cursor text-info",
+                    },
+                    {
+                        "nav_id": "carriers",
+                        "label": "Carriers & Fleet",
+                        "url": reverse("core:carrier_list"),
+                        "icon": "icon-globe text-primary",
+                    },
                 ],
             },
             {
@@ -425,10 +437,22 @@ def get_role_sidebar_menu(user):
                         "icon": "icon-basket-loaded text-warning",
                     },
                     {
+                        "nav_id": "transport_inbox",
+                        "label": "Transport Review",
+                        "url": reverse("core:transport_review_inbox"),
+                        "icon": "icon-cursor text-warning",
+                    },
+                    {
                         "nav_id": "suppliers",
                         "label": "Supplier Directory",
                         "url": reverse("core:supplier_list"),
                         "icon": "icon-people text-info",
+                    },
+                    {
+                        "nav_id": "carriers",
+                        "label": "Carrier Directory",
+                        "url": reverse("core:carrier_list"),
+                        "icon": "icon-globe text-info",
                     },
                 ],
             },
@@ -527,6 +551,18 @@ def get_role_sidebar_menu(user):
                         "label": "Supplier Directory",
                         "url": reverse("core:supplier_list"),
                         "icon": "icon-people text-info",
+                    },
+                    {
+                        "nav_id": "transport",
+                        "label": "Transport Ledger",
+                        "url": reverse("core:transport_list"),
+                        "icon": "icon-cursor text-info",
+                    },
+                    {
+                        "nav_id": "carriers",
+                        "label": "Carrier Directory",
+                        "url": reverse("core:carrier_list"),
+                        "icon": "icon-globe text-info",
                     },
                 ],
             },
@@ -632,6 +668,18 @@ def get_role_sidebar_menu(user):
                         "url": reverse("core:supplier_list"),
                         "icon": "icon-people text-info",
                     },
+                    {
+                        "nav_id": "transport",
+                        "label": "Transport Trace",
+                        "url": reverse("core:transport_list"),
+                        "icon": "icon-cursor text-info",
+                    },
+                    {
+                        "nav_id": "carriers",
+                        "label": "Carrier Directory",
+                        "url": reverse("core:carrier_list"),
+                        "icon": "icon-globe text-info",
+                    },
                 ],
             },
             {
@@ -717,6 +765,18 @@ def get_role_sidebar_menu(user):
                         "label": "Supplier Directory",
                         "url": reverse("core:supplier_list"),
                         "icon": "icon-people text-info",
+                    },
+                    {
+                        "nav_id": "transport",
+                        "label": "Transport Ledger",
+                        "url": reverse("core:transport_list"),
+                        "icon": "icon-cursor text-info",
+                    },
+                    {
+                        "nav_id": "carriers",
+                        "label": "Carriers & Fleet",
+                        "url": reverse("core:carrier_list"),
+                        "icon": "icon-globe text-primary",
                     },
                     {
                         "nav_id": "audit_events",

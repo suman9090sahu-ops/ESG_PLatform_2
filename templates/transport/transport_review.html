@@ -1,0 +1,224 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}Review Transport #{{ transport.transport_reference }}{% endblock %}
+{% block page_subtitle %}
+  Verify logistics data integrity, carrier authenticity, cargo details, route distance, evidence documents, and validation status.
+{% endblock %}
+
+{% block page_actions %}
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'core:transport_review_inbox' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="icon-arrow-left me-1"></i> Review Inbox
+    </a>
+    <a href="{% url 'core:transport_detail' transport.id %}" class="btn btn-sm btn-outline-primary">
+      <i class="icon-eye me-1"></i> View Dossier
+    </a>
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="row g-4">
+    <!-- Left Column: Transport Summary, Cargo & Documents -->
+    <div class="col-lg-7">
+      <!-- Metadata Summary -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="card-title fw-bold mb-0">Transport Logistics Parameters</h6>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <span class="text-muted small text-uppercase fw-semibold d-block">Carrier Provider</span>
+              <span class="fw-bold">{{ transport.carrier.name }}</span>
+              <div class="text-muted small font-monospace">{{ transport.carrier.code }}</div>
+            </div>
+            <div class="col-sm-6">
+              <span class="text-muted small text-uppercase fw-semibold d-block">Site &amp; Subsidiary</span>
+              <span class="fw-semibold">{{ transport.site.name }}</span>
+              <div class="text-muted small">{{ transport.company.name }}</div>
+            </div>
+            <div class="col-sm-4">
+              <span class="text-muted small text-uppercase fw-semibold d-block">Transport Date</span>
+              <span>{{ transport.transport_date|date:"d M Y" }}</span>
+            </div>
+            <div class="col-sm-4">
+              <span class="text-muted small text-uppercase fw-semibold d-block">Mode</span>
+              <span class="badge bg-light text-dark border">{{ transport.get_mode_display }}</span>
+            </div>
+            <div class="col-sm-4">
+              <span class="text-muted small text-uppercase fw-semibold d-block">Vehicle</span>
+              <span class="font-monospace fw-bold">{{ transport.vehicle.registration_number|default:"—" }}</span>
+            </div>
+            <div class="col-sm-6">
+              <span class="text-muted small text-uppercase fw-semibold d-block">Origin</span>
+              <div>{{ transport.origin_location }}</div>
+            </div>
+            <div class="col-sm-6">
+              <span class="text-muted small text-uppercase fw-semibold d-block">Destination</span>
+              <div>{{ transport.destination_location }}</div>
+            </div>
+            <div class="col-sm-6">
+              <span class="text-muted small text-uppercase fw-semibold d-block">Distance</span>
+              <span class="h5 fw-bold font-monospace text-primary mb-0">
+                {{ transport.distance }} {{ transport.distance_unit }}
+              </span>
+            </div>
+            <div class="col-sm-6">
+              <span class="text-muted small text-uppercase fw-semibold d-block">Freight Cost</span>
+              <span class="font-monospace fw-bold">
+                {% if transport.freight_cost %}{{ transport.currency }} {{ transport.freight_cost|floatformat:2 }}{% else %}—{% endif %}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Anomaly Alert Card if present -->
+      {% if anomalies %}
+        <div class="card border-0 shadow-sm mb-4 border-start border-4 border-danger">
+          <div class="card-body">
+            <h6 class="fw-bold text-danger mb-2"><i class="icon-exclamation me-2"></i>Active Logistics Anomalies Detected</h6>
+            <ul class="mb-0 small text-danger">
+              {% for anom in anomalies %}
+                <li><strong>{{ anom.type }}:</strong> {{ anom.message }} (Severity: {{ anom.severity }})</li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+      {% endif %}
+
+      <!-- Shipment Details -->
+      {% if shipment %}
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-white border-bottom py-3">
+            <h6 class="card-title fw-bold mb-0">Cargo &amp; Shipment Specification</h6>
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-sm-4">
+                <span class="text-muted small text-uppercase fw-semibold d-block">Shipment Ref</span>
+                <span class="font-monospace fw-bold">{{ shipment.shipment_reference }}</span>
+              </div>
+              <div class="col-sm-8">
+                <span class="text-muted small text-uppercase fw-semibold d-block">Material</span>
+                <span class="fw-semibold">{{ shipment.material_description }}</span>
+              </div>
+              <div class="col-sm-4">
+                <span class="text-muted small text-uppercase fw-semibold d-block">Quantity</span>
+                <span class="font-monospace">{{ shipment.quantity }} {{ shipment.unit }}</span>
+              </div>
+              <div class="col-sm-4">
+                <span class="text-muted small text-uppercase fw-semibold d-block">Gross Weight</span>
+                <span class="font-monospace">{{ shipment.gross_weight_kg|default:"—" }} kg</span>
+              </div>
+              <div class="col-sm-4">
+                <span class="text-muted small text-uppercase fw-semibold d-block">Procurement Ref</span>
+                <span>
+                  {% if shipment.procurement_record %}
+                    {{ shipment.procurement_record.procurement_number }}
+                  {% else %}
+                    —
+                  {% endif %}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+      <!-- Supporting Documents -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="card-title fw-bold mb-0">Evidence Documents ({{ evidence_files.count }})</h6>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light small text-uppercase">
+              <tr>
+                <th>Document</th>
+                <th>Type</th>
+                <th>Size</th>
+                <th class="text-end">View</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for ev in evidence_files %}
+                <tr>
+                  <td class="fw-semibold">{{ ev.file_name }}</td>
+                  <td><span class="badge bg-light text-dark border">{{ ev.get_evidence_type_display }}</span></td>
+                  <td class="font-monospace small">{{ ev.file_size_display }}</td>
+                  <td class="text-end">
+                    <a href="{{ ev.file.url }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                      <i class="icon-eye me-1"></i> View
+                    </a>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="4" class="text-center py-3 text-warning">
+                    <i class="icon-exclamation me-1"></i> No supporting evidence attached.
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Review Action Form -->
+    <div class="col-lg-5">
+      <div class="card border-0 shadow-sm sticky-top" style="top: 1rem;">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="card-title fw-bold mb-0">Review Governance Decision</h6>
+        </div>
+        <div class="card-body p-4">
+          <form method="post">
+            {% csrf_token %}
+
+            <div class="mb-4">
+              <label class="form-label fw-bold">Select Decision Action <span class="text-danger">*</span></label>
+              <div class="d-flex flex-column gap-2">
+                {% for radio in form.action %}
+                  <div class="form-check p-3 border rounded">
+                    {{ radio.tag }}
+                    <label class="form-check-label fw-semibold ms-2" for="{{ radio.id_for_label }}">
+                      {{ radio.choice_label }}
+                    </label>
+                  </div>
+                {% endfor %}
+              </div>
+              {% if form.action.errors %}<div class="text-danger small mt-1">{{ form.action.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Review Comments</label>
+              {{ form.comments }}
+              <small class="text-muted">Recorded into the permanent audit log</small>
+              {% if form.comments.errors %}<div class="text-danger small mt-1">{{ form.comments.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label fw-semibold">Correction Request Directives</label>
+              {{ form.correction_notes }}
+              <small class="text-muted">Mandatory if Requesting Correction (specifies what Site Manager must fix)</small>
+              {% if form.correction_notes.errors %}<div class="text-danger small mt-1">{{ form.correction_notes.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="d-grid gap-2">
+              <button type="submit" class="btn btn-primary py-2 fw-semibold">
+                <i class="icon-check me-1"></i> Submit Review Decision
+              </button>
+              <a href="{% url 'core:transport_detail' transport.id %}" class="btn btn-outline-secondary">
+                Cancel
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

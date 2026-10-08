@@ -283,6 +283,37 @@ This document tracks all active URL endpoints in **Phase 01 & Phase 02** as well
 | `/procurement/<id>/correct/` | `apps.core.procurement_views.procurement_correction_view` | `core:procurement_correction` | `SITE_MANAGER`, `MEIL_OPERATOR` | Site Manager Correction & Resubmission Workspace | Phase 16 |
 | `/procurement/<id>/ocr-compare/<evidence_id>/` | `apps.core.procurement_views.procurement_ocr_compare_view` | `core:procurement_ocr_compare` | Scoped Roles (IDOR Protected) | OCR Side-by-Side Reconciliation Analysis | Phase 16 |
 
+### 16. Transport & Logistics Management Routes (`/transport/...`, `/carriers/...`, `/vehicles/...`)
+
+| URL Pattern | View Function | Route Name | Authorized Roles | Purpose | Phase |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `/carriers/` | `apps.core.transport_views.carrier_list_view` | `core:carrier_list` | Scoped Roles | Transport Carrier Master Directory | Phase 17 |
+| `/carriers/create/` | `apps.core.transport_views.carrier_create_view` | `core:carrier_create` | `MEIL_OPERATOR`, `ESG_MANAGER`, `SUBSIDIARY_MANAGER` | Register New Transport Carrier Entity | Phase 17 |
+| `/carriers/<id>/` | `apps.core.transport_views.carrier_detail_view` | `core:carrier_detail` | Scoped Roles (IDOR Protected) | Carrier Profile, Fleet Assets, & Trip Ledger | Phase 17 |
+| `/carriers/<id>/edit/` | `apps.core.transport_views.carrier_edit_view` | `core:carrier_edit` | `MEIL_OPERATOR`, `ESG_MANAGER`, `SUBSIDIARY_MANAGER` | Edit Carrier Master Details | Phase 17 |
+| `/carriers/<id>/archive/` | `apps.core.transport_views.carrier_archive_view` | `core:carrier_archive` | `MEIL_OPERATOR`, `ESG_MANAGER`, `SUBSIDIARY_MANAGER` (POST) | Soft-Archive Carrier (Preserves historical trips) | Phase 17 |
+| `/vehicles/` | `apps.core.transport_views.vehicle_list_view` | `core:vehicle_list` | Scoped Roles | Vehicle & Fleet Asset Registry (Scope 1 & 3) | Phase 17 |
+| `/vehicles/create/` | `apps.core.transport_views.vehicle_create_view` | `core:vehicle_create` | `MEIL_OPERATOR`, `ESG_MANAGER`, `SUBSIDIARY_MANAGER`, `SITE_MANAGER` | Register Fleet Vehicle Asset | Phase 17 |
+| `/vehicles/<id>/` | `apps.core.transport_views.vehicle_detail_view` | `core:vehicle_detail` | Scoped Roles (IDOR Protected) | Vehicle Asset Profile, Payload, Fuel, & Trips | Phase 17 |
+| `/vehicles/<id>/edit/` | `apps.core.transport_views.vehicle_edit_view` | `core:vehicle_edit` | Scoped Roles (IDOR Protected) | Edit Vehicle Asset Parameters | Phase 17 |
+| `/vehicles/<id>/archive/` | `apps.core.transport_views.vehicle_archive_view` | `core:vehicle_archive` | Scoped Roles (IDOR Protected, POST) | Soft-Archive Vehicle (Preserves historical movements) | Phase 17 |
+| `/transport/` | `apps.core.transport_views.transport_list_view` | `core:transport_list` | Scoped Roles | Authoritative Transport & Logistics Movement Ledger | Phase 17 |
+| `/transport/create/` | `apps.core.transport_views.transport_create_view` | `core:transport_create` | `SITE_MANAGER`, `MEIL_OPERATOR`, `ESG_MANAGER` | Record Physical Transportation Movement | Phase 17 |
+| `/transport/inbox/` | `apps.core.transport_views.transport_review_inbox_view` | `core:transport_review_inbox` | `SUBSIDIARY_MANAGER`, `MEIL_OPERATOR`, `ESG_MANAGER` | Subsidiary Review Desk for Transport Submissions | Phase 17 |
+| `/transport/<id>/` | `apps.core.transport_views.transport_detail_view` | `core:transport_detail` | Scoped Roles (IDOR Protected) | Comprehensive Transport Movement Detail & Audit Trace | Phase 17 |
+| `/transport/<id>/edit/` | `apps.core.transport_views.transport_edit_view` | `core:transport_edit` | Scoped Roles (IDOR Protected) | Edit Transport Record (DRAFT / CORRECTION_REQUESTED) | Phase 17 |
+| `/transport/<id>/delete/` | `apps.core.transport_views.transport_delete_view` | `core:transport_delete` | Scoped Roles (IDOR Protected; Draft Only) | Safe Deletion of Draft Movement Record | Phase 17 |
+| `/transport/<id>/evidence/upload/` | `apps.core.transport_views.transport_evidence_upload_view` | `core:transport_evidence_upload` | Scoped Roles (IDOR Protected) | Attach Lorry Receipt / Weighbridge Slip / Manifest | Phase 17 |
+| `/transport/<id>/validate/` | `apps.core.transport_views.transport_validate_view` | `core:transport_validate` | Scoped Roles (IDOR Protected, POST) | Trigger On-demand Deterministic Validation | Phase 17 |
+| `/transport/<id>/anomalies/detect/` | `apps.core.transport_views.transport_anomaly_detect_view` | `core:transport_anomaly_detect` | Scoped Roles (IDOR Protected, POST) | Trigger Anomaly Detection Engine (Route/Payload/Duplicates) | Phase 17 |
+| `/transport/<id>/submit/` | `apps.core.transport_views.transport_submit_view` | `core:transport_submit` | Scoped Roles (IDOR Protected, POST) | Formal Submission for Subsidiary Governance Review | Phase 17 |
+| `/transport/<id>/review/` | `apps.core.transport_views.transport_review_view` | `core:transport_review` | `SUBSIDIARY_MANAGER`, `MEIL_OPERATOR`, `ESG_MANAGER` (POST) | Governance Review (VERIFY / REQUEST_CORRECTION / REJECT) | Phase 17 |
+| `/transport/<id>/correction/` | `apps.core.transport_views.transport_correction_view` | `core:transport_correction` | `SITE_MANAGER`, `MEIL_OPERATOR` | Site Manager Remediation & Resubmission Workspace | Phase 17 |
+| `/transport/<id>/ocr-compare/<ev_id>/` | `apps.core.transport_views.transport_ocr_compare_view` | `core:transport_ocr_compare` | Scoped Roles (IDOR Protected) | Side-by-Side OCR Extraction Comparison Analysis | Phase 17 |
+| `/logistics/` | `apps.core.transport_views.transport_list_view` | `core:logistics_list` | Scoped Roles | Canonical Alias for Transport Ledger | Phase 17 |
+| `/logistics/carriers/` | `apps.core.transport_views.carrier_list_view` | `core:logistics_carrier_list` | Scoped Roles | Canonical Alias for Carriers Directory | Phase 17 |
+| `/logistics/vehicles/` | `apps.core.transport_views.vehicle_list_view` | `core:logistics_vehicle_list` | Scoped Roles | Canonical Alias for Vehicles Registry | Phase 17 |
+
 ---
 
 ### Custom HTTP Error Handlers
@@ -421,6 +452,35 @@ This document tracks all active URL endpoints in **Phase 01 & Phase 02** as well
 │   ├── /<id>/review/                  Review Action (VERIFY / REQUEST_CORRECTION / REJECT)
 │   ├── /<id>/correct/                 Site Manager Remediation & Resubmission
 │   └── /<id>/ocr-compare/<ev_id>/     OCR Side-by-Side Reconciliation Analysis
+│
+├── /carriers/                         [Active - Phase 17 Transport & Logistics Management]
+│   ├── /                              Carrier Master Directory & Fleet Filter
+│   ├── /create/                       Register New Carrier Partner (MEIL_OP, ESG_MGR, SUB_MGR)
+│   ├── /<id>/                         Carrier Dossier, Linked Fleet & Haulage Ledger
+│   ├── /<id>/edit/                    Edit Carrier Registration Details
+│   └── /<id>/archive/                 Soft-Archive Carrier Master (POST)
+│
+├── /vehicles/                         [Active - Phase 17 Transport & Logistics Management]
+│   ├── /                              Fleet Asset Catalog (Scope 1 Owned vs Scope 3 3rd-Party)
+│   ├── /create/                       Register Fleet Vehicle Asset
+│   ├── /<id>/                         Vehicle Asset Profile, Rated Payload & Trip History
+│   ├── /<id>/edit/                    Edit Vehicle Asset Parameters
+│   └── /<id>/archive/                 Soft-Archive Vehicle Asset (POST)
+│
+├── /transport/                        [Active - Phase 17 Transport & Logistics Management]
+│   ├── /                              Movement Ledger with Filter Toolbar (Modalities, Scopes)
+│   ├── /create/                       Record Transport Movement & Embedded Cargo Shipment
+│   ├── /inbox/                        Subsidiary Review Inbox for Transport Submissions
+│   ├── /<id>/                         Comprehensive Transport Dossier & Full Lineage
+│   ├── /<id>/edit/                    Edit Movement Record (Draft / Correction States)
+│   ├── /<id>/delete/                  Safe Deletion of Draft Records
+│   ├── /<id>/evidence/upload/         Attach Lorry Receipt / Weighbridge Slip
+│   ├── /<id>/validate/                On-demand Deterministic Validation Run (POST)
+│   ├── /<id>/anomalies/detect/        Evaluate Route, Payload & Duplicate Anomalies (POST)
+│   ├── /<id>/submit/                  Formal Submission for Subsidiary Review (POST)
+│   ├── /<id>/review/                  Governance Decision (VERIFY / REQUEST_CORRECTION / REJECT)
+│   ├── /<id>/correction/              Site Manager Remediation & Resubmission
+│   └── /<id>/ocr-compare/<ev_id>/     Side-by-Side OCR Extraction Comparison Analysis
 │
 └── /reports/                          [Planned - Scope 3 & BRSR Calculation Phase]
     ├── /brsr/                         SEBI BRSR Core format generator

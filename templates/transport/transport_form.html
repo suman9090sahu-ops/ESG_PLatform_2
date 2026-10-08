@@ -1,0 +1,218 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}{% if is_create %}Record Transport &amp; Logistics Event{% else %}Edit Transport: {{ transport.transport_reference }}{% endif %}{% endblock %}
+{% block page_subtitle %}Capture ESG-relevant transportation activity, cargo movement, Scope 1 mobile fuel or Scope 3 freight logistics.{% endblock %}
+
+{% block page_actions %}
+  <a href="{% if is_create %}{% url 'core:transport_list' %}{% else %}{% url 'core:transport_detail' transport.id %}{% endif %}" class="btn btn-sm btn-outline-secondary">
+    <i class="icon-arrow-left me-1"></i> Cancel
+  </a>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="row justify-content-center">
+    <div class="col-lg-11">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-cursor me-2 text-primary"></i>
+            {% if is_create %}New Transport Event Entry{% else %}Update Transport Parameters{% endif %}
+          </h6>
+        </div>
+        <div class="card-body p-4">
+          <form method="post" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger mb-4">
+                {{ form.non_field_errors }}
+              </div>
+            {% endif %}
+
+            <!-- Section 1: Operational Scope & Date -->
+            <h6 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2">Operational Scope &amp; Timing</h6>
+            <div class="row g-3 mb-4">
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Operational Site <span class="text-danger">*</span></label>
+                {{ form.site }}
+                {% if form.site.errors %}<div class="text-danger small">{{ form.site.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Reporting Period <span class="text-danger">*</span></label>
+                {{ form.reporting_period }}
+                {% if form.reporting_period.errors %}<div class="text-danger small">{{ form.reporting_period.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Transport Reference</label>
+                {{ form.transport_reference }}
+                <div class="form-text small text-muted">Leave blank to auto-generate.</div>
+                {% if form.transport_reference.errors %}<div class="text-danger small">{{ form.transport_reference.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Transport Date <span class="text-danger">*</span></label>
+                {{ form.transport_date }}
+                {% if form.transport_date.errors %}<div class="text-danger small">{{ form.transport_date.errors }}</div>{% endif %}
+              </div>
+            </div>
+
+            <!-- Section 2: Carrier, Fleet & Mode -->
+            <h6 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2">Carrier, Fleet &amp; Mode</h6>
+            <div class="row g-3 mb-4">
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Carrier / Logistics Provider <span class="text-danger">*</span></label>
+                {{ form.carrier }}
+                {% if form.carrier.errors %}<div class="text-danger small">{{ form.carrier.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Transport Mode</label>
+                {{ form.mode }}
+                {% if form.mode.errors %}<div class="text-danger small">{{ form.mode.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Vehicle (If Applicable)</label>
+                {{ form.vehicle }}
+                <div class="form-text small text-muted">Optional: fleet vehicle plate</div>
+                {% if form.vehicle.errors %}<div class="text-danger small">{{ form.vehicle.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold">Scope Category</label>
+                {{ form.scope_category }}
+                {% if form.scope_category.errors %}<div class="text-danger small">{{ form.scope_category.errors }}</div>{% endif %}
+              </div>
+            </div>
+
+            <!-- Section 3: Route & Distance -->
+            <h6 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2">Route Origin, Destination &amp; Distance</h6>
+            <div class="row g-3 mb-4">
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Origin Location <span class="text-danger">*</span></label>
+                {{ form.origin_location }}
+                {% if form.origin_location.errors %}<div class="text-danger small">{{ form.origin_location.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold">Origin Type</label>
+                {{ form.origin_type }}
+                {% if form.origin_type.errors %}<div class="text-danger small">{{ form.origin_type.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Destination Location <span class="text-danger">*</span></label>
+                {{ form.destination_location }}
+                {% if form.destination_location.errors %}<div class="text-danger small">{{ form.destination_location.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold">Destination Type</label>
+                {{ form.destination_type }}
+                {% if form.destination_type.errors %}<div class="text-danger small">{{ form.destination_type.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Distance Moved <span class="text-danger">*</span></label>
+                {{ form.distance }}
+                {% if form.distance.errors %}<div class="text-danger small">{{ form.distance.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Distance Unit</label>
+                {{ form.distance_unit }}
+                {% if form.distance_unit.errors %}<div class="text-danger small">{{ form.distance_unit.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Distance Source</label>
+                {{ form.distance_source }}
+                {% if form.distance_source.errors %}<div class="text-danger small">{{ form.distance_source.errors }}</div>{% endif %}
+              </div>
+            </div>
+
+            <!-- Section 4: Cargo & Shipment Details -->
+            <h6 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2">Cargo &amp; Shipment Details</h6>
+            <div class="row g-3 mb-4">
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Shipment Reference</label>
+                {{ form.shipment_reference }}
+                <div class="form-text small text-muted">Auto-generated if left blank.</div>
+                {% if form.shipment_reference.errors %}<div class="text-danger small">{{ form.shipment_reference.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-5">
+                <label class="form-label small fw-semibold">Material / Goods Description</label>
+                {{ form.material_description }}
+                {% if form.material_description.errors %}<div class="text-danger small">{{ form.material_description.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold">Quantity Moved</label>
+                {{ form.quantity }}
+                {% if form.quantity.errors %}<div class="text-danger small">{{ form.quantity.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold">Quantity Unit</label>
+                {{ form.unit }}
+                {% if form.unit.errors %}<div class="text-danger small">{{ form.unit.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Gross Weight (kg)</label>
+                {{ form.gross_weight_kg }}
+                {% if form.gross_weight_kg.errors %}<div class="text-danger small">{{ form.gross_weight_kg.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-5">
+                <label class="form-label small fw-semibold">Associated Procurement Order</label>
+                {{ form.procurement_record }}
+                <div class="form-text small text-muted">Optional: link to commercial purchase record.</div>
+                {% if form.procurement_record.errors %}<div class="text-danger small">{{ form.procurement_record.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Lorry Receipt / Waybill Number</label>
+                {{ form.waybill_number }}
+                {% if form.waybill_number.errors %}<div class="text-danger small">{{ form.waybill_number.errors }}</div>{% endif %}
+              </div>
+            </div>
+
+            <!-- Section 5: Commercials, Activity Link & Multi-Leg -->
+            <h6 class="text-uppercase text-muted fw-bold small mb-3 border-bottom pb-2">Commercials, Activity Link &amp; Multi-Leg Journey</h6>
+            <div class="row g-3 mb-4">
+              <div class="col-md-3">
+                <label class="form-label small fw-semibold">Freight Cost</label>
+                {{ form.freight_cost }}
+                {% if form.freight_cost.errors %}<div class="text-danger small">{{ form.freight_cost.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold">Currency</label>
+                {{ form.currency }}
+                {% if form.currency.errors %}<div class="text-danger small">{{ form.currency.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-semibold">Linked ESG Activity Record</label>
+                {{ form.activity_record }}
+                <div class="form-text small text-muted">Optional: link to mobile fuel / freight activity.</div>
+                {% if form.activity_record.errors %}<div class="text-danger small">{{ form.activity_record.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-1">
+                <label class="form-label small fw-semibold">Leg #</label>
+                {{ form.leg_number }}
+                {% if form.leg_number.errors %}<div class="text-danger small">{{ form.leg_number.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small fw-semibold">Parent Transport</label>
+                {{ form.parent_transport }}
+                {% if form.parent_transport.errors %}<div class="text-danger small">{{ form.parent_transport.errors }}</div>{% endif %}
+              </div>
+              <div class="col-12">
+                <label class="form-label small fw-semibold">Operational Notes</label>
+                {{ form.notes }}
+                {% if form.notes.errors %}<div class="text-danger small">{{ form.notes.errors }}</div>{% endif %}
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 border-top pt-3">
+              <a href="{% if is_create %}{% url 'core:transport_list' %}{% else %}{% url 'core:transport_detail' transport.id %}{% endif %}" class="btn btn-secondary">
+                Cancel
+              </a>
+              <button type="submit" class="btn btn-primary">
+                <i class="icon-check me-1"></i> {% if is_create %}Record Transport{% else %}Save Changes{% endif %}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}Upload Transport Evidence{% endblock %}
+{% block page_subtitle %}
+  Attach waybill, lorry receipt, trip sheet, weighbridge slip, or freight invoice for Transport #{{ transport.transport_reference }}
+{% endblock %}
+
+{% block page_actions %}
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'core:transport_detail' transport.id %}" class="btn btn-sm btn-outline-secondary">
+      <i class="icon-arrow-left me-1"></i> Cancel
+    </a>
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="card-title fw-bold mb-0">Evidence Document Upload</h6>
+        </div>
+        <div class="card-body p-4">
+          <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <div class="mb-4">
+              <label class="form-label fw-semibold">Target Transport Event</label>
+              <div class="p-3 bg-light rounded d-flex justify-content-between align-items-center">
+                <div>
+                  <span class="fw-bold font-monospace">#{{ transport.transport_reference }}</span>
+                  &bull; {{ transport.carrier.name }}
+                  <div class="text-muted small">
+                    Site: {{ transport.site.name }} &bull; Route: {{ transport.origin_location }} &rarr; {{ transport.destination_location }} ({{ transport.distance }} {{ transport.distance_unit }})
+                  </div>
+                </div>
+                <span class="badge bg-secondary">{{ transport.get_status_display }}</span>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Evidence Classification <span class="text-danger">*</span></label>
+              <select name="evidence_type" class="form-select" required>
+                {% for code, label in evidence_types %}
+                  <option value="{{ code }}" {% if code == 'LORRY_RECEIPT' %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+              <small class="text-muted">Select Lorry Receipt, Trip Sheet, Weighbridge Slip, or Invoice for optimal document auditing.</small>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label fw-semibold">Document File <span class="text-danger">*</span></label>
+              <input type="file" name="file" class="form-control" accept=".pdf,.png,.jpg,.jpeg,.tiff" required>
+              <small class="text-muted">Supported formats: PDF, PNG, JPG, JPEG, TIFF (Max size: 10MB)</small>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label fw-semibold">Description / Notes</label>
+              <textarea name="description" rows="3" class="form-control" placeholder="Optional notes regarding this supporting document (e.g. Consignment note, signed weighbridge slip)..."></textarea>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+              <a href="{% url 'core:transport_detail' transport.id %}" class="btn btn-secondary">Cancel</a>
+              <button type="submit" class="btn btn-primary px-4">
+                <i class="icon-cloud-upload me-1"></i> Upload Evidence
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

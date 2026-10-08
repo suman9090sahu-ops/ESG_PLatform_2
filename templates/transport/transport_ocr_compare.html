@@ -1,0 +1,156 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}OCR Logistics Telemetry Comparison{% endblock %}
+{% block page_subtitle %}
+  Automated document intelligence comparison for Transport #{{ transport.transport_reference }} &bull; Evidence: {{ evidence.file_name }}
+{% endblock %}
+
+{% block page_actions %}
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'core:transport_detail' transport.id %}" class="btn btn-sm btn-outline-secondary">
+      <i class="icon-arrow-left me-1"></i> Back to Transport
+    </a>
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <!-- Top Principle Alert -->
+  <div class="alert alert-info shadow-sm mb-4">
+    <div class="d-flex align-items-center">
+      <i class="icon-info me-3 fs-4"></i>
+      <div>
+        <h6 class="fw-bold mb-1">Zero Silent Overwrite Principle</h6>
+        <p class="mb-0 small">
+          OCR extraction provides unverified observational telemetry. Discrepancies between physical documents and recorded transport parameters are highlighted for human review and never automatically overwrite authoritative ledger entries.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Overall Status Card -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-4 d-flex flex-wrap justify-content-between align-items-center gap-3">
+      <div>
+        <span class="text-muted small text-uppercase fw-semibold d-block">Overall Reconciliation Status</span>
+        <div class="h3 fw-bold mb-0 mt-1">
+          {% if comparison.overall_status == 'MATCH' %}
+            <span class="text-success"><i class="icon-check me-2"></i>Full Telemetry Match</span>
+          {% elif comparison.overall_status == 'MISMATCH' %}
+            <span class="text-danger"><i class="icon-close me-2"></i>Field Discrepancies Detected</span>
+          {% elif comparison.overall_status == 'PARTIAL_MATCH' %}
+            <span class="text-warning"><i class="icon-exclamation me-2"></i>Partial Match</span>
+          {% else %}
+            <span class="text-secondary"><i class="icon-question me-2"></i>Incomplete Extraction</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="d-flex gap-4 text-center">
+        <div>
+          <div class="h4 fw-bold text-success mb-0">{{ comparison.matches_count }}</div>
+          <small class="text-muted text-uppercase">Matches</small>
+        </div>
+        <div>
+          <div class="h4 fw-bold text-danger mb-0">{{ comparison.mismatches_count }}</div>
+          <small class="text-muted text-uppercase">Mismatches</small>
+        </div>
+        <div>
+          <div class="h4 fw-bold text-secondary mb-0">{{ comparison.not_detected_count }}</div>
+          <small class="text-muted text-uppercase">Not Detected</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Field Comparison Table -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom py-3">
+      <h6 class="card-title fw-bold mb-0">Document Field Telemetry vs Authoritative Transport Record</h6>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light small text-uppercase">
+          <tr>
+            <th>Field</th>
+            <th>Authoritative Value (Stored)</th>
+            <th>OCR Extracted Value</th>
+            <th>Confidence</th>
+            <th class="text-center">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for field_key, item in comparison.items.items %}
+            <tr>
+              <td class="fw-semibold">{{ item.label }}</td>
+              <td class="font-monospace">
+                {{ item.stored_value|default:"-" }}
+              </td>
+              <td class="font-monospace">
+                {% if item.extracted_value is not None %}
+                  {{ item.extracted_value }}
+                {% else %}
+                  <span class="text-muted fst-italic">Not Detected</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if item.confidence is not None %}
+                  <div class="d-flex align-items-center gap-2">
+                    <div class="progress flex-grow-1" style="height: 6px; width: 60px;">
+                      <div class="progress-bar bg-info" role="progressbar" style="width: {{ item.confidence|floatformat:0 }}%;"></div>
+                    </div>
+                    <span class="small font-monospace">{{ item.confidence|floatformat:0 }}%</span>
+                  </div>
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td class="text-center">
+                {% if item.status == 'MATCH' %}
+                  <span class="badge bg-success-subtle text-success border border-success px-3 py-1">MATCH</span>
+                {% elif item.status == 'MISMATCH' %}
+                  <span class="badge bg-danger-subtle text-danger border border-danger px-3 py-1">MISMATCH</span>
+                {% elif item.status == 'NOT_DETECTED' %}
+                  <span class="badge bg-secondary-subtle text-secondary border border-secondary px-3 py-1">NOT DETECTED</span>
+                {% else %}
+                  <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-1">{{ item.status }}</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Run Metadata if OCRRun was performed -->
+  {% if ocr_run %}
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white border-bottom py-3">
+        <h6 class="card-title fw-bold mb-0">OCR Execution Lineage</h6>
+      </div>
+      <div class="card-body">
+        <div class="row g-3 small">
+          <div class="col-sm-3">
+            <span class="text-muted d-block">Run Number</span>
+            <span class="font-monospace fw-bold">#{{ ocr_run.run_number }}</span>
+          </div>
+          <div class="col-sm-3">
+            <span class="text-muted d-block">Provider</span>
+            <span>{{ ocr_run.provider }}</span>
+          </div>
+          <div class="col-sm-3">
+            <span class="text-muted d-block">Execution Duration</span>
+            <span>{{ ocr_run.duration_ms }} ms</span>
+          </div>
+          <div class="col-sm-3">
+            <span class="text-muted d-block">Confidence Score</span>
+            <span class="font-monospace">{{ ocr_run.confidence_score|floatformat:1 }}%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

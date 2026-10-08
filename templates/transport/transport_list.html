@@ -1,0 +1,243 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}Transport &amp; Logistics Ledger{% endblock %}
+{% block page_subtitle %}Centralized ESG transportation records, Scope 1 mobile combustion &amp; Scope 3 upstream/downstream freight, verification workflows, and audit trail.{% endblock %}
+
+{% block page_actions %}
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'core:carrier_list' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="icon-globe me-1"></i> Carriers
+    </a>
+    <a href="{% url 'core:vehicle_list' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="icon-speedometer me-1"></i> Fleet
+    </a>
+    {% if is_sub_mgr %}
+      <a href="{% url 'core:transport_review_inbox' %}" class="btn btn-sm btn-outline-warning">
+        <i class="icon-clock me-1"></i> Review Inbox
+        {% if pending_review > 0 %}
+          <span class="badge bg-warning text-dark ms-1">{{ pending_review }}</span>
+        {% endif %}
+      </a>
+    {% endif %}
+    {% if can_create %}
+      <a href="{% url 'core:transport_create' %}" class="btn btn-sm btn-primary">
+        <i class="icon-plus me-1"></i> Record Transport Event
+      </a>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <!-- KPI Metrics -->
+  <div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body p-3">
+          <div class="text-muted small text-uppercase fw-semibold">Total Transport Events</div>
+          <div class="h3 fw-bold mb-0 text-dark mt-1">{{ total_count }}</div>
+          <small class="text-muted">Master Logistics Records</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+      <div class="card border-0 shadow-sm h-100 border-start border-4 border-primary">
+        <div class="card-body p-3">
+          <div class="text-muted small text-uppercase fw-semibold">Cumulative Distance</div>
+          <div class="h3 fw-bold mb-0 text-primary mt-1">{{ total_distance_km|floatformat:1 }} km</div>
+          <small class="text-muted">Logged Freight Movement</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+      <div class="card border-0 shadow-sm h-100 border-start border-4 border-warning">
+        <div class="card-body p-3">
+          <div class="text-muted small text-uppercase fw-semibold">Pending Review</div>
+          <div class="h3 fw-bold mb-0 text-warning mt-1">{{ pending_review }}</div>
+          <small class="text-warning"><i class="icon-clock me-1"></i>Awaiting Subsidiary Verification</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+      <div class="card border-0 shadow-sm h-100 border-start border-4 border-danger">
+        <div class="card-body p-3">
+          <div class="text-muted small text-uppercase fw-semibold">Flagged Anomalies</div>
+          <div class="h3 fw-bold mb-0 text-danger mt-1">{{ anomalies_count }}</div>
+          <small class="text-danger"><i class="icon-exclamation me-1"></i>Requires Audit Attention</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters Toolbar -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-3">
+      <form method="get" class="row g-2 align-items-center">
+        <div class="col-md-2">
+          {{ filter_form.search }}
+        </div>
+        <div class="col-md-2">
+          {{ filter_form.carrier }}
+        </div>
+        <div class="col-md-2">
+          {{ filter_form.site }}
+        </div>
+        <div class="col-md-2">
+          {{ filter_form.mode }}
+        </div>
+        <div class="col-md-2">
+          {{ filter_form.status }}
+        </div>
+        <div class="col-md-2 d-flex gap-1">
+          <button type="submit" class="btn btn-primary w-100" title="Apply Filters">
+            <i class="icon-magnifier"></i>
+          </button>
+          <a href="{% url 'core:transport_list' %}" class="btn btn-outline-secondary" title="Reset Filters">
+            <i class="icon-reload"></i>
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Transactions Table -->
+  <div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light small text-uppercase">
+          <tr>
+            <th>Transport Ref</th>
+            <th>Carrier &amp; Mode</th>
+            <th>Date</th>
+            <th>Site &amp; Project</th>
+            <th>Route (Origin &rarr; Dest)</th>
+            <th class="text-end">Distance</th>
+            <th>Validation</th>
+            <th>Anomaly</th>
+            <th>Status</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in page_obj %}
+            <tr>
+              <td>
+                <a href="{% url 'core:transport_detail' t.id %}" class="fw-bold font-monospace text-decoration-none">
+                  {{ t.transport_reference }}
+                </a>
+                {% if t.vehicle %}
+                  <div class="text-muted small font-monospace">{{ t.vehicle.registration_number }}</div>
+                {% endif %}
+              </td>
+              <td>
+                <div class="fw-semibold text-dark">{{ t.carrier.name }}</div>
+                <small class="badge bg-light text-dark border">{{ t.get_mode_display }}</small>
+              </td>
+              <td>{{ t.transport_date|date:"d M Y" }}</td>
+              <td>
+                <div>{{ t.site.name }}</div>
+                <small class="text-muted">{{ t.project.name }}</small>
+              </td>
+              <td>
+                <div class="small fw-semibold">{{ t.origin_location }}</div>
+                <div class="small text-muted">&rarr; {{ t.destination_location }}</div>
+              </td>
+              <td class="text-end font-monospace fw-bold">
+                {{ t.distance }} {{ t.distance_unit }}
+              </td>
+              <td>
+                {% if t.validation_status == 'VALID' %}
+                  <span class="badge bg-success-subtle text-success border border-success">Valid</span>
+                {% elif t.validation_status == 'WARNING' %}
+                  <span class="badge bg-warning-subtle text-warning border border-warning">Warning</span>
+                {% elif t.validation_status == 'INVALID' %}
+                  <span class="badge bg-danger-subtle text-danger border border-danger">Invalid</span>
+                {% else %}
+                  <span class="badge bg-secondary-subtle text-secondary border">Pending</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if t.has_anomalies %}
+                  <span class="badge bg-danger text-white">Anomalous</span>
+                {% else %}
+                  <span class="badge bg-light text-muted border">Normal</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if t.status == 'DRAFT' %}
+                  <span class="badge bg-secondary-subtle text-secondary border">Draft</span>
+                {% elif t.status == 'SUBMITTED' %}
+                  <span class="badge bg-primary-subtle text-primary border border-primary">Submitted</span>
+                {% elif t.status == 'UNDER_REVIEW' %}
+                  <span class="badge bg-warning-subtle text-warning border border-warning">Under Review</span>
+                {% elif t.status == 'VERIFIED' %}
+                  <span class="badge bg-success-subtle text-success border border-success">Verified</span>
+                {% elif t.status == 'CORRECTION_REQUESTED' %}
+                  <span class="badge bg-danger-subtle text-danger border border-danger">Correction</span>
+                {% elif t.status == 'REJECTED' %}
+                  <span class="badge bg-danger text-white">Rejected</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <div class="btn-group btn-group-sm">
+                  <a href="{% url 'core:transport_detail' t.id %}" class="btn btn-outline-secondary" title="View Dossier">
+                    <i class="icon-eye"></i>
+                  </a>
+                  {% if t.status == 'DRAFT' or t.status == 'CORRECTION_REQUESTED' %}
+                    <a href="{% url 'core:transport_edit' t.id %}" class="btn btn-outline-primary" title="Edit">
+                      <i class="icon-pencil"></i>
+                    </a>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="10" class="text-center py-5 text-muted">
+                <i class="icon-cursor d-block display-4 mb-3 text-secondary"></i>
+                <div class="fw-semibold">No Transport or Logistics records found</div>
+                <div class="small mt-1">Adjust filters or record a new transport event.</div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+      <div class="card-footer bg-white py-3 border-top d-flex justify-content-between align-items-center">
+        <small class="text-muted">
+          Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ page_obj.paginator.count }} transport records
+        </small>
+        <ul class="pagination pagination-sm mb-0">
+          {% if page_obj.has_previous %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">&laquo;</a>
+            </li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+          {% endif %}
+          {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+              <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+              </li>
+            {% endif %}
+          {% endfor %}
+          {% if page_obj.has_next %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">&raquo;</a>
+            </li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+          {% endif %}
+        </ul>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

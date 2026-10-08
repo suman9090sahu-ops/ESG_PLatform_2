@@ -335,4 +335,79 @@ Phase 16 establishes the complete commercial audit trail connecting suppliers, i
 ===================================================================================
 ```
 
+---
+
+## 8. Phase 17 — Transport & Logistics Traceability Lineage
+
+Phase 17 establishes the physical movement and supply chain haulage audit trail connecting carrier partners, vehicle assets, cargo consignments, procurement orders, evidence documents, validation, and anomaly telemetry to canonical ESG activity records and future Scope 1 / Scope 3 emissions calculations:
+
+```text
+===================================================================================
+                TRANSPORT & LOGISTICS FULL AUDIT TRACEABILITY LINEAGE
+===================================================================================
+
+[CARRIER MASTER]
+- Carrier Code: CARR-001 (Unique, Stable ID)
+- Carrier Name: Deccan Heavy Logistics Ltd
+- Carrier Type: ROAD_CARRIER
+- Status: ACTIVE (Soft archival via .archive() preserves historical trip linkages)
+        │
+        ▼
+[VEHICLE ASSET]
+- Identifier: VEH-OWN-001 | Plate: TS-08-AB-1234
+- Ownership: OWNED (Scope 1 Mobile Combustion) vs THIRD_PARTY (Scope 3 Upstream Freight)
+- Vehicle Type: TRUCK_HEAVY | Fuel Type: DIESEL
+- Payload Capacity: 30.00 MT
+        │
+        ▼
+[SHIPMENT & PROCUREMENT LINKAGE]
+- Shipment Ref: SHP-202605-POL-0001
+- Procurement Order: PO-2026-0001 (Jindal Steel & Power Ltd)
+- Cargo: Heavy Reinforcement Steel Bars (Fe550D) | Quantity: 28.50 MT (Gross: 29.20 MT)
+        │
+        ▼
+[TRANSPORT RECORD]
+- Reference: TRN-202605-HW-0001 (Unique Transaction ID)
+- Operating Company: MEIL Infra Division | Site: Polavaram Headworks
+- Reporting Period: FY26-Q1 (Open Temporal Boundary)
+- Modality: ROAD | Route: Angul Steel Yard, Odisha ➔ Headworks Dam Site, Polavaram
+- Distance: 620.00 km (Distance Unit: KM, Source: DOCUMENT)
+- Commercials: Freight Amount ₹85,000.00 INR
+- Fuel Telemetry: 185.00 L (Metered trip fuel)
+- Lineage Link: Canonical ActivityRecord #1 (Heavy Commercial Haulage)
+        │
+        ├─► [SUPPORTING EVIDENCE]
+        │     - File: evidence/hw/fy26_q1/rec_trn_1/lorry_receipt.pdf
+        │     - Evidence Type: LORRY_RECEIPT (Consignment Note / Bilty)
+        │     - SHA-256: 8f3c7... (Cryptographic tamper-evident hash)
+        │
+        ├─► [OCR EXTRACTION & COMPARISON]
+        │     - Extracted Plate: TS-08-AB-1234 [MATCH] (Confidence: 99.00%)
+        │     - Extracted Distance: 620.00 km [MATCH] (Confidence: 96.50%)
+        │     - Extracted Freight: ₹85,000.00 [MATCH] (Confidence: 98.00%)
+        │     - Non-destructive: OCR extractions never silently overwrite recorded data
+        │
+        ├─► [DETERMINISTIC VALIDATION]
+        │     - Temporal Check: Transport date within open reporting period [PASS]
+        │     - Hierarchy Check: Site belongs to project, company aligned [PASS]
+        │     - Asset Check: Carrier and Vehicle active, road vehicle present [PASS]
+        │     - Financial Check: Non-negative freight amount [PASS]
+        │     - Status: VALID
+        │
+        ├─► [ANOMALY DETECTION SIGNALS]
+        │     - DUPLICATE_TRANSPORT: Check duplicate trip on same date/vehicle/route [CLEAN]
+        │     - UNUSUAL_DISTANCE: Check 2.5x historical route variance [CLEAN]
+        │     - PAYLOAD_OVERLOAD: Check cargo weight vs rated vehicle capacity [CLEAN]
+        │
+        ▼
+[GOVERNANCE WORKFLOW & AUDIT TRAIL]
+- CREATION: Site Manager records movement (AuthAuditLog: TRANSPORT_CREATED)
+- SUBMISSION: Site Manager submits (AuthAuditLog: TRANSPORT_SUBMITTED)
+- REVIEW: Subsidiary Manager verifies (AuthAuditLog: TRANSPORT_VERIFIED)
+- (Or CORRECTION REQUESTED ➔ REMEDIATED ➔ RESUBMITTED ➔ VERIFIED)
+- PREPARED FOR: Future Scope 1 (Owned Fleet) & Scope 3 Cat 4/9 (Purchased Haulage)
+===================================================================================
+```
+
+
 

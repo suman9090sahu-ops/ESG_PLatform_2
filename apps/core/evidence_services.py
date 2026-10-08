@@ -206,11 +206,14 @@ def get_accessible_evidence(user, include_retired=True):
     accessible_records = get_accessible_activity_records(user)
     from apps.core.procurement_services import get_accessible_procurements
     accessible_procurements = get_accessible_procurements(user)
+    from apps.core.transport_services import get_accessible_transports
+    accessible_transports = get_accessible_transports(user)
 
     qs = (
         Evidence.objects.filter(
             models.Q(activity_record__in=accessible_records)
             | models.Q(procurement_record__in=accessible_procurements)
+            | models.Q(transport_record__in=accessible_transports)
         )
         .select_related(
             "activity_record",
@@ -227,6 +230,12 @@ def get_accessible_evidence(user, include_retired=True):
             "procurement_record__site",
             "procurement_record__company",
             "procurement_record__reporting_period",
+            "transport_record",
+            "transport_record__carrier",
+            "transport_record__vehicle",
+            "transport_record__site",
+            "transport_record__company",
+            "transport_record__reporting_period",
             "uploaded_by",
             "retired_by",
         )
@@ -255,13 +264,16 @@ def user_can_access_evidence(user, evidence):
     if evidence.procurement_record_id:
         from apps.core.procurement_services import user_can_access_procurement
         return user_can_access_procurement(user, evidence.procurement_record)
+    if getattr(evidence, "transport_record_id", None):
+        from apps.core.transport_services import user_can_access_transport
+        return user_can_access_transport(user, evidence.transport_record)
 
     return False
 
 
-def user_can_upload_evidence(user, activity_record=None, procurement_record=None):
+def user_can_upload_evidence(user, activity_record=None, procurement_record=None, transport_record=None):
     """
-    Evaluates whether a user has authority to upload evidence against an ActivityRecord or ProcurementRecord.
+    Evaluates whether a user has authority to upload evidence against an ActivityRecord, ProcurementRecord, or TransportRecord.
     - Site Managers can upload evidence for records in their assigned sites while record is editable.
     - MEIL Operator and ESG Manager can upload evidence for editable records.
     - Auditor is strictly read-only.
@@ -279,6 +291,10 @@ def user_can_upload_evidence(user, activity_record=None, procurement_record=None
     if procurement_record:
         from apps.core.procurement_services import user_can_upload_procurement_evidence
         return user_can_upload_procurement_evidence(user, procurement_record)
+
+    if transport_record:
+        from apps.core.transport_services import user_can_modify_transport
+        return user_can_modify_transport(user, transport_record)
 
     if not activity_record:
         return False
@@ -315,6 +331,9 @@ def user_can_retire_evidence(user, evidence):
     if evidence.procurement_record_id:
         from apps.core.procurement_services import user_can_modify_procurement
         return user_can_modify_procurement(user, evidence.procurement_record)
+    if getattr(evidence, "transport_record_id", None):
+        from apps.core.transport_services import user_can_modify_transport
+        return user_can_modify_transport(user, evidence.transport_record)
 
     return False
 
@@ -344,6 +363,13 @@ def user_can_delete_evidence(user, evidence):
             return False
         if not can_user_modify_data(user, proc.reporting_period):
             return False
+    elif getattr(evidence, "transport_record_id", None):
+        trn = evidence.transport_record
+        from apps.core.models import TransportStatus
+        if trn.status != TransportStatus.DRAFT:
+            return False
+        if not can_user_modify_data(user, trn.reporting_period):
+            return False
     else:
         return False
 
@@ -372,14 +398,15 @@ def create_evidence_record(
     user=None,
     request=None,
     procurement_record=None,
+    transport_record=None,
 ):
     """
     Atomically validates the uploaded file, saves the file to safe storage,
     creates the Evidence record, and logs an audit trail event.
-    Supports either ActivityRecord or ProcurementRecord.
+    Supports ActivityRecord, ProcurementRecord, or TransportRecord.
     """
-    if not activity_record and not procurement_record:
-        raise ValidationError("Evidence document must be linked to an ActivityRecord or a ProcurementRecord.")
+    if not activity_record and not procurement_record and not transport_record:
+        raise ValidationError("Evidence document must be linked to an ActivityRecord, ProcurementRecord, or TransportRecord.")
 
     # 1. Authorize upload
     if activity_record:
@@ -404,6 +431,17 @@ def create_evidence_record(
                 success=False,
             )
             raise PermissionDenied("You do not have permission to attach evidence to this procurement record.")
+    elif transport_record:
+        if not user_can_upload_evidence(user, transport_record=transport_record):
+            log_auth_event(
+                AuthAuditLog.EventType.UNAUTHORIZED_ACCESS_ATTEMPT,
+                request=request,
+                user=user,
+                resource_accessed=f"TransportRecord:{transport_record.id}/evidence/upload",
+                details="Unauthorized attempt to upload evidence for transport record.",
+                success=False,
+            )
+            raise PermissionDenied("You do not have permission to attach evidence to this transport record.")
 
     # 2. Validate file
     file_meta = validate_evidence_file(uploaded_file)
@@ -412,8 +450,9 @@ def create_evidence_record(
     evidence = Evidence(
         activity_record=activity_record,
         procurement_record=procurement_record,
+        transport_record=transport_record,
         file=uploaded_file,
-        evidence_type=evidence_type or EvidenceType.INVOICE,
+        evidence_type=evidence_type or (EvidenceType.TRANSPORT_RECORD if transport_record else EvidenceType.INVOICE),
         original_filename=file_meta["original_filename"],
         file_type=file_meta["file_type"],
         file_size=file_meta["file_size"],
@@ -431,11 +470,13 @@ def create_evidence_record(
         activity_record.save(update_fields=["evidence_reference", "updated_at"])
 
     # 5. Log audit event
-    target_desc = (
-        f"ActivityRecord #{activity_record.id} ({activity_record.activity.name} @ {activity_record.site.name})"
-        if activity_record
-        else f"Procurement #{procurement_record.procurement_number} ({procurement_record.supplier.name})"
-    )
+    if activity_record:
+        target_desc = f"ActivityRecord #{activity_record.id} ({activity_record.activity.name} @ {activity_record.site.name})"
+    elif procurement_record:
+        target_desc = f"Procurement #{procurement_record.procurement_number} ({procurement_record.supplier.name})"
+    else:
+        target_desc = f"Transport #{transport_record.transport_reference} ({transport_record.origin_location} -> {transport_record.destination_location})"
+
     log_evidence_event(
         AuthAuditLog.EventType.EVIDENCE_UPLOADED,
         evidence=evidence,
@@ -540,7 +581,8 @@ def log_evidence_event(event_type, evidence, user, request=None, details=""):
     """
     Dispatches an AuthAuditLog compliance event for Evidence actions.
     """
-    resource_id = f"Evidence:{evidence.id} ({evidence.original_filename} @ {evidence.site.code})"
+    site_code = evidence.site.code if (evidence.site and getattr(evidence.site, "code", None)) else "CORP"
+    resource_id = f"Evidence:{evidence.id} ({evidence.original_filename} @ {site_code})"
     log_auth_event(
         user=user,
         event_type=event_type,

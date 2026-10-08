@@ -1,0 +1,128 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}Transport Review Inbox{% endblock %}
+{% block page_subtitle %}
+  Pending transport &amp; logistics submissions awaiting Subsidiary Manager review, validation auditing, and verification sign-off.
+{% endblock %}
+
+{% block page_actions %}
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'core:transport_list' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="icon-arrow-left me-1"></i> Full Ledger
+    </a>
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+      <h6 class="card-title fw-bold mb-0">
+        <i class="icon-clock me-2 text-warning"></i>Submissions Requiring Review ({{ total_pending }})
+      </h6>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light small text-uppercase">
+          <tr>
+            <th>Transport Ref</th>
+            <th>Carrier</th>
+            <th>Site &amp; Project</th>
+            <th>Date</th>
+            <th>Route (Origin &rarr; Dest)</th>
+            <th class="text-end">Distance</th>
+            <th>Validation</th>
+            <th>Anomalies</th>
+            <th>Status</th>
+            <th class="text-end">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in page_obj %}
+            <tr>
+              <td>
+                <a href="{% url 'core:transport_detail' t.id %}" class="fw-bold font-monospace text-decoration-none">
+                  {{ t.transport_reference }}
+                </a>
+                {% if t.vehicle %}
+                  <div class="text-muted small font-monospace">{{ t.vehicle.registration_number }}</div>
+                {% endif %}
+              </td>
+              <td>
+                <span class="fw-semibold">{{ t.carrier.name }}</span>
+                <span class="badge bg-light text-dark border ms-1">{{ t.get_mode_display }}</span>
+              </td>
+              <td>
+                <div>{{ t.site.name }}</div>
+                <small class="text-muted">{{ t.project.name }}</small>
+              </td>
+              <td>{{ t.transport_date|date:"d M Y" }}</td>
+              <td>
+                <div class="small fw-semibold">{{ t.origin_location }}</div>
+                <div class="small text-muted">&rarr; {{ t.destination_location }}</div>
+              </td>
+              <td class="text-end font-monospace fw-bold">{{ t.distance }} {{ t.distance_unit }}</td>
+              <td>
+                {% if t.validation_status == 'VALID' %}
+                  <span class="badge bg-success-subtle text-success border border-success">Valid</span>
+                {% elif t.validation_status == 'WARNING' %}
+                  <span class="badge bg-warning-subtle text-warning border border-warning">Warning</span>
+                {% else %}
+                  <span class="badge bg-danger-subtle text-danger border border-danger">Invalid</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if t.has_anomalies %}
+                  <span class="badge bg-danger text-white"><i class="icon-exclamation me-1"></i>Flagged</span>
+                {% else %}
+                  <span class="badge bg-success-subtle text-success"><i class="icon-check me-1"></i>Clear</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if t.status == 'SUBMITTED' %}
+                  <span class="badge bg-info text-dark">Submitted</span>
+                {% elif t.status == 'UNDER_REVIEW' %}
+                  <span class="badge bg-primary">Under Review</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <a href="{% url 'core:transport_review' t.id %}" class="btn btn-sm btn-primary">
+                  <i class="icon-magnifier me-1"></i> Review
+                </a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="10" class="text-center py-5 text-muted">
+                <i class="icon-check display-6 d-block mb-2 text-success"></i>
+                Review inbox is clear. No pending transport records require attention.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+      <div class="card-footer bg-white border-top py-3 d-flex justify-content-between align-items-center">
+        <span class="small text-muted">Showing {{ page_obj.start_index }} to {{ page_obj.end_index }} of {{ total_pending }}</span>
+        <ul class="pagination pagination-sm mb-0">
+          {% if page_obj.has_previous %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a></li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link">Previous</span></li>
+          {% endif %}
+          <li class="page-item active"><span class="page-link">{{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+          {% if page_obj.has_next %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link">Next</span></li>
+          {% endif %}
+        </ul>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
