@@ -31,6 +31,12 @@ from apps.core.models import (
     OCRField,
     OCRStatus,
     Submission,
+    SubmissionReview,
+    CorrectionRequest,
+    ActivityRevision,
+    AnomalyRule,
+    AnomalyDetectionRun,
+    AnomalyRecord,
 )
 
 
@@ -861,4 +867,187 @@ class SubmissionAdmin(admin.ModelAdmin):
     ordering = ("-submitted_at",)
 
 
+class SubmissionReviewInline(admin.TabularInline):
+    model = SubmissionReview
+    extra = 0
+    fields = ("action", "reviewer", "previous_status", "new_status", "created_at")
+    readonly_fields = ("action", "reviewer", "previous_status", "new_status", "created_at")
+    can_delete = False
+    show_change_link = True
 
+
+SubmissionAdmin.inlines = [SubmissionReviewInline]
+
+
+@admin.register(SubmissionReview)
+class SubmissionReviewAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "submission",
+        "action",
+        "reviewer",
+        "previous_status",
+        "new_status",
+        "created_at",
+    )
+    list_filter = (
+        "action",
+        "created_at",
+    )
+    search_fields = (
+        "submission__activity_record__activity__name",
+        "reviewer__username",
+        "comments",
+        "required_correction",
+    )
+    readonly_fields = (
+        "submission",
+        "reviewer",
+        "action",
+        "previous_status",
+        "new_status",
+        "comments",
+        "required_correction",
+        "escalated_to_role",
+        "metadata",
+        "created_at",
+        "updated_at",
+    )
+    ordering = ("-created_at",)
+
+
+@admin.register(CorrectionRequest)
+class CorrectionRequestAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "activity_record",
+        "submission",
+        "status",
+        "requested_by",
+        "affected_area",
+        "resolved_by",
+        "created_at",
+    )
+    list_filter = (
+        "status",
+        "affected_area",
+        "created_at",
+    )
+    search_fields = (
+        "activity_record__activity__name",
+        "reason",
+        "required_correction",
+        "site_manager_notes",
+        "requested_by__username",
+        "resolved_by__username",
+    )
+    readonly_fields = (
+        "submission",
+        "review",
+        "activity_record",
+        "requested_by",
+        "reason",
+        "required_correction",
+        "affected_area",
+        "resolved_by",
+        "resolved_at",
+        "resubmission",
+        "created_at",
+        "updated_at",
+    )
+    ordering = ("-created_at",)
+
+
+@admin.register(ActivityRevision)
+class ActivityRevisionAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "activity_record",
+        "revision_number",
+        "quantity",
+        "unit",
+        "reason",
+        "created_by",
+        "created_at",
+    )
+    list_filter = (
+        "revision_number",
+        "created_at",
+    )
+    search_fields = (
+        "activity_record__activity__name",
+        "reason",
+        "comments",
+        "created_by__username",
+    )
+    readonly_fields = (
+        "activity_record",
+        "revision_number",
+        "submission",
+        "correction_request",
+        "created_by",
+        "reason",
+        "comments",
+        "quantity",
+        "unit",
+        "measurement_date",
+        "notes",
+        "evidence_reference",
+        "validation_status",
+        "changed_fields",
+        "snapshot_data",
+        "created_at",
+    )
+    ordering = ("-created_at",)
+
+
+@admin.register(AnomalyRule)
+class AnomalyRuleAdmin(admin.ModelAdmin):
+    list_display = (
+        "code",
+        "name",
+        "category",
+        "severity",
+        "threshold_percentage",
+        "version",
+        "is_active",
+        "created_at",
+    )
+    list_filter = ("category", "severity", "is_active", "version")
+    search_fields = ("code", "name", "description")
+    ordering = ("category", "code")
+
+
+@admin.register(AnomalyDetectionRun)
+class AnomalyDetectionRunAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "run_number",
+        "scope_type",
+        "records_evaluated",
+        "anomalies_detected",
+        "status",
+        "executed_by",
+        "created_at",
+    )
+    list_filter = ("scope_type", "status", "created_at")
+    ordering = ("-created_at",)
+
+
+@admin.register(AnomalyRecord)
+class AnomalyRecordAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "rule_code",
+        "severity",
+        "status",
+        "activity_record",
+        "observed_value",
+        "baseline_value",
+        "deviation_percentage",
+        "reviewed_by",
+        "created_at",
+    )
+    list_filter = ("severity", "status", "rule_code", "created_at")
+    search_fields = ("rule_code", "explanation", "review_comment")
+    ordering = ("-created_at",)

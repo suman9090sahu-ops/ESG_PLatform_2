@@ -1,0 +1,317 @@
+{% extends "layouts/dashboard.html" %}
+{% load static esg_tags %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block header_actions %}
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'core:anomaly_list' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="icon-arrow-left me-1"></i> Back to Anomaly Desk
+    </a>
+    {% if anomaly.submission %}
+      <a href="{% url 'core:submission_review_detail' anomaly.submission.id %}" class="btn btn-sm btn-outline-primary">
+        <i class="icon-eye me-1"></i> Review Submission #{{ anomaly.submission.submission_number }}
+      </a>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block main_panel %}
+  <!-- Status & Governance Decision Banner -->
+  <div class="card border-0 shadow-sm mb-4 border-start border-4 {% if anomaly.is_open %}border-warning{% elif anomaly.is_resolved_or_dismissed %}border-success{% else %}border-info{% endif %}">
+    <div class="card-body p-4">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <span class="badge {{ anomaly.severity_badge_class }} px-3 py-1 fs-6">
+              {{ anomaly.get_severity_display }}
+            </span>
+            <span class="badge {{ anomaly.badge_class }} px-3 py-1 fs-6">
+              {{ anomaly.get_status_display }}
+            </span>
+            <span class="badge bg-light text-dark border font-monospace">
+              Rule: {{ anomaly.rule_code }} (v{{ anomaly.rule_version }})
+            </span>
+          </div>
+          <h4 class="fw-bold text-dark mb-1">{{ anomaly.rule.name }}</h4>
+          <p class="text-muted small mb-0">
+            Detected on {{ anomaly.created_at|date:"d M Y, H:i" }} &bull; Operational Telemetry Signal
+          </p>
+        </div>
+
+        <!-- Action Buttons for Authorized Reviewers -->
+        {% if can_review and anomaly.is_open %}
+          <div class="d-flex flex-wrap gap-2">
+            {% if anomaly.status == "OPEN" %}
+              <form method="post" action="{% url 'core:anomaly_review_action' anomaly.id %}" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="ACKNOWLEDGE">
+                <input type="hidden" name="comment" value="Acknowledged by reviewer.">
+                <button type="submit" class="btn btn-warning text-dark fw-semibold" id="btn-ack-anomaly">
+                  <i class="icon-check me-1"></i> Acknowledge
+                </button>
+              </form>
+            {% endif %}
+
+            <button type="button" class="btn btn-info text-white" data-bs-toggle="modal" data-bs-target="#explainModal" id="btn-explain-anomaly">
+              <i class="icon-note me-1"></i> Explain Context
+            </button>
+
+            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#resolveModal" id="btn-resolve-anomaly">
+              <i class="icon-shield me-1"></i> Resolve Finding
+            </button>
+
+            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#dismissModal" id="btn-dismiss-anomaly">
+              <i class="icon-close me-1"></i> Dismiss (False Positive)
+            </button>
+          </div>
+        {% elif anomaly.is_resolved_or_dismissed %}
+          <div class="text-end">
+            <span class="badge bg-success-subtle text-success border border-success px-3 py-2">
+              <i class="icon-check me-1"></i> Anomaly {{ anomaly.get_status_display }}
+            </span>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4 mb-4">
+    <!-- Telemetry Quantification Card -->
+    <div class="col-lg-7">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-calculator text-primary me-2"></i> Operational Telemetry &amp; Baseline Comparator
+          </h6>
+        </div>
+        <div class="card-body p-4">
+          <div class="row g-3 mb-4 text-center">
+            <div class="col-sm-4">
+              <div class="p-3 bg-light rounded border">
+                <div class="small text-muted text-uppercase fw-semibold">Reported Value</div>
+                <div class="h3 fw-bold text-dark mt-1 font-monospace">{{ anomaly.observed_value }}</div>
+                <small class="text-muted">{{ record.unit.symbol }} ({{ record.unit.name }})</small>
+              </div>
+            </div>
+
+            <div class="col-sm-4">
+              <div class="p-3 bg-light rounded border">
+                <div class="small text-muted text-uppercase fw-semibold">Historical Baseline</div>
+                <div class="h3 fw-bold text-muted mt-1 font-monospace">
+                  {% if anomaly.baseline_value is not None %}{{ anomaly.baseline_value }}{% else %}N/A{% endif %}
+                </div>
+                <small class="text-muted">Expected / Benchmark</small>
+              </div>
+            </div>
+
+            <div class="col-sm-4">
+              <div class="p-3 rounded border {% if anomaly.deviation_percentage and anomaly.deviation_percentage > 0 %}bg-danger-subtle border-danger text-danger{% else %}bg-light text-dark{% endif %}">
+                <div class="small text-uppercase fw-semibold">Calculated Variance</div>
+                <div class="h3 fw-bold mt-1 font-monospace">
+                  {% if anomaly.deviation_percentage is not None %}
+                    {% if anomaly.deviation_percentage > 0 %}+{% endif %}{{ anomaly.deviation_percentage }}%
+                  {% else %}
+                    N/A
+                  {% endif %}
+                </div>
+                <small>
+                  {% if anomaly.deviation_value is not None %}
+                    Diff: {% if anomaly.deviation_value > 0 %}+{% endif %}{{ anomaly.deviation_value }} {{ record.unit.symbol }}
+                  {% else %}
+                    Variance
+                  {% endif %}
+                </small>
+              </div>
+            </div>
+          </div>
+
+          <!-- Explainable Finding Rationale -->
+          <div class="p-3 bg-light rounded border mb-3">
+            <h6 class="fw-bold text-dark mb-2">Deterministic Finding Justification</h6>
+            <p class="mb-0 text-dark">{{ anomaly.explanation }}</p>
+          </div>
+
+          {% if anomaly.context_data %}
+            <div class="small text-muted">
+              <strong>Evaluation Telemetry Metadata:</strong>
+              <ul class="mb-0 mt-1">
+                {% for k, v in anomaly.context_data.items %}
+                  <li><code>{{ k }}</code>: <strong>{{ v }}</strong></li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Governance Context Card -->
+    <div class="col-lg-5">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-organization text-info me-2"></i> Operational Scope &amp; Hierarchy
+          </h6>
+        </div>
+        <div class="card-body p-4">
+          <table class="table table-sm table-borderless mb-0">
+            <tbody>
+              <tr>
+                <td class="text-muted small fw-semibold" style="width: 40%;">Activity Master:</td>
+                <td class="fw-bold text-dark">{{ record.activity.name }} (<code>{{ record.activity.code }}</code>)</td>
+              </tr>
+              <tr>
+                <td class="text-muted small fw-semibold">Operational Site:</td>
+                <td class="fw-bold text-dark">{{ record.site.name }} (<code>{{ record.site.code }}</code>)</td>
+              </tr>
+              <tr>
+                <td class="text-muted small fw-semibold">Project:</td>
+                <td>{{ record.site.project.name }}</td>
+              </tr>
+              <tr>
+                <td class="text-muted small fw-semibold">Subsidiary Division:</td>
+                <td>{{ record.site.project.subsidiary.name }}</td>
+              </tr>
+              <tr>
+                <td class="text-muted small fw-semibold">Enterprise Company:</td>
+                <td>{{ record.site.project.subsidiary.company.name }}</td>
+              </tr>
+              <tr>
+                <td class="text-muted small fw-semibold">Reporting Period:</td>
+                <td><span class="badge bg-light text-dark border">{{ record.reporting_period.code }}</span></td>
+              </tr>
+              <tr>
+                <td class="text-muted small fw-semibold">Measurement Date:</td>
+                <td class="font-monospace">{{ record.measurement_date }}</td>
+              </tr>
+              <tr>
+                <td class="text-muted small fw-semibold">Activity Status:</td>
+                <td><span class="badge {{ record.badge_class }}">{{ record.get_status_display }}</span></td>
+              </tr>
+              <tr>
+                <td class="text-muted small fw-semibold">Validation Status:</td>
+                <td><span class="badge {{ record.validation_badge_class }}">{{ record.get_validation_status_display }}</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Review Audit Trail & Explanation History -->
+  {% if anomaly.review_comment or anomaly.reviewed_by %}
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-white py-3 border-bottom">
+        <h6 class="mb-0 fw-bold text-dark">
+          <i class="icon-speech text-success me-2"></i> Reviewer Explanation &amp; Resolution Audit Ledger
+        </h6>
+      </div>
+      <div class="card-body p-4">
+        <div class="p-3 bg-light rounded border">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div>
+              <span class="badge {{ anomaly.badge_class }} me-2">{{ anomaly.resolution_action|default:anomaly.get_status_display }}</span>
+              <strong class="text-dark">{{ anomaly.reviewed_by.get_full_name|default:anomaly.reviewed_by.username }}</strong>
+              <small class="text-muted">({{ anomaly.reviewed_by.username }})</small>
+            </div>
+            <span class="small text-muted font-monospace">{{ anomaly.reviewed_at|date:"d M Y, H:i:s" }}</span>
+          </div>
+          <p class="mb-0 text-dark">{{ anomaly.review_comment }}</p>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Modals for Review Actions -->
+  {% if can_review and anomaly.is_open %}
+    <!-- Explain Modal -->
+    <div class="modal fade" id="explainModal" tabindex="-1" aria-labelledby="explainModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <form method="post" action="{% url 'core:anomaly_review_action' anomaly.id %}">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="EXPLAIN">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title fw-bold" id="explainModalLabel"><i class="icon-note text-info me-2"></i>Explain Operational Context</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <p class="small text-muted mb-3">
+                Document legitimate operational justifications (e.g. grid outages requiring backup diesel, seasonal changes, or temporary construction spikes) without altering the reported physical telemetry.
+              </p>
+              <div class="mb-3">
+                <label class="form-label fw-semibold small text-uppercase">Operational Explanation <span class="text-danger">*</span></label>
+                <textarea name="comment" class="form-control" rows="4" required placeholder="Provide clear operational reason explaining why this unusual consumption occurred..."></textarea>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-info text-white">Save Explanation</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Resolve Modal -->
+    <div class="modal fade" id="resolveModal" tabindex="-1" aria-labelledby="resolveModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <form method="post" action="{% url 'core:anomaly_review_action' anomaly.id %}">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="RESOLVE">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title fw-bold" id="resolveModalLabel"><i class="icon-shield text-success me-2"></i>Resolve Anomaly Finding</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <p class="small text-muted mb-3">
+                Mark this anomaly finding as investigated and resolved following operational confirmation or field verification.
+              </p>
+              <div class="mb-3">
+                <label class="form-label fw-semibold small text-uppercase">Resolution Rationale <span class="text-danger">*</span></label>
+                <textarea name="comment" class="form-control" rows="4" required placeholder="Describe how this anomaly was addressed or verified..."></textarea>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-success">Confirm Resolution</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Dismiss Modal -->
+    <div class="modal fade" id="dismissModal" tabindex="-1" aria-labelledby="dismissModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <form method="post" action="{% url 'core:anomaly_review_action' anomaly.id %}">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="DISMISS">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title fw-bold" id="dismissModalLabel"><i class="icon-close text-danger me-2"></i>Dismiss Anomaly Finding</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <p class="small text-muted mb-3">
+                Dismiss false positive or irrelevant anomaly flags. A substantive dismissal reason is mandatory for audit defensibility.
+              </p>
+              <div class="mb-3">
+                <label class="form-label fw-semibold small text-uppercase">Dismissal Reason <span class="text-danger">*</span></label>
+                <textarea name="comment" class="form-control" rows="4" required placeholder="Detail why this finding is dismissed as a false positive..."></textarea>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-danger">Confirm Dismissal</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,462 @@
+{% extends "layouts/dashboard.html" %}
+{% load static esg_tags %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block header_actions %}
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'core:correction_inbox' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="icon-arrow-left me-1"></i> Back to Inbox
+    </a>
+    <span class="badge {{ correction_req.badge_class }} px-3 py-2 fs-6">
+      {{ correction_req.get_status_display }}
+    </span>
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+  <!-- Lifecycle State Guidance Alert -->
+  {% if correction_req.is_resolved %}
+    <div class="alert alert-success border-0 shadow-sm d-flex align-items-center mb-4" role="alert">
+      <i class="icon-check fs-3 me-3 text-success"></i>
+      <div class="flex-grow-1">
+        <h6 class="alert-heading fw-bold mb-1">Correction Resolved &amp; Resubmitted</h6>
+        <p class="small mb-0">
+          This correction was completed and resubmitted by <strong>{{ correction_req.resolved_by.username|default:"Site Manager" }}</strong> on {{ correction_req.resolved_at|date:"d M Y, H:i" }}.
+          {% if correction_req.resubmission %}
+            Resubmitted as <strong>Iteration #{{ correction_req.resubmission.submission_number }}</strong> and returned to Subsidiary Manager review.
+            <a href="{% url 'core:submission_detail' submission_id=correction_req.resubmission.id %}" class="fw-bold ms-2 text-decoration-none">
+              View Resubmission &rarr;
+            </a>
+          {% endif %}
+        </p>
+      </div>
+    </div>
+  {% elif is_ready_for_resubmission %}
+    <div class="alert alert-primary border-0 shadow-sm d-flex align-items-center mb-4" role="alert">
+      <i class="icon-paper-plane fs-3 me-3 text-primary"></i>
+      <div class="flex-grow-1">
+        <h6 class="alert-heading fw-bold mb-1">Ready for Resubmission</h6>
+        <p class="small mb-0">
+          Operational corrections have been applied and revalidation passed (<strong>{{ record.get_validation_status_display }}</strong>).
+          You can now execute formal resubmission back to the Subsidiary Manager for review.
+        </p>
+      </div>
+    </div>
+  {% else %}
+    <div class="alert alert-warning border-0 shadow-sm d-flex align-items-center mb-4" role="alert">
+      <i class="icon-action-undo fs-3 me-3 text-warning"></i>
+      <div class="flex-grow-1">
+        <h6 class="alert-heading fw-bold mb-1">Correction Work in Progress</h6>
+        <p class="small mb-0">
+          The Subsidiary Manager requested corrections for this activity submission. Revise operational telemetry, verify evidence documents, and ensure revalidation passes before resubmitting.
+        </p>
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="row">
+    <!-- Left Column: Mandate, Correction Form & Evidence -->
+    <div class="col-lg-8">
+
+      <!-- Panel 1: Reviewer Correction Mandate -->
+      <div class="card border-0 shadow-sm mb-4 border-start border-4 border-warning">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <h6 class="mb-0 font-weight-bold text-dark">
+            <i class="icon-speech me-2 text-warning"></i> Reviewer Correction Mandate
+          </h6>
+          <span class="badge bg-light text-dark border small">
+            Area: {{ correction_req.get_affected_area_display }}
+          </span>
+        </div>
+        <div class="card-body">
+          <div class="row g-3 mb-3">
+            <div class="col-sm-6">
+              <span class="text-muted small text-uppercase d-block fw-semibold">Requested By</span>
+              <strong class="text-dark">{{ correction_req.requested_by.username|default:"Subsidiary Reviewer" }}</strong>
+              <small class="text-muted d-block">{{ correction_req.created_at|date:"d M Y, H:i" }}</small>
+            </div>
+            <div class="col-sm-6">
+              <span class="text-muted small text-uppercase d-block fw-semibold">Original Submission</span>
+              <strong class="text-dark">Submission #{{ submission.submission_number }}</strong>
+              <small class="text-muted d-block">Submitted {{ submission.submitted_at|date:"d M Y, H:i" }}</small>
+            </div>
+          </div>
+
+          <div class="p-3 bg-light rounded border mb-3">
+            <div class="text-muted small text-uppercase fw-semibold mb-1">
+              <i class="icon-info text-warning me-1"></i> Reason for Correction Request
+            </div>
+            <div class="text-dark fw-semibold">
+              {{ correction_req.reason }}
+            </div>
+          </div>
+
+          {% if correction_req.required_correction %}
+            <div class="p-3 bg-light rounded border">
+              <div class="text-muted small text-uppercase fw-semibold mb-1">
+                <i class="icon-wrench text-primary me-1"></i> Required Action from Site Manager
+              </div>
+              <div class="text-dark">
+                {{ correction_req.required_correction }}
+              </div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Panel 2: Telemetry Comparison: Original Submitted vs Current Value -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 font-weight-bold text-dark">
+            <i class="icon-equalizer me-2 text-primary"></i> Operational Telemetry Comparison
+          </h6>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+              <thead class="bg-light small text-muted text-uppercase">
+                <tr>
+                  <th style="width: 25%;">FIELD</th>
+                  <th style="width: 35%;">ORIGINAL SUBMITTED VALUE</th>
+                  <th style="width: 40%;">CURRENT OPERATIONAL VALUE</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="fw-semibold text-muted">Consumption Quantity</td>
+                  <td>
+                    <span class="font-monospace fw-bold text-dark">{{ prev_snapshot.quantity|default:record.quantity }}</span>
+                    <small class="text-muted">{{ prev_snapshot.unit_symbol|default:record.unit.symbol }}</small>
+                  </td>
+                  <td>
+                    <span class="font-monospace fw-bold {% if prev_snapshot.quantity and prev_snapshot.quantity != record.quantity|stringformat:'s' %}text-primary{% else %}text-dark{% endif %}">
+                      {{ record.quantity }}
+                    </span>
+                    <small class="text-muted">{{ record.unit.symbol }}</small>
+                    {% if prev_snapshot.quantity and prev_snapshot.quantity != record.quantity|stringformat:'s' %}
+                      <span class="badge badge-info ms-2">Revised</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold text-muted">Unit of Measure</td>
+                  <td>{{ prev_snapshot.unit_symbol|default:record.unit.symbol }}</td>
+                  <td>{{ record.unit.symbol }} ({{ record.unit.name }})</td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold text-muted">Measurement Date</td>
+                  <td>{{ prev_snapshot.measurement_date|default:record.measurement_date }}</td>
+                  <td>{{ record.measurement_date }}</td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold text-muted">Reference / Challan</td>
+                  <td>{{ prev_snapshot.evidence_reference|default:"—" }}</td>
+                  <td>{{ record.evidence_reference|default:"—" }}</td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold text-muted">Operational Notes</td>
+                  <td class="small text-muted">{{ prev_snapshot.notes|default:"None" }}</td>
+                  <td class="small text-dark">{{ record.notes|default:"None" }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel 3: Operational Correction Form (Editable while Active) -->
+      {% if can_edit and not correction_req.is_resolved %}
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+            <h6 class="mb-0 font-weight-bold text-dark">
+              <i class="icon-pencil me-2 text-warning"></i> Revise Operational Activity Telemetry
+            </h6>
+            <span class="badge badge-outline-primary small">Editable Scope</span>
+          </div>
+          <div class="card-body">
+            <form method="post" action="{% url 'core:correction_edit' correction_id=correction_req.id %}">
+              {% csrf_token %}
+              
+              <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                  <label class="form-label small fw-semibold text-muted">CONSUMPTION QUANTITY *</label>
+                  {{ update_form.quantity }}
+                  {% if update_form.quantity.errors %}
+                    <div class="text-danger small mt-1">{{ update_form.quantity.errors|join:", " }}</div>
+                  {% endif %}
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-semibold text-muted">UNIT OF MEASURE *</label>
+                  {{ update_form.unit }}
+                  {% if update_form.unit.errors %}
+                    <div class="text-danger small mt-1">{{ update_form.unit.errors|join:", " }}</div>
+                  {% endif %}
+                </div>
+              </div>
+
+              <div class="row g-3 mb-3">
+                <div class="col-md-6">
+                  <label class="form-label small fw-semibold text-muted">MEASUREMENT DATE *</label>
+                  {{ update_form.measurement_date }}
+                  {% if update_form.measurement_date.errors %}
+                    <div class="text-danger small mt-1">{{ update_form.measurement_date.errors|join:", " }}</div>
+                  {% endif %}
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label small fw-semibold text-muted">DOCUMENT REFERENCE / CHALLAN #</label>
+                  {{ update_form.evidence_reference }}
+                  {% if update_form.evidence_reference.errors %}
+                    <div class="text-danger small mt-1">{{ update_form.evidence_reference.errors|join:", " }}</div>
+                  {% endif %}
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label small fw-semibold text-muted">OPERATIONAL NOTES</label>
+                {{ update_form.notes }}
+              </div>
+
+              <div class="p-3 bg-light rounded border mb-4">
+                <label class="form-label small fw-bold text-dark mb-1">
+                  <i class="icon-speech text-primary me-1"></i> CORRECTION EXPLANATION &amp; ACTIONS TAKEN *
+                </label>
+                {{ update_form.site_manager_notes }}
+                <div class="form-text small">
+                  Explain the revisions applied, why values changed, or which replacement evidence was uploaded. This note is preserved in the audit lineage.
+                </div>
+                {% if update_form.site_manager_notes.errors %}
+                  <div class="text-danger small mt-1">{{ update_form.site_manager_notes.errors|join:", " }}</div>
+                {% endif %}
+              </div>
+
+              <div class="d-flex justify-content-end gap-2">
+                <button type="submit" class="btn btn-primary">
+                  <i class="icon-check me-1"></i> Save Changes &amp; Revalidate
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      {% endif %}
+
+      <!-- Panel 4: Supporting Evidence Management -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <h6 class="mb-0 font-weight-bold text-dark">
+            <i class="icon-camera me-2 text-info"></i> Supporting Evidence Documents ({{ evidence_files|length }})
+          </h6>
+          {% if can_edit and not correction_req.is_resolved %}
+            <a href="{% url 'core:evidence_upload' record_id=record.id %}" class="btn btn-sm btn-outline-primary">
+              <i class="icon-cloud-upload me-1"></i> Upload Evidence
+            </a>
+          {% endif %}
+        </div>
+        <div class="card-body p-0">
+          {% if evidence_files %}
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light small text-muted text-uppercase">
+                  <tr>
+                    <th>DOCUMENT</th>
+                    <th>TYPE</th>
+                    <th>SIZE</th>
+                    <th>OCR STATUS</th>
+                    <th>TAMPER-EVIDENT HASH</th>
+                    <th class="text-end">ACTION</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for ev in evidence_files %}
+                    <tr>
+                      <td>
+                        <div class="fw-semibold text-dark">{{ ev.original_filename }}</div>
+                        <div class="small text-muted">{{ ev.created_at|date:"d M Y, H:i" }}</div>
+                      </td>
+                      <td>
+                        <span class="badge bg-light text-dark border small">{{ ev.get_evidence_type_display }}</span>
+                      </td>
+                      <td class="small text-muted">{{ ev.file_size|filesizeformat }}</td>
+                      <td>
+                        {% if ev.latest_ocr_run %}
+                          <span class="badge {{ ev.latest_ocr_run.badge_class }}">
+                            OCR: {{ ev.latest_ocr_run.get_status_display }}
+                          </span>
+                        {% else %}
+                          <span class="badge badge-secondary">Not Processed</span>
+                        {% endif %}
+                      </td>
+                      <td>
+                        <code class="small text-muted" title="{{ ev.file_hash }}">
+                          {{ ev.file_hash|slice:":12" }}...
+                        </code>
+                      </td>
+                      <td class="text-end">
+                        <a href="{% url 'core:evidence_detail' evidence_id=ev.id %}" class="btn btn-sm btn-outline-secondary" target="_blank">
+                          <i class="icon-eye me-1"></i> View
+                        </a>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="p-4 text-center text-muted">
+              <i class="icon-camera text-warning mb-2" style="font-size: 2rem;"></i>
+              <p class="mb-0 fw-semibold">No supporting evidence attached.</p>
+              {% if record.activity.requires_evidence %}
+                <small class="text-danger fw-semibold">This activity requires supporting evidence before resubmission is allowed.</small>
+              {% endif %}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Validation Gate, Resubmission Controls & History -->
+    <div class="col-lg-4">
+
+      <!-- Panel 5: Revalidation & Resubmission Controls -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <h6 class="mb-0 font-weight-bold text-dark">
+            <i class="icon-shield me-2 text-primary"></i> Validation Gate
+          </h6>
+          <span class="badge {{ record.validation_badge_class }}">
+            {{ record.get_validation_status_display }}
+          </span>
+        </div>
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between mb-3">
+            <div>
+              <div class="small text-muted text-uppercase fw-semibold">Validation Outcome</div>
+              <strong class="h5 mb-0 text-dark">{{ record.get_validation_status_display }}</strong>
+            </div>
+            {% if can_edit and not correction_req.is_resolved %}
+              <form method="post" action="{% url 'core:correction_validate' correction_id=correction_req.id %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-primary">
+                  <i class="icon-refresh me-1"></i> Re-Run Validation
+                </button>
+              </form>
+            {% endif %}
+          </div>
+
+          {% if val_run %}
+            <p class="small text-muted mb-2">
+              Run #{{ val_run.run_number }} executed on {{ val_run.created_at|date:"d M, H:i" }} &bull;
+              {{ val_run.total_rules_evaluated }} rule{{ val_run.total_rules_evaluated|pluralize }} evaluated.
+            </p>
+            {% if val_run.summary_message %}
+              <div class="small p-2 bg-light rounded border text-muted mb-3">
+                {{ val_run.summary_message }}
+              </div>
+            {% endif %}
+          {% endif %}
+
+          <!-- Blocking Errors Check -->
+          {% if record.validation_status == "INVALID" %}
+            <div class="alert alert-danger small p-2 mb-3">
+              <i class="icon-close me-1"></i> Blocking validation errors detected. Resubmission is strictly disabled until errors are resolved.
+            </div>
+          {% endif %}
+
+          {% if record.activity.requires_evidence and not record.has_evidence %}
+            <div class="alert alert-danger small p-2 mb-3">
+              <i class="icon-close me-1"></i> Activity requires evidence. Please attach an invoice or document before resubmitting.
+            </div>
+          {% endif %}
+
+          <!-- Resubmission Controls -->
+          {% if can_edit and not correction_req.is_resolved %}
+            <hr>
+            <div class="mb-2">
+              <h6 class="fw-bold text-dark mb-1">Execute Resubmission</h6>
+              <p class="small text-muted mb-3">
+                Sends the revised data back to the Subsidiary Manager review queue as a new submission iteration.
+              </p>
+            </div>
+
+            <form method="post" action="{% url 'core:correction_resubmit' correction_id=correction_req.id %}">
+              {% csrf_token %}
+              
+              <div class="mb-3">
+                <label class="form-label small fw-semibold text-muted">RESUBMISSION REMARKS (OPTIONAL)</label>
+                {{ resubmit_form.resubmission_comments }}
+              </div>
+
+              <div class="form-check mb-3">
+                {{ resubmit_form.confirm }}
+                <label class="form-check-label small text-muted" for="{{ resubmit_form.confirm.id_for_label }}">
+                  {{ resubmit_form.confirm.label }}
+                </label>
+              </div>
+
+              <button type="submit" class="btn btn-success w-100 py-2 fw-semibold" {% if not is_ready_for_resubmission %}disabled{% endif %}>
+                <i class="icon-paper-plane me-1"></i> Resubmit for Review
+              </button>
+              {% if not is_ready_for_resubmission %}
+                <small class="text-muted d-block text-center mt-2">
+                  <i class="icon-lock me-1"></i> Resubmission requires valid telemetry and complete evidence.
+                </small>
+              {% endif %}
+            </form>
+          {% elif correction_req.is_resolved %}
+            <div class="alert alert-success small mb-0">
+              <i class="icon-check me-1"></i> <strong>Completed:</strong> This correction was resolved and resubmitted.
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Panel 6: Complete Historical Audit Timeline -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <h6 class="mb-0 font-weight-bold text-dark">
+            <i class="icon-clock me-2 text-primary"></i> Lifecycle Audit Timeline
+          </h6>
+          <span class="badge badge-outline-secondary small">{{ timeline|length }} Event{{ timeline|length|pluralize }}</span>
+        </div>
+        <div class="card-body p-0">
+          {% if timeline %}
+            <ul class="list-group list-group-flush small">
+              {% for item in timeline %}
+                <li class="list-group-item p-3">
+                  <div class="d-flex align-items-center justify-content-between mb-1">
+                    <span class="badge {{ item.badge_class }}">{{ item.title }}</span>
+                    <span class="text-muted" style="font-size: 0.75rem;">{{ item.timestamp|date:"d M, H:i" }}</span>
+                  </div>
+                  <div class="fw-semibold text-dark mt-1">
+                    by {{ item.actor }} <span class="text-muted font-weight-normal">({{ item.role }})</span>
+                  </div>
+                  {% if item.details %}
+                    <div class="text-muted mt-1" style="font-size: 0.8rem;">
+                      {{ item.details }}
+                    </div>
+                  {% endif %}
+                  {% if item.required_correction %}
+                    <div class="text-danger small mt-1">
+                      <em>"{{ item.required_correction }}"</em>
+                    </div>
+                  {% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="p-3 text-center text-muted small">
+              No previous lifecycle events recorded.
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}

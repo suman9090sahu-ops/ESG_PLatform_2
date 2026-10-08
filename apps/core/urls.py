@@ -6,12 +6,15 @@ Includes Phase 01 Core & UI showcase routes, Phase 02 Authentication & RBAC rout
 from django.urls import path
 from apps.core import (
     activity_views,
+    anomaly_views,
     auth_views,
+    correction_views,
     data_entry_views,
     evidence_views,
     ocr_views,
     org_views,
     period_views,
+    review_views,
     submission_views,
     validation_views,
     views,
@@ -47,7 +50,7 @@ urlpatterns = [
     path("site-manager/dashboard/", auth_views.site_manager_dashboard, name="site_manager_dashboard"),
     path("dashboard/site-manager/", auth_views.site_manager_dashboard_redirect, name="site_manager_dashboard_alias"),
     path("site-manager/sites/<int:site_id>/", auth_views.site_detail_view, name="site_detail"),
-    path("subsidiary-manager/dashboard/", auth_views.subsidiary_manager_dashboard, name="subsidiary_manager_dashboard"),
+    path("subsidiary-manager/dashboard/", review_views.subsidiary_manager_dashboard_view, name="subsidiary_manager_dashboard"),
     path("subsidiary-manager/subsidiaries/<int:subsidiary_id>/", auth_views.subsidiary_detail_view, name="subsidiary_detail"),
     path("esg-manager/dashboard/", auth_views.esg_manager_dashboard, name="esg_manager_dashboard"),
     path("auditor/dashboard/", auth_views.auditor_dashboard, name="auditor_dashboard"),
@@ -163,6 +166,37 @@ urlpatterns = [
     path("submissions/<int:submission_id>/withdraw/", submission_views.submission_withdraw_view, name="submission_withdraw"),
     path("site-manager/submissions/", submission_views.submission_list_view, name="site_manager_submission_list"),
     path("site-manager/submissions/<int:submission_id>/", submission_views.submission_detail_view, name="site_manager_submission_detail"),
+
+    # -------------------------------------------------------------------------
+    # Phase 13 Subsidiary Manager Review Workflow Routes (/subsidiary-manager/...)
+    # -------------------------------------------------------------------------
+    path("subsidiary-manager/inbox/", review_views.submission_inbox_view, name="subsidiary_submission_inbox"),
+    path("submissions/inbox/", review_views.submission_inbox_view, name="submission_inbox"),
+    path("subsidiary-manager/submissions/", review_views.submission_inbox_view, name="subsidiary_submission_list"),
+    path("subsidiary-manager/submissions/<int:submission_id>/review/", review_views.submission_review_detail_view, name="submission_review_detail"),
+    path("subsidiary-manager/submissions/<int:submission_id>/verify/", review_views.submission_verify_view, name="submission_verify"),
+    path("subsidiary-manager/submissions/<int:submission_id>/request-correction/", review_views.submission_request_correction_view, name="submission_request_correction"),
+    path("subsidiary-manager/submissions/<int:submission_id>/explain/", review_views.submission_explain_view, name="submission_explain"),
+    path("subsidiary-manager/submissions/<int:submission_id>/escalate/", review_views.submission_escalate_view, name="submission_escalate"),
+
+    # -------------------------------------------------------------------------
+    # Phase 14 Corrections, Explanations & Resubmission Routes (/corrections/...)
+    # -------------------------------------------------------------------------
+    path("corrections/", correction_views.correction_inbox_view, name="correction_inbox"),
+    path("site-manager/corrections/", correction_views.correction_inbox_view, name="site_manager_correction_inbox"),
+    path("corrections/<int:correction_id>/", correction_views.correction_detail_view, name="correction_detail"),
+    path("corrections/<int:correction_id>/edit/", correction_views.correction_edit_view, name="correction_edit"),
+    path("corrections/<int:correction_id>/validate/", correction_views.correction_validate_view, name="correction_validate"),
+    path("corrections/<int:correction_id>/resubmit/", correction_views.correction_resubmit_view, name="correction_resubmit"),
+
+    # -------------------------------------------------------------------------
+    # Phase 15 ESG Anomaly Detection Engine Routes (/anomalies/...)
+    # -------------------------------------------------------------------------
+    path("anomalies/", anomaly_views.anomaly_list_view, name="anomaly_list"),
+    path("anomalies/desk/", anomaly_views.anomaly_list_view, name="anomaly_desk"),
+    path("anomalies/<int:anomaly_id>/", anomaly_views.anomaly_detail_view, name="anomaly_detail"),
+    path("anomalies/<int:anomaly_id>/action/", anomaly_views.anomaly_review_action_view, name="anomaly_review_action"),
+    path("data-entry/<int:record_id>/run-anomaly-detection/", anomaly_views.anomaly_run_detection_view, name="record_run_anomaly_detection"),
 ]
 
 

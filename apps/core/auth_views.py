@@ -283,15 +283,17 @@ def site_detail_view(request, site_id):
 def subsidiary_manager_dashboard(request):
     """
     Subsidiary Manager review dashboard.
-    Displays subsidiaries explicitly assigned to the user.
+    Displays subsidiaries explicitly assigned to the user and authoritative review metrics.
     """
-    assigned_subsidiaries = get_user_accessible_subsidiaries(request.user)
+    from apps.core.review_services import get_subsidiary_manager_dashboard_metrics
+
+    metrics = get_subsidiary_manager_dashboard_metrics(request.user)
     context = {
-        "page_title": "Subsidiary Manager Governance Dashboard",
-        "page_subtitle": "Division Data Review, Validation Anomalies & Verification Escalation",
+        "page_title": "Subsidiary Manager Review Workspace",
+        "page_subtitle": "Subsidiary Manager Governance Dashboard — Division ESG Telemetry Review, Validation Audits & Verification Governance",
         "active_nav": "sub_dashboard",
-        "assigned_subsidiaries": assigned_subsidiaries,
         "role_code": Role.Code.SUBSIDIARY_MANAGER,
+        **metrics,
     }
     return render(request, "dashboards/subsidiary_manager.html", context)
 

@@ -196,6 +196,11 @@
                   </td>
                   <td class="text-end">
                     <div class="btn-group btn-group-sm">
+                      {% if sub.is_reviewable %}
+                        <a href="{% url 'core:submission_review_detail' submission_id=sub.id %}" class="btn btn-primary" title="Open Review Workspace">
+                          <i class="icon-magnifier me-1"></i> Review
+                        </a>
+                      {% endif %}
                       <a href="{% url 'core:submission_detail' submission_id=sub.id %}" class="btn btn-outline-primary" title="View Submission Lineage">
                         <i class="icon-eye"></i> Lineage
                       </a>

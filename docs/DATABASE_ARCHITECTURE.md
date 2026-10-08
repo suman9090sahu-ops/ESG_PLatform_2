@@ -514,3 +514,121 @@ OCR output is strictly treated as **UNVERIFIED DOCUMENT INTEL**. It never silent
   - `AuthAuditLog.EventType.OCR_RETRIED`
 - **Migration**:
   - `apps/core/migrations/0009_alter_authauditlog_event_type_ocrrun_ocrfield_and_more.py`
+
+---
+
+## 12. Phase 12 — Submission Workflow Schema
+
+### Models & Schema Additions
+- **`Submission`**: Captures immutable snapshot of activity data upon formal submission by Site Manager.
+  - Fields: `activity_record`, `submission_number`, `status` (SUBMITTED, UNDER_REVIEW, VERIFIED, CORRECTION_REQUESTED, ESCALATED, WITHDRAWN), `submitted_by`, `submitted_at`, `snapshot_data`, `validation_run`, `validation_status`, `parent_submission`, `is_current`.
+  - Migration: `apps/core/migrations/0010_submission_...`
+
+---
+
+## 13. Phase 13 — Subsidiary Manager Review Governance Schema
+
+### Models & Schema Additions
+- **`SubmissionReview`**: Immutable ledger of governance decisions by Subsidiary Managers.
+  - Fields: `submission`, `reviewer`, `action` (VERIFY, REQUEST_CORRECTION, EXPLAIN, ESCALATE), `comments`, `previous_status`, `new_status`, `metadata`, `created_at`.
+  - Migration: `apps/core/migrations/0011_submissionreview_...`
+
+---
+
+## 14. Phase 14 — Corrections, Explanations & Resubmission Schema
+
+### Models & Schema Additions
+- **`CorrectionRequest`**: Authoritative lifecycle entity tracking correction requests from Subsidiary Reviewers back to Site Managers.
+  - Fields: `activity_record`, `submission`, `status` (OPEN, IN_PROGRESS, READY_FOR_RESUBMISSION, RESOLVED, CANCELLED), `requested_by`, `reason`, `required_correction`, `affected_area`, `site_manager_notes`, `resubmission`, `resolved_by`, `resolved_at`.
+- **`ActivityRevision`**: Immutable audit revision snapshots preserving telemetry deltas across correction iterations.
+  - Fields: `activity_record`, `revision_number`, `submission`, `correction_request`, `created_by`, `quantity`, `unit`, `measurement_date`, `changed_fields`, `snapshot_data`.
+  - Migration: `apps/core/migrations/0012_correctionrequest_activityrevision_...`
+
+---
+
+## 15. Phase 15 — ESG Anomaly Detection Engine Schema
+
+### Models & Schema Additions
+
+```text
++----------------------------------------------------------------------------------------------------+
+|                                             AnomalyRule                                            |
+|  - id (BigAutoField, PK)                                                                           |
+|  - code (VARCHAR(50), UNIQUE, INDEX)                                                               |
+|  - name (VARCHAR(150))                                                                             |
+|  - description (TEXT, BLANK)                                                                       |
+|  - category (VARCHAR(40), CHOICES: AnomalyCategory, INDEX)                                         |
+|  - severity (VARCHAR(20), CHOICES: AnomalySeverity, DEFAULT: MEDIUM)                               |
+|  - threshold_percentage (DECIMAL(8,2), NULL, BLANK)                                                |
+|  - rule_parameters (JSONField, DEFAULT: dict, BLANK)                                               |
+|  - applicable_activity (FK -> ActivityMaster.id, SET_NULL, NULL, BLANK)                            |
+|  - is_active (BOOLEAN, DEFAULT: True, INDEX)                                                       |
+|  - version (POSITIVE INT, DEFAULT: 1)                                                              |
+|  - created_at, updated_at (TIMESTAMPTZ)                                                            |
++----------------------------------------------------------------------------------------------------+
+                                       ▲ 1
+                                       │ governs
+                                       ▼ N
++----------------------------------------------------------------------------------------------------+
+|                                            AnomalyRecord                                           |
+|  - id (BigAutoField, PK)                                                                           |
+|  - activity_record_id (FK -> ActivityRecord.id, CASCADE, INDEX, related_name="anomalies")           |
+|  - submission_id (FK -> Submission.id, SET_NULL, NULL, BLANK, INDEX, related_name="anomalies")     |
+|  - detection_run_id (FK -> AnomalyDetectionRun.id, SET_NULL, NULL, BLANK, related_name="anomalies")|
+|  - rule_id (FK -> AnomalyRule.id, PROTECT, INDEX, related_name="detected_anomalies")               |
+|  - rule_code (VARCHAR(50), INDEX)                                                                  |
+|  - rule_version (POSITIVE INT, DEFAULT: 1)                                                         |
+|  - severity (VARCHAR(20), CHOICES: AnomalySeverity, INDEX)                                         |
+|  - status (VARCHAR(30), CHOICES: AnomalyStatus, DEFAULT: OPEN, INDEX)                              |
+|  - observed_value (DECIMAL(18,4))                                                                  |
+|  - baseline_value (DECIMAL(18,4), NULL, BLANK)                                                      |
+|  - deviation_value (DECIMAL(18,4), NULL, BLANK)                                                     |
+|  - deviation_percentage (DECIMAL(10,2), NULL, BLANK)                                               |
+|  - explanation (TEXT)                                                                              |
+|  - context_data (JSONField, DEFAULT: dict, BLANK)                                                  |
+|  - review_comment (TEXT, BLANK)                                                                    |
+|  - reviewed_by_id (FK -> User.id, SET_NULL, NULL, BLANK, related_name="reviewed_anomalies")         |
+|  - reviewed_at (TIMESTAMPTZ, NULL, BLANK)                                                          |
+|  - resolution_action (VARCHAR(30), BLANK)                                                          |
+|  - is_active (BOOLEAN, DEFAULT: True, INDEX)                                                       |
+|  - created_at, updated_at (TIMESTAMPTZ, INDEX)                                                      |
++----------------------------------------------------------------------------------------------------+
+                                       ▲ N
+                                       │ recorded by
+                                       │ 1
++----------------------------------------------------------------------------------------------------+
+|                                         AnomalyDetectionRun                                        |
+|  - id (BigAutoField, PK)                                                                           |
+|  - run_number (POSITIVE INT)                                                                       |
+|  - scope_type (VARCHAR(30), DEFAULT: "BATCH", INDEX)                                               |
+|  - submission_id (FK -> Submission.id, SET_NULL, NULL, BLANK, related_name="anomaly_runs")         |
+|  - site_id (FK -> Site.id, SET_NULL, NULL, BLANK, related_name="anomaly_runs")                     |
+|  - reporting_period_id (FK -> ReportingPeriod.id, SET_NULL, NULL, BLANK)                           |
+|  - records_evaluated (POSITIVE INT, DEFAULT: 0)                                                    |
+|  - anomalies_detected (POSITIVE INT, DEFAULT: 0)                                                   |
+|  - status (VARCHAR(30), DEFAULT: "COMPLETED", INDEX)                                               |
+|  - summary_message (TEXT, BLANK)                                                                   |
+|  - execution_duration_ms (POSITIVE INT, DEFAULT: 0)                                                |
+|  - executed_by_id (FK -> User.id, SET_NULL, NULL, BLANK)                                           |
+|  - created_at (TIMESTAMPTZ, INDEX)                                                                 |
++----------------------------------------------------------------------------------------------------+
+```
+
+### Constraints, Integrity Rules & Field Additions (Phase 15)
+- **Controlled Enum Choices**:
+  - `AnomalySeverity`: `INFO`, `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`.
+  - `AnomalyStatus`: `OPEN`, `ACKNOWLEDGED`, `EXPLAINED`, `RESOLVED`, `DISMISSED`.
+  - `AnomalyCategory`: `HISTORICAL_SPIKE`, `HISTORICAL_DROP`, `PERIOD_VARIANCE`, `THRESHOLD_BREACH`, `DUPLICATE_SUSPECT`, `INTENSITY_ANOMALY`.
+- **Non-destructive Idempotency**: Detection runs update existing open anomalies rather than multiplying duplicate findings. Normalization auto-resolves findings while preserving historical records.
+- **Audit Lineage**:
+  - `AuthAuditLog.EventType.ANOMALY_DETECTED`
+  - `AuthAuditLog.EventType.ANOMALY_ACKNOWLEDGED`
+  - `AuthAuditLog.EventType.ANOMALY_EXPLAINED`
+  - `AuthAuditLog.EventType.ANOMALY_DISMISSED`
+  - `AuthAuditLog.EventType.ANOMALY_RESOLVED`
+  - `AuthAuditLog.EventType.ANOMALY_RULE_CREATED`
+  - `AuthAuditLog.EventType.ANOMALY_RULE_UPDATED`
+  - `AuthAuditLog.EventType.ANOMALY_DETECTION_RUN`
+- **Migration**:
+  - `apps/core/migrations/0013_alter_authauditlog_event_type_anomalydetectionrun_and_more.py`
+

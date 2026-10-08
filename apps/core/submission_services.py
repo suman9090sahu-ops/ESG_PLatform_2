@@ -441,6 +441,18 @@ def submit_activity_record(
         user.username if user else "System",
     )
 
+    # 11. Trigger automated anomaly detection telemetry
+    try:
+        from apps.core.anomaly_services import detect_anomalies_for_record
+        detect_anomalies_for_record(
+            record=locked_record,
+            user=user,
+            submission=submission,
+            request=request,
+        )
+    except Exception as anom_err:
+        logger.warning("Anomaly detection telemetry failed on submission #%d: %s", submission.id, anom_err)
+
     return submission
 
 

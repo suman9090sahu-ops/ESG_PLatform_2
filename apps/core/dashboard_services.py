@@ -26,6 +26,8 @@ from apps.core.activity_services import (
 from apps.core.data_entry_services import get_accessible_activity_records
 from apps.core.models import (
     AuthAuditLog,
+    CorrectionRequest,
+    CorrectionStatus,
     EvidenceStatus,
     MasterStatus,
     OrganizationStatus,
@@ -191,6 +193,24 @@ def get_site_manager_dashboard_context(user, as_of_date=None):
             "url": reverse("core:activity_record_list") + f"?status={RecordStatus.DRAFT}",
         })
 
+    active_corrections_count = CorrectionRequest.objects.filter(
+        activity_record__site__in=assigned_sites,
+        status__in=[
+            CorrectionStatus.OPEN,
+            CorrectionStatus.IN_PROGRESS,
+            CorrectionStatus.READY_FOR_RESUBMISSION,
+        ],
+    ).count()
+
+    if active_corrections_count > 0:
+        pending_actions_list.append({
+            "title": f"{active_corrections_count} Correction Request(s) Awaiting Revision",
+            "description": "Subsidiary Reviewers have requested revisions on submitted activity records.",
+            "category": "Corrections Workflow",
+            "level": "warning",
+            "url": reverse("core:correction_inbox"),
+        })
+
     pending_actions_count = len(pending_actions_list)
 
     # 7. Recent Operational & Security Activity (AuthAuditLog scoped strictly to authorized sites)
@@ -284,6 +304,7 @@ def get_site_manager_dashboard_context(user, as_of_date=None):
         "workflow_status": workflow_status,
         "pending_actions_count": pending_actions_count,
         "pending_actions_list": pending_actions_list,
+        "active_corrections_count": active_corrections_count,
         # Activity Feed & Alerts
         "recent_activity": recent_activity,
         "alerts": alerts,

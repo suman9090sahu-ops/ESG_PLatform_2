@@ -5,69 +5,176 @@
 {% block page_subtitle %}{{ page_subtitle }}{% endblock %}
 
 {% block header_actions %}
-  <span class="badge badge-primary px-3 py-2 fs-6">
-    <i class="icon-user me-1"></i> Role: SUBSIDIARY_MANAGER
-  </span>
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'core:subsidiary_submission_inbox' %}" class="btn btn-sm btn-primary">
+      <i class="icon-envelope-letter me-1"></i> Submission Inbox
+      {% if pending_count %}
+        <span class="badge bg-white text-primary ms-1">{{ pending_count }}</span>
+      {% endif %}
+    </a>
+    <a href="{% url 'core:anomaly_list' %}" class="btn btn-sm btn-outline-danger">
+      <i class="icon-flag me-1"></i> Anomaly Desk
+      {% if open_anomalies_count %}
+        <span class="badge bg-danger text-white ms-1">{{ open_anomalies_count }}</span>
+      {% endif %}
+    </a>
+    <span class="badge badge-primary px-3 py-2 fs-6">
+      <i class="icon-user me-1"></i> Role: SUBSIDIARY_MANAGER
+    </span>
+  </div>
 {% endblock %}
 
 {% block kpi_section %}
-  <div class="col-md-4 col-sm-6 grid-margin stretch-card">
-    <div class="card card-statistics border-0 shadow-sm">
-      <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between">
-          <div>
-            <h6 class="text-muted font-weight-normal mb-1">Assigned Subsidiaries</h6>
-            <h3 class="mb-0 font-weight-bold text-dark">{{ assigned_subsidiaries.count }}</h3>
-          </div>
-          <div class="icon-box bg-light-primary text-primary p-3 rounded-circle">
-            <i class="icon-briefcase" style="font-size: 1.5rem;"></i>
-          </div>
+  <div class="row g-3 mb-4">
+    <!-- KPI 1: Pending Submissions -->
+    <div class="col-sm-6 col-lg-2">
+      <div class="card card-statistics border-0 shadow-sm h-100 border-start border-4 border-warning">
+        <div class="card-body p-3">
+          <div class="text-muted small text-uppercase fw-semibold">Pending Review</div>
+          <div class="h3 fw-bold mb-0 text-warning mt-1 font-monospace">{{ pending_count }}</div>
+          <small class="text-muted">Awaiting Action</small>
         </div>
-        <p class="text-muted small mt-2 mb-0"><i class="icon-check text-success me-1"></i> Governance Scope</p>
       </div>
     </div>
-  </div>
 
-  <div class="col-md-4 col-sm-6 grid-margin stretch-card">
-    <div class="card card-statistics border-0 shadow-sm">
-      <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between">
-          <div>
-            <h6 class="text-muted font-weight-normal mb-1">Submissions for Review</h6>
-            <h3 class="mb-0 font-weight-bold text-warning">4</h3>
-          </div>
-          <div class="icon-box bg-light-warning text-warning p-3 rounded-circle">
-            <i class="icon-envelope-letter" style="font-size: 1.5rem;"></i>
-          </div>
+    <!-- KPI 2: Under Active Review -->
+    <div class="col-sm-6 col-lg-2">
+      <div class="card card-statistics border-0 shadow-sm h-100 border-start border-4 border-info">
+        <div class="card-body p-3">
+          <div class="text-muted small text-uppercase fw-semibold">Under Review</div>
+          <div class="h3 fw-bold mb-0 text-info mt-1 font-monospace">{{ under_review_count }}</div>
+          <small class="text-muted">In Verification</small>
         </div>
-        <p class="text-muted small mt-2 mb-0"><i class="icon-clock text-warning me-1"></i> Awaiting Verification</p>
       </div>
     </div>
-  </div>
 
-  <div class="col-md-4 col-sm-6 grid-margin stretch-card">
-    <div class="card card-statistics border-0 shadow-sm">
-      <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between">
-          <div>
-            <h6 class="text-muted font-weight-normal mb-1">Validation Anomalies</h6>
-            <h3 class="mb-0 font-weight-bold text-danger">1</h3>
-          </div>
-          <div class="icon-box bg-light-danger text-danger p-3 rounded-circle">
-            <i class="icon-flag" style="font-size: 1.5rem;"></i>
+    <!-- KPI 3: Verified -->
+    <div class="col-sm-6 col-lg-2">
+      <div class="card card-statistics border-0 shadow-sm h-100 border-start border-4 border-success">
+        <div class="card-body p-3">
+          <div class="text-muted small text-uppercase fw-semibold">Verified</div>
+          <div class="h3 fw-bold mb-0 text-success mt-1 font-monospace">{{ verified_count }}</div>
+          <small class="text-muted">First-Line Sign-off</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI 4: Correction Requested -->
+    <div class="col-sm-6 col-lg-2">
+      <div class="card card-statistics border-0 shadow-sm h-100 border-start border-4 border-danger">
+        <div class="card-body p-3">
+          <div class="text-muted small text-uppercase fw-semibold">Corrections</div>
+          <div class="h3 fw-bold mb-0 text-danger mt-1 font-monospace">{{ correction_requested_count }}</div>
+          <small class="text-muted">Revision Required</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI 5: Escalated -->
+    <div class="col-sm-6 col-lg-2">
+      <div class="card card-statistics border-0 shadow-sm h-100 border-start border-4 border-purple" style="border-left-color: #6f42c1 !important;">
+        <div class="card-body p-3">
+          <div class="text-muted small text-uppercase fw-semibold">Escalated</div>
+          <div class="h3 fw-bold mb-0 mt-1 font-monospace" style="color: #6f42c1;">{{ escalated_count }}</div>
+          <small class="text-muted">To ESG Governance</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI 6: ESG Anomaly Signals -->
+    <div class="col-sm-6 col-lg-2">
+      <a href="{% url 'core:anomaly_list' %}" class="text-decoration-none">
+        <div class="card card-statistics border-0 shadow-sm h-100 border-start border-4 border-danger">
+          <div class="card-body p-3">
+            <div class="text-muted small text-uppercase fw-semibold">Anomaly Desk</div>
+            <div class="h3 fw-bold mb-0 text-danger mt-1 font-monospace">{{ open_anomalies_count|default:0 }}</div>
+            <small class="text-muted">Unusual Signals</small>
           </div>
         </div>
-        <p class="text-muted small mt-2 mb-0"><i class="icon-wrench text-danger me-1"></i> Requires Correction</p>
-      </div>
+      </a>
     </div>
   </div>
 {% endblock %}
 
 {% block main_panel %}
-  <div class="card border-0 shadow-sm">
+  <!-- Submissions Awaiting Review Panel -->
+  <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
       <h6 class="mb-0 font-weight-bold text-dark">
-        <i class="icon-briefcase me-2 text-primary"></i> Assigned Subsidiary Companies
+        <i class="icon-envelope-letter me-2 text-warning"></i> Submissions Awaiting Verification
+      </h6>
+      <a href="{% url 'core:subsidiary_submission_inbox' %}" class="btn btn-sm btn-outline-primary">
+        View Full Inbox ({{ total_submissions_count }})
+      </a>
+    </div>
+    <div class="card-body p-0">
+      {% if actionable_inbox %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="bg-light">
+              <tr class="small text-muted text-uppercase">
+                <th>SUBMISSION</th>
+                <th>ACTIVITY</th>
+                <th>OPERATIONAL SITE</th>
+                <th>QUANTITY</th>
+                <th>VALIDATION</th>
+                <th>SUBMITTED</th>
+                <th class="text-end">ACTION</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for sub in actionable_inbox %}
+                <tr>
+                  <td>
+                    <span class="badge {{ sub.badge_class }}">{{ sub.get_status_display }}</span>
+                    <div class="small font-monospace text-muted mt-1">#{{ sub.submission_number }}</div>
+                  </td>
+                  <td>
+                    <div class="fw-semibold text-dark">{{ sub.activity.name }}</div>
+                    <div class="small text-muted">{{ sub.activity.category.name|default:"General" }} &bull; <code>{{ sub.activity.code }}</code></div>
+                  </td>
+                  <td>
+                    <div class="text-dark">{{ sub.site.name }}</div>
+                    <div class="small text-muted">{{ sub.subsidiary.name }}</div>
+                  </td>
+                  <td>
+                    <span class="fw-bold font-monospace">{{ sub.quantity|floatformat:2 }}</span>
+                    <small class="text-muted">{{ sub.unit.symbol }}</small>
+                  </td>
+                  <td>
+                    <span class="badge {{ sub.activity_record.validation_badge_class }}">
+                      {{ sub.get_validation_status_display }}
+                    </span>
+                  </td>
+                  <td>
+                    <div class="small text-dark">{{ sub.submitted_by.username|default:"System" }}</div>
+                    <div class="small text-muted">{{ sub.submitted_at|date:"d M, H:i" }}</div>
+                  </td>
+                  <td class="text-end">
+                    <a href="{% url 'core:submission_review_detail' submission_id=sub.id %}" class="btn btn-sm btn-primary">
+                      <i class="icon-magnifier me-1"></i> Review
+                    </a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="p-4 text-center text-muted">
+          <i class="icon-check text-success mb-2" style="font-size: 2rem;"></i>
+          <p class="mb-0 fw-semibold">Inbox is clear</p>
+          <small>No submissions are currently awaiting first-line review in your assigned division scope.</small>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Assigned Subsidiaries Panel -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+      <h6 class="mb-0 font-weight-bold text-dark">
+        <i class="icon-briefcase me-2 text-primary"></i> Assigned Subsidiary Divisions
       </h6>
       <span class="badge badge-outline-primary small">Review Authority</span>
     </div>
@@ -76,9 +183,9 @@
         <div class="table-responsive">
           <table class="table table-hover align-middle mb-0">
             <thead class="bg-light">
-              <tr class="small text-muted">
+              <tr class="small text-muted text-uppercase">
                 <th>CODE</th>
-                <th>SUBSIDIARY NAME</th>
+                <th>DIVISION NAME</th>
                 <th>INDUSTRY</th>
                 <th>PARENT COMPANY</th>
                 <th>PROJECTS</th>
@@ -114,15 +221,76 @@
 {% endblock %}
 
 {% block side_panel %}
-  <div class="card border-0 shadow-sm">
+  <!-- Recent Governance Decisions Trail -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+      <h6 class="mb-0 font-weight-bold text-dark">
+        <i class="icon-clock me-2 text-primary"></i> Recent Review Decisions
+      </h6>
+      <span class="badge badge-outline-secondary small">History</span>
+    </div>
+    <div class="card-body p-0">
+      {% if recent_reviews %}
+        <ul class="list-group list-group-flush small">
+          {% for rev in recent_reviews %}
+            <li class="list-group-item p-3">
+              <div class="d-flex align-items-center justify-content-between mb-1">
+                <span class="badge {{ rev.badge_class }}">{{ rev.get_action_display }}</span>
+                <span class="text-muted" style="font-size: 0.75rem;">{{ rev.created_at|date:"d M, H:i" }}</span>
+              </div>
+              <div class="fw-semibold text-dark">
+                {{ rev.submission.activity.name }}
+              </div>
+              <div class="text-muted" style="font-size: 0.8rem;">
+                {{ rev.submission.site.name }} &bull; by {{ rev.reviewer.username|default:"System" }}
+              </div>
+              {% if rev.comments %}
+                <div class="text-muted mt-1 text-truncate" style="font-size: 0.8rem;" title="{{ rev.comments }}">
+                  <em>"{{ rev.comments }}"</em>
+                </div>
+              {% endif %}
+              <div class="mt-1">
+                <a href="{% url 'core:submission_review_detail' submission_id=rev.submission_id %}" class="small text-primary text-decoration-none">
+                  Inspect Submission &rarr;
+                </a>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="p-3 text-center text-muted small">
+          <i class="icon-info me-1"></i> No recent review decisions logged yet.
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Review Governance Rules Card -->
+  <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white py-3 border-bottom">
       <h6 class="mb-0 font-weight-bold text-dark">
-        <i class="icon-shield me-2 text-primary"></i> Review Role Scope
+        <i class="icon-shield me-2 text-primary"></i> First-Line ESG Review Mandate
       </h6>
     </div>
     <div class="card-body small">
-      <p class="text-muted mb-2">Subsidiary Managers review, verify, and escalate ESG telemetry across their assigned subsidiary divisions.</p>
-      <p class="text-muted mb-0">Server-side RBAC denies access to unrelated subsidiaries.</p>
+      <ul class="list-unstyled mb-0">
+        <li class="mb-2">
+          <i class="icon-check text-success me-1"></i>
+          <strong>Verify:</strong> Sign off on complete data with valid evidence and OCR validation.
+        </li>
+        <li class="mb-2">
+          <i class="icon-action-undo text-warning me-1"></i>
+          <strong>Request Correction:</strong> Return incomplete or divergent data to Site Manager.
+        </li>
+        <li class="mb-2">
+          <i class="icon-note text-info me-1"></i>
+          <strong>Explain:</strong> Log operational context for unusual readings without altering data.
+        </li>
+        <li class="mb-0">
+          <i class="icon-energy text-danger me-1"></i>
+          <strong>Escalate:</strong> Route governance disputes or structural questions to Corporate ESG.
+        </li>
+      </ul>
     </div>
   </div>
 {% endblock %}

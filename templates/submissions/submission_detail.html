@@ -12,6 +12,11 @@
     <a href="{% url 'core:activity_record_detail' record_id=record.id %}" class="btn btn-sm btn-outline-primary">
       <i class="icon-doc me-1"></i> Source Record #{{ record.id }}
     </a>
+    {% if submission.is_reviewable %}
+      <a href="{% url 'core:submission_review_detail' submission_id=submission.id %}" class="btn btn-sm btn-primary">
+        <i class="icon-magnifier me-1"></i> Review Workspace
+      </a>
+    {% endif %}
     {% if can_withdraw %}
       <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#withdrawSubmissionModal">
         <i class="icon-action-undo me-1"></i> Withdraw Submission
@@ -63,6 +68,24 @@
       {% endif %}
     </div>
   </div>
+
+  {% if submission.status == 'CORRECTION_REQUESTED' %}
+    <div class="alert alert-warning border-0 shadow-sm d-flex align-items-center justify-content-between mb-4">
+      <div>
+        <h6 class="alert-heading fw-bold mb-1">
+          <i class="icon-action-undo me-2"></i> Correction Requested by Subsidiary Reviewer
+        </h6>
+        <p class="small mb-0">
+          Revisions have been requested on this submission before it can be verified.
+        </p>
+      </div>
+      {% if submission.latest_correction_request %}
+        <a href="{% url 'core:correction_detail' correction_id=submission.latest_correction_request.id %}" class="btn btn-warning text-dark btn-sm fw-semibold">
+          <i class="icon-wrench me-1"></i> Open Correction Workspace
+        </a>
+      {% endif %}
+    </div>
+  {% endif %}
 
   <div class="row g-4">
     <!-- Main Column: Lineage & Data Snapshots -->
@@ -421,9 +444,12 @@
             <strong>Target Review Scope:</strong><br>
             Subsidiary Manager for <em>{{ submission.subsidiary.name }}</em>
           </div>
-          <div class="text-muted" style="font-size: 0.8rem;">
+          <div class="text-muted mb-3" style="font-size: 0.8rem;">
             <i class="icon-check text-success me-1"></i> Data lineage, validation snapshot, and evidence attachments are locked and ready for Subsidiary verification.
           </div>
+          <a href="{% url 'core:submission_review_detail' submission_id=submission.id %}" class="btn btn-sm btn-primary w-100">
+            <i class="icon-magnifier me-1"></i> Open Review Workspace
+          </a>
         </div>
       </div>
 

@@ -1,0 +1,287 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block page_actions %}
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'core:subsidiary_manager_dashboard' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="icon-screen-desktop me-1"></i> Governance Dashboard
+    </a>
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+  <!-- Summary KPI Badges Row -->
+  <div class="row g-3 mb-4">
+    <div class="col-sm-6 col-md-4 col-lg-2">
+      <a href="{% url 'core:subsidiary_submission_inbox' %}" class="text-decoration-none">
+        <div class="card border-0 shadow-sm h-100 {% if not status_filter %}border-start border-4 border-primary{% endif %}">
+          <div class="card-body p-3">
+            <div class="text-muted small text-uppercase fw-semibold">Total Scope</div>
+            <div class="h3 fw-bold mb-0 text-dark mt-1 font-monospace">{{ total_count }}</div>
+            <small class="text-muted">All Handover Records</small>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-sm-6 col-md-4 col-lg-2">
+      <a href="{% url 'core:subsidiary_submission_inbox' %}?status=SUBMITTED" class="text-decoration-none">
+        <div class="card border-0 shadow-sm h-100 border-start border-4 border-warning">
+          <div class="card-body p-3">
+            <div class="text-muted small text-uppercase fw-semibold">Pending Review</div>
+            <div class="h3 fw-bold mb-0 text-warning mt-1 font-monospace">{{ pending_count }}</div>
+            <small class="text-muted">Awaiting Action</small>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-sm-6 col-md-4 col-lg-2">
+      <a href="{% url 'core:subsidiary_submission_inbox' %}?status=UNDER_REVIEW" class="text-decoration-none">
+        <div class="card border-0 shadow-sm h-100 border-start border-4 border-info">
+          <div class="card-body p-3">
+            <div class="text-muted small text-uppercase fw-semibold">Under Review</div>
+            <div class="h3 fw-bold mb-0 text-info mt-1 font-monospace">{{ under_review_count }}</div>
+            <small class="text-muted">In Queue</small>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-sm-6 col-md-4 col-lg-2">
+      <a href="{% url 'core:subsidiary_submission_inbox' %}?status=VERIFIED" class="text-decoration-none">
+        <div class="card border-0 shadow-sm h-100 border-start border-4 border-success">
+          <div class="card-body p-3">
+            <div class="text-muted small text-uppercase fw-semibold">Verified</div>
+            <div class="h3 fw-bold mb-0 text-success mt-1 font-monospace">{{ verified_count }}</div>
+            <small class="text-muted">Signed Off</small>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-sm-6 col-md-4 col-lg-2">
+      <a href="{% url 'core:subsidiary_submission_inbox' %}?status=CORRECTION_REQUESTED" class="text-decoration-none">
+        <div class="card border-0 shadow-sm h-100 border-start border-4 border-danger">
+          <div class="card-body p-3">
+            <div class="text-muted small text-uppercase fw-semibold">Corrections</div>
+            <div class="h3 fw-bold mb-0 text-danger mt-1 font-monospace">{{ correction_count }}</div>
+            <small class="text-muted">Revision Needed</small>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-sm-6 col-md-4 col-lg-2">
+      <a href="{% url 'core:subsidiary_submission_inbox' %}?status=ESCALATED" class="text-decoration-none">
+        <div class="card border-0 shadow-sm h-100 border-start border-4 border-purple" style="border-left-color: #6f42c1 !important;">
+          <div class="card-body p-3">
+            <div class="text-muted small text-uppercase fw-semibold">Escalated</div>
+            <div class="h3 fw-bold mb-0 mt-1 font-monospace" style="color: #6f42c1;">{{ escalated_count }}</div>
+            <small class="text-muted">To Corporate</small>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <!-- Filter & Search Bar -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-3">
+      <form method="get" action="{% url 'core:subsidiary_submission_inbox' %}" class="row g-2 align-items-center">
+        <div class="col-md-3">
+          <div class="input-group input-group-sm">
+            <span class="input-group-text bg-light border-end-0"><i class="icon-magnifier text-muted"></i></span>
+            <input type="text" name="q" value="{{ search_query }}" class="form-control border-start-0" placeholder="Search activity, site, submitter...">
+          </div>
+        </div>
+        <div class="col-md-2">
+          <select name="status" class="form-select form-select-sm">
+            <option value="">All Review Statuses</option>
+            {% for sc, sl in status_choices %}
+              <option value="{{ sc }}" {% if status_filter == sc %}selected{% endif %}>{{ sl }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <select name="site" class="form-select form-select-sm">
+            <option value="">All Operational Sites</option>
+            {% for s in accessible_sites %}
+              <option value="{{ s.id }}" {% if site_filter == s.id|stringformat:"s" %}selected{% endif %}>{{ s.name }} ({{ s.code }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <select name="period" class="form-select form-select-sm">
+            <option value="">All Periods</option>
+            {% for p in accessible_periods %}
+              <option value="{{ p.id }}" {% if period_filter == p.id|stringformat:"s" %}selected{% endif %}>{{ p.code }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2 d-flex gap-2">
+          <button type="submit" class="btn btn-sm btn-primary w-100">
+            <i class="icon-filter me-1"></i> Filter
+          </button>
+          {% if search_query or status_filter or site_filter or period_filter or category_filter %}
+            <a href="{% url 'core:subsidiary_submission_inbox' %}" class="btn btn-sm btn-outline-secondary" title="Reset Filters">
+              <i class="icon-refresh"></i>
+            </a>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Submissions Ledger Table -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+      <h6 class="mb-0 fw-bold text-dark">
+        <i class="icon-list text-primary me-2"></i> Submissions in Review Pipeline
+      </h6>
+      <span class="badge badge-outline-secondary small">
+        Showing {{ submissions.start_index|default:0 }}–{{ submissions.end_index|default:0 }} of {{ submissions.paginator.count|default:0 }}
+      </span>
+    </div>
+    <div class="card-body p-0">
+      {% if submissions %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="bg-light">
+              <tr class="small text-muted text-uppercase">
+                <th>Status</th>
+                <th>Iteration</th>
+                <th>Activity Master</th>
+                <th>Operational Site</th>
+                <th>Period</th>
+                <th>Consumption</th>
+                <th>Validation</th>
+                <th>Evidence</th>
+                <th>Submitter</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for sub in submissions %}
+                <tr>
+                  <td>
+                    <span class="badge {{ sub.badge_class }}">{{ sub.get_status_display }}</span>
+                  </td>
+                  <td>
+                    <span class="font-monospace small fw-bold">#{{ sub.submission_number }}</span>
+                    {% if sub.is_current %}
+                      <span class="badge bg-success-subtle text-success border border-success ms-1 small" style="font-size: 0.65rem;">Active</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <div class="fw-semibold text-dark">{{ sub.activity.name }}</div>
+                    <div class="small text-muted">
+                      <code>{{ sub.activity.code }}</code> &bull; {{ sub.activity.category.name|default:"General" }}
+                    </div>
+                  </td>
+                  <td>
+                    <div class="text-dark">{{ sub.site.name }}</div>
+                    <div class="small text-muted">
+                      <code>{{ sub.site.code }}</code> &bull; {{ sub.subsidiary.name }}
+                    </div>
+                  </td>
+                  <td>
+                    <span class="badge bg-light text-dark border">{{ sub.reporting_period.code }}</span>
+                  </td>
+                  <td>
+                    <div class="fw-bold text-dark font-monospace">
+                      {{ sub.quantity|floatformat:2 }} <small class="text-muted">{{ sub.unit.symbol }}</small>
+                    </div>
+                    <small class="text-muted">{{ sub.measurement_date|date:"d M Y" }}</small>
+                  </td>
+                  <td>
+                    <span class="badge {{ sub.activity_record.validation_badge_class }}">
+                      {{ sub.get_validation_status_display }}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="badge bg-light text-dark border">
+                      <i class="icon-paper-clip me-1"></i>{{ sub.evidence_files_count }}
+                    </span>
+                  </td>
+                  <td>
+                    <div class="small text-dark">{{ sub.submitted_by.username|default:"System" }}</div>
+                    <div class="small text-muted">{{ sub.submitted_at|date:"d M Y, H:i" }}</div>
+                  </td>
+                  <td class="text-end">
+                    <div class="btn-group btn-group-sm">
+                      <a href="{% url 'core:submission_review_detail' submission_id=sub.id %}" class="btn btn-primary" title="Open Review Workspace">
+                        <i class="icon-magnifier me-1"></i> Review
+                      </a>
+                      <a href="{% url 'core:submission_detail' submission_id=sub.id %}" class="btn btn-outline-secondary" title="View Full Lineage">
+                        <i class="icon-eye"></i>
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination Controls -->
+        {% if submissions.has_other_pages %}
+          <div class="card-footer bg-white border-top py-3 d-flex justify-content-between align-items-center">
+            <div class="small text-muted">
+              Page {{ submissions.number }} of {{ submissions.paginator.num_pages }}
+            </div>
+            <nav aria-label="Review inbox pagination">
+              <ul class="pagination pagination-sm mb-0">
+                {% if submissions.has_previous %}
+                  <li class="page-item">
+                    <a class="page-link" href="?page={{ submissions.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if site_filter %}&site={{ site_filter }}{% endif %}{% if period_filter %}&period={{ period_filter }}{% endif %}">&laquo; Previous</a>
+                  </li>
+                {% else %}
+                  <li class="page-item disabled"><span class="page-link">&laquo; Previous</span></li>
+                {% endif %}
+
+                {% for p in submissions.paginator.page_range %}
+                  {% if p == submissions.number %}
+                    <li class="page-item active"><span class="page-link">{{ p }}</span></li>
+                  {% elif p >= submissions.number|add:"-2" and p <= submissions.number|add:"2" %}
+                    <li class="page-item">
+                      <a class="page-link" href="?page={{ p }}{% if search_query %}&q={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if site_filter %}&site={{ site_filter }}{% endif %}{% if period_filter %}&period={{ period_filter }}{% endif %}">{{ p }}</a>
+                    </li>
+                  {% endif %}
+                {% endfor %}
+
+                {% if submissions.has_next %}
+                  <li class="page-item">
+                    <a class="page-link" href="?page={{ submissions.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if site_filter %}&site={{ site_filter }}{% endif %}{% if period_filter %}&period={{ period_filter }}{% endif %}">Next &raquo;</a>
+                  </li>
+                {% else %}
+                  <li class="page-item disabled"><span class="page-link">Next &raquo;</span></li>
+                {% endif %}
+              </ul>
+            </nav>
+          </div>
+        {% endif %}
+
+      {% else %}
+        <div class="p-5 text-center text-muted">
+          <i class="icon-folder-alt mb-3 text-secondary" style="font-size: 2.5rem;"></i>
+          <h5 class="fw-semibold text-dark">No Submissions Found</h5>
+          <p class="text-muted small mb-3">
+            {% if search_query or status_filter or site_filter or period_filter %}
+              No submissions match your active filter criteria. Try adjusting or clearing the filters above.
+            {% else %}
+              There are currently no activity submissions awaiting review within your assigned subsidiary scope.
+            {% endif %}
+          </p>
+          {% if search_query or status_filter or site_filter or period_filter %}
+            <a href="{% url 'core:subsidiary_submission_inbox' %}" class="btn btn-sm btn-outline-primary">
+              <i class="icon-refresh me-1"></i> Clear All Filters
+            </a>
+          {% endif %}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}

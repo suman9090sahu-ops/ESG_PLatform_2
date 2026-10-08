@@ -117,6 +117,21 @@ The platform includes seed users with defined operational scopes:
 # Phase 03 Organization Hierarchy & Scoping tests
 .\python.bat manage.py test tests.test_organization
 
+# Phase 12 Submission Workflow tests
+.\python.bat manage.py test tests.test_phase12_submission_workflow
+
+# Phase 13 Subsidiary Review tests
+.\python.bat manage.py test tests.test_phase13_subsidiary_review
+
+# Phase 14 Corrections & Resubmission tests
+.\python.bat manage.py test tests.test_phase14_corrections_resubmission
+
+# Phase 15 Anomaly Detection Engine tests
+.\python.bat manage.py test tests.test_phase15_anomaly_detection
+
+# Phase 15 Live End-to-End Verification
+.\python.bat tests\verify_phase15_live.py
+
 # Live End-to-End HTTP Verification against running server
 .\python.bat tests\test_live_e2e.py
 ```
@@ -125,3 +140,54 @@ The platform includes seed users with defined operational scopes:
 ```powershell
 .\python.bat manage.py runserver 127.0.0.1:8000
 ```
+
+---
+
+## Phase 15 — Anomaly Detection Engine Developer Guide
+
+### Default Rule Seeding
+Ensure standard deterministic anomaly rules are present in the environment:
+```python
+from apps.core.anomaly_services import ensure_default_anomaly_rules
+
+rules = ensure_default_anomaly_rules()
+# Seeds/verifies:
+# - DIESEL_SPIKE (+100.0% vs historical baseline)
+# - DIESEL_DROP (-50.0% vs historical baseline)
+# - ELEC_PERIOD_SPIKE (+50.0% vs prior reporting period)
+# - DUPLICATE_TELEMETRY (exact match on site, activity, measurement date, quantity, unit)
+# - FUEL_THRESHOLD_BREACH (upper bound operational telemetry limits)
+# - ENERGY_INTENSITY_ANOMALY (consumption intensity ratios)
+```
+
+### Running Anomaly Evaluation Programmatically
+```python
+from apps.core.anomaly_services import detect_anomalies_for_record, run_batch_anomaly_detection
+
+# Single Record Evaluation (Idempotent)
+detected_anomalies = detect_anomalies_for_record(activity_record, actor=request.user)
+
+# Batch Evaluation across a Site / Period Scope
+results = run_batch_anomaly_detection(
+    reporting_period=period,
+    site=site,
+    actor=request.user,
+    triggered_by="ESG_MANAGER_BATCH"
+)
+print(f"Evaluated {results['evaluated']} records, flagged {results['flagged']} anomalies.")
+```
+
+### Anomaly Review Actions
+```python
+from apps.core.anomaly_services import execute_anomaly_review_action
+
+# Execute review action (ACKNOWLEDGE, EXPLAIN, RESOLVE, DISMISS)
+updated_record = execute_anomaly_review_action(
+    anomaly=anomaly,
+    action="EXPLAIN",
+    actor=user,
+    notes="High fuel usage was driven by round-the-clock emergency dewatering operations.",
+    ip_address=request.META.get("REMOTE_ADDR")
+)
+```
+

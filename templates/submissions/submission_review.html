@@ -1,0 +1,984 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block page_actions %}
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'core:subsidiary_submission_inbox' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="icon-arrow-left me-1"></i> Review Inbox
+    </a>
+    <a href="{% url 'core:submission_detail' submission_id=submission.id %}" class="btn btn-sm btn-outline-info">
+      <i class="icon-eye me-1"></i> Full Lineage
+    </a>
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+  <!-- Executive Header Status Banner -->
+  <div class="card border-0 shadow-sm mb-4 border-start border-5 {% if submission.status == 'VERIFIED' %}border-success{% elif submission.status == 'CORRECTION_REQUESTED' %}border-warning{% elif submission.status == 'ESCALATED' %}border-danger{% elif submission.status == 'EXPLAINED' %}border-info{% else %}border-primary{% endif %}">
+    <div class="card-body p-4">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <span class="badge {{ submission.badge_class }} fs-6 py-1 px-3">
+              {{ submission.get_status_display }}
+            </span>
+            <span class="badge bg-light text-dark border font-monospace">Iteration #{{ submission.submission_number }}</span>
+            {% if submission.is_current %}
+              <span class="badge bg-success-subtle text-success border border-success">Active Handover</span>
+            {% else %}
+              <span class="badge bg-secondary-subtle text-muted border">Superceded / Historical</span>
+            {% endif %}
+          </div>
+          <h4 class="fw-bold text-dark mb-1">{{ submission.activity.name }}</h4>
+          <div class="small text-muted">
+            Submitted by <strong>{{ submission.submitted_by.get_full_name|default:submission.submitted_by.username }}</strong>
+            on <strong>{{ submission.submitted_at|date:"d M Y, H:i:s" }}</strong>
+            &bull; Operational Site: <strong>{{ submission.site.name }}</strong> ({{ submission.site.code }})
+            &bull; Division: <strong>{{ submission.subsidiary.name }}</strong>
+          </div>
+        </div>
+        <div class="text-sm-end">
+          <div class="text-muted small text-uppercase fw-semibold">Reported Consumption</div>
+          <div class="h2 fw-bold text-primary mb-0 font-monospace">
+            {{ submission.quantity|floatformat:2 }} <span class="fs-5 text-muted">{{ submission.unit.symbol }}</span>
+          </div>
+          <small class="text-muted"><i class="icon-calendar me-1"></i>{{ submission.measurement_date|date:"d M Y" }}</small>
+        </div>
+      </div>
+
+      {% if submission.comments %}
+        <div class="mt-3 pt-3 border-top">
+          <span class="text-muted small d-block fw-semibold"><i class="icon-speech me-1"></i> Submitter Handover Notes:</span>
+          <div class="p-2 bg-light rounded small text-dark mt-1">{{ submission.comments|linebreaksbr }}</div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if is_resubmission %}
+    <!-- Resubmission Comparison & Correction Audit Banner -->
+    <div class="card border-0 shadow-sm mb-4 border-start border-5 border-info bg-white">
+      <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+        <h6 class="mb-0 fw-bold text-dark">
+          <i class="icon-refresh me-2 text-info"></i> Resubmission Iteration #{{ submission.submission_number }} &mdash; Comparative Delta Ledger
+        </h6>
+        <span class="badge badge-info">Corrected &amp; Resubmitted</span>
+      </div>
+      <div class="card-body">
+        <div class="alert alert-info py-2 px-3 small border mb-3">
+          <i class="icon-info me-1"></i>
+          This submission was revised and resubmitted by the Site Manager following a formal Correction Request.
+          {% if parent_submission %}
+            Supersedes <strong>Submission #{{ parent_submission.submission_number }}</strong> (submitted {{ parent_submission.submitted_at|date:"d M Y, H:i" }}).
+          {% endif %}
+        </div>
+
+        {% if deltas %}
+          <div class="table-responsive mb-3">
+            <table class="table table-sm table-bordered align-middle mb-0">
+              <thead class="bg-light small text-muted text-uppercase">
+                <tr>
+                  <th style="width: 25%;">FIELD</th>
+                  <th style="width: 35%;">ORIGINAL VALUE (SUBMISSION #{{ deltas.baseline_submission_number|default:"1" }})</th>
+                  <th style="width: 40%;">RESUBMITTED VALUE (ITERATION #{{ submission.submission_number }})</th>
+                </tr>
+              </thead>
+              <tbody class="small">
+                <tr>
+                  <td class="fw-semibold text-muted">Quantity</td>
+                  <td>
+                    <span class="font-monospace">{{ deltas.quantity.original }}</span> {{ deltas.unit.original }}
+                  </td>
+                  <td>
+                    <span class="font-monospace fw-bold {% if deltas.quantity.changed %}text-primary{% endif %}">
+                      {{ deltas.quantity.corrected }}
+                    </span> {{ deltas.unit.corrected }}
+                    {% if deltas.quantity.changed and deltas.quantity.delta %}
+                      <span class="badge badge-info ms-2">Delta: {{ deltas.quantity.delta }}</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold text-muted">Unit of Measure</td>
+                  <td>{{ deltas.unit.original }}</td>
+                  <td>{{ deltas.unit.corrected }}</td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold text-muted">Measurement Date</td>
+                  <td>{{ deltas.measurement_date.original }}</td>
+                  <td>{{ deltas.measurement_date.corrected }}</td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold text-muted">Supporting Evidence</td>
+                  <td>{{ deltas.evidence.original_count }} document(s)</td>
+                  <td>
+                    {{ deltas.evidence.corrected_count }} document(s)
+                    {% if deltas.evidence.changed %}
+                      <span class="badge badge-warning text-dark ms-2">Evidence Updated</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                <tr>
+                  <td class="fw-semibold text-muted">Validation Run</td>
+                  <td>
+                    <span class="badge badge-secondary">{{ deltas.validation.original }}</span>
+                  </td>
+                  <td>
+                    <span class="badge badge-success">{{ deltas.validation.corrected }}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
+
+        {% if submission.comments %}
+          <div class="p-2 bg-light rounded small border">
+            <strong class="text-dark">Site Manager Explanation of Changes:</strong>
+            <div class="text-muted mt-1">{{ submission.comments }}</div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Review Action Decision Banner -->
+  <div class="card border-0 shadow-sm mb-4 bg-light border-top border-4 border-primary">
+    <div class="card-body p-4">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+          <h5 class="fw-bold text-dark mb-1">
+            <i class="icon-shield text-primary me-2"></i> Subsidiary Manager Governance Decision
+          </h5>
+          <p class="text-muted small mb-0">
+            Execute first-line review for submitted site data before advancing into corporate ESG accounting.
+          </p>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          {% if can_review %}
+            <!-- Verify Action Button -->
+            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#verifyModal" id="btn-verify-action">
+              <i class="icon-check me-1"></i> Verify
+            </button>
+            <!-- Request Correction Action Button -->
+            <button type="button" class="btn btn-warning text-dark fw-semibold" data-bs-toggle="modal" data-bs-target="#correctionModal" id="btn-correction-action">
+              <i class="icon-action-undo me-1"></i> Request Correction
+            </button>
+            <!-- Explain Action Button -->
+            <button type="button" class="btn btn-info text-white" data-bs-toggle="modal" data-bs-target="#explainModal" id="btn-explain-action">
+              <i class="icon-note me-1"></i> Explain
+            </button>
+            <!-- Escalate Action Button -->
+            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#escalateModal" id="btn-escalate-action">
+              <i class="icon-energy me-1"></i> Escalate
+            </button>
+          {% elif is_self_submission %}
+            <div class="alert alert-warning mb-0 py-2 px-3 small border">
+              <i class="icon-lock me-1"></i>
+              <strong>Self-Review Protection:</strong> You submitted this record. Independent review by an authorized peer or operator is required.
+            </div>
+          {% else %}
+            <div class="alert alert-secondary mb-0 py-2 px-3 small border">
+              <i class="icon-info me-1"></i>
+              <strong>Review Complete:</strong> Current status is <strong>{{ submission.get_status_display }}</strong>. No further review actions required.
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Left Column: Data Review, Evidence, OCR, Validation -->
+    <div class="col-lg-8">
+
+      <!-- SECTION 1: DATA REVIEW -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-speedometer text-primary me-2"></i> 1. Submitted Activity Data Review
+          </h6>
+          <span class="badge bg-light text-dark border">Operational Telemetry</span>
+        </div>
+        <div class="card-body p-4">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <span class="text-muted small d-block">Activity Master</span>
+              <strong class="text-dark">{{ submission.activity.name }}</strong>
+              <div class="small text-muted"><code>{{ submission.activity.code }}</code> &bull; {{ submission.activity.category.name }}</div>
+            </div>
+            <div class="col-sm-6">
+              <span class="text-muted small d-block">Scope Classification</span>
+              <span class="badge {{ submission.activity.scope_badge_class }} mt-1">
+                {{ submission.activity.get_scope_classification_display }}
+              </span>
+            </div>
+            <div class="col-sm-6">
+              <span class="text-muted small d-block">Measured Quantity</span>
+              <div class="h4 fw-bold text-dark mb-0 font-monospace">
+                {{ submission.quantity|floatformat:2 }} {{ submission.unit.symbol }}
+              </div>
+              <small class="text-muted">{{ submission.unit.name }}</small>
+            </div>
+            <div class="col-sm-6">
+              <span class="text-muted small d-block">Measurement Date</span>
+              <div class="fw-semibold text-dark mt-1">
+                <i class="icon-calendar text-muted me-1"></i> {{ submission.measurement_date|date:"d M Y" }}
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <span class="text-muted small d-block">Document Reference</span>
+              <div class="mt-1">
+                {% if record.evidence_reference %}
+                  <code class="fw-bold">{{ record.evidence_reference }}</code>
+                {% else %}
+                  <span class="text-muted small">—</span>
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <span class="text-muted small d-block">Operational Notes</span>
+              <div class="small text-dark mt-1">{{ record.notes|default:"None provided" }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTION 2: EVIDENCE REVIEW -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center">
+            <i class="icon-docs text-primary me-2 fs-5"></i>
+            <div>
+              <h6 class="mb-0 fw-bold text-dark">2. Supporting Audit Evidence Review</h6>
+              <span class="small text-muted">{{ evidence_files.count }} Supporting Document{{ evidence_files.count|pluralize }} Attached</span>
+            </div>
+          </div>
+          {% if record.activity.requires_evidence %}
+            <span class="badge bg-warning text-dark border">Evidence Mandatory</span>
+          {% else %}
+            <span class="badge bg-light text-dark border">Evidence Optional</span>
+          {% endif %}
+        </div>
+        <div class="card-body p-0">
+          {% if evidence_files %}
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                  <tr class="small text-muted text-uppercase">
+                    <th>Document</th>
+                    <th>Classification</th>
+                    <th>File Size</th>
+                    <th>SHA-256 Hash</th>
+                    <th>OCR Status</th>
+                    <th class="text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for ev in evidence_files %}
+                    <tr>
+                      <td>
+                        <div class="fw-semibold text-dark">{{ ev.original_filename }}</div>
+                        <small class="text-muted">Uploaded {{ ev.created_at|date:"d M Y, H:i" }} by {{ ev.uploaded_by.username|default:"System" }}</small>
+                      </td>
+                      <td>
+                        <span class="badge bg-light text-dark border">{{ ev.get_evidence_type_display }}</span>
+                      </td>
+                      <td class="small font-monospace">{{ ev.file_size_formatted }}</td>
+                      <td>
+                        <code class="small text-truncate d-inline-block" style="max-width: 120px;" title="{{ ev.file_hash }}">
+                          {{ ev.file_hash|slice:":12" }}...
+                        </code>
+                      </td>
+                      <td>
+                        <span class="badge {{ ev.ocr_badge_class }}">
+                          {{ ev.ocr_status }}
+                        </span>
+                      </td>
+                      <td class="text-end">
+                        <div class="btn-group btn-group-sm">
+                          <a href="{% url 'core:evidence_detail' ev.id %}" class="btn btn-outline-primary" target="_blank" title="Inspect Evidence & OCR">
+                            <i class="icon-eye"></i>
+                          </a>
+                          <a href="{% url 'core:evidence_download' ev.id %}" class="btn btn-outline-secondary" title="Download Document">
+                            <i class="icon-cloud-download"></i>
+                          </a>
+                        </div>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="p-4 text-center text-muted">
+              <i class="icon-doc mb-2" style="font-size: 2rem;"></i>
+              <p class="mb-0">No evidence documents are attached to this submission.</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- SECTION 3: OCR REVIEW -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center">
+            <i class="icon-layers text-info me-2 fs-5"></i>
+            <div>
+              <h6 class="mb-0 fw-bold text-dark">3. OCR Intelligence &amp; Document Reconciliation</h6>
+              <span class="small text-muted">Machine Extraction vs. Reported Telemetry</span>
+            </div>
+          </div>
+          {% if ocr_runs %}
+            <span class="badge badge-success">OCR Processed</span>
+          {% else %}
+            <span class="badge bg-secondary">OCR Pending</span>
+          {% endif %}
+        </div>
+        <div class="card-body p-4">
+          {% if ocr_runs %}
+            {% for run in ocr_runs %}
+              <div class="border rounded p-3 bg-light mb-3">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                  <div>
+                    <h6 class="mb-0 fw-bold text-dark">
+                      Run #{{ run.run_number }} for <em>{{ run.evidence.original_filename }}</em>
+                    </h6>
+                    <small class="text-muted">
+                      Engine: <strong>{{ run.get_engine_display }}</strong> &bull;
+                      Confidence: <strong>{{ run.confidence|default:"N/A" }}%</strong> &bull;
+                      Duration: <strong>{{ run.execution_duration_ms }} ms</strong>
+                    </small>
+                  </div>
+                  <span class="badge {{ run.badge_class }}">{{ run.get_status_display }}</span>
+                </div>
+
+                <!-- Operational Comparison Summary -->
+                {% if run.comparison_summary %}
+                  <div class="table-responsive mb-3">
+                    <table class="table table-sm table-bordered bg-white mb-0 align-middle">
+                      <thead class="bg-light small text-muted">
+                        <tr>
+                          <th>Reconciliation Dimension</th>
+                          <th>Reported Activity Value</th>
+                          <th>OCR Extracted Value</th>
+                          <th class="text-center">Signal</th>
+                        </tr>
+                      </thead>
+                      <tbody class="small">
+                        {% for dim_key, dim in run.comparison_summary.items %}
+                          {% if dim_key != "overall_match" %}
+                            <tr>
+                              <td class="fw-semibold">{{ dim_key|title }}</td>
+                              <td><code>{{ dim.record_value|default:"—" }}</code></td>
+                              <td><code>{{ dim.ocr_value|default:"—" }}</code></td>
+                              <td class="text-center">
+                                {% if dim.status == "MATCH" %}
+                                  <span class="badge bg-success-subtle text-success border border-success"><i class="icon-check me-1"></i>MATCH</span>
+                                {% elif dim.status == "MISMATCH" %}
+                                  <span class="badge bg-danger-subtle text-danger border border-danger"><i class="icon-close me-1"></i>MISMATCH</span>
+                                {% else %}
+                                  <span class="badge bg-warning-subtle text-warning border border-warning">NO DATA</span>
+                                {% endif %}
+                              </td>
+                            </tr>
+                          {% endif %}
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                {% endif %}
+
+                <!-- Extracted Entities -->
+                {% if run.fields.all %}
+                  <div class="small fw-semibold text-muted mb-2">Extracted Structured Fields:</div>
+                  <div class="table-responsive">
+                    <table class="table table-sm table-hover bg-white mb-0 align-middle">
+                      <thead class="bg-light small text-muted">
+                        <tr>
+                          <th>Field Key</th>
+                          <th>Raw Text Extracted</th>
+                          <th>Normalized Value</th>
+                          <th>Confidence</th>
+                        </tr>
+                      </thead>
+                      <tbody class="small">
+                        {% for f in run.fields.all %}
+                          <tr>
+                            <td><code>{{ f.field_name }}</code></td>
+                            <td>{{ f.raw_value }}</td>
+                            <td><strong>{{ f.normalized_value|default:"—" }}</strong> {% if f.unit %}<small class="text-muted">{{ f.unit }}</small>{% endif %}</td>
+                            <td><span class="badge bg-light text-dark border">{{ f.confidence|default:"—" }}%</span></td>
+                          </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                {% endif %}
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="text-center text-muted py-3">
+              <i class="icon-layers mb-2" style="font-size: 2rem;"></i>
+              <p class="mb-0 small">OCR has not been processed for attached evidence documents.</p>
+              <small class="text-muted">Reviewer should inspect source documents manually.</small>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- SECTION 4: VALIDATION REVIEW -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center">
+            <i class="icon-check text-success me-2 fs-5"></i>
+            <div>
+              <h6 class="mb-0 fw-bold text-dark">4. Deterministic Validation Audit Review</h6>
+              <span class="small text-muted">Phase 10 Rule Engine Evaluation</span>
+            </div>
+          </div>
+          <span class="badge {{ record.validation_badge_class }} fs-6 py-1 px-3">
+            {{ submission.get_validation_status_display }}
+          </span>
+        </div>
+        <div class="card-body p-4">
+          {% if validation_run %}
+            <div class="row g-2 mb-3 text-center">
+              <div class="col-6 col-md-3">
+                <div class="p-2 border rounded bg-light">
+                  <span class="text-muted d-block small">Rules Evaluated</span>
+                  <span class="fw-bold fs-6 text-dark">{{ validation_run.total_rules_evaluated }}</span>
+                </div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="p-2 border rounded bg-light">
+                  <span class="text-muted d-block small">Blocking Errors</span>
+                  <span class="fw-bold fs-6 {% if validation_run.error_count > 0 %}text-danger{% else %}text-muted{% endif %}">
+                    {{ validation_run.error_count }}
+                  </span>
+                </div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="p-2 border rounded bg-light">
+                  <span class="text-muted d-block small">Advisory Warnings</span>
+                  <span class="fw-bold fs-6 {% if validation_run.warning_count > 0 %}text-warning{% else %}text-muted{% endif %}">
+                    {{ validation_run.warning_count }}
+                  </span>
+                </div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="p-2 border rounded bg-light">
+                  <span class="text-muted d-block small">Run Timestamp</span>
+                  <span class="fw-bold small text-muted">{{ validation_run.executed_at|date:"d M, H:i" }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="alert alert-light border small text-muted mb-3">
+              <i class="icon-info text-primary me-1"></i>
+              <strong>Engine Verdict:</strong> {{ validation_run.summary_message }}
+            </div>
+
+            {% if validation_results %}
+              <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                  <thead class="bg-light small text-muted">
+                    <tr>
+                      <th>Rule Code</th>
+                      <th>Rule Name</th>
+                      <th>Severity</th>
+                      <th>Finding / Message</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for res in validation_results %}
+                      <tr>
+                        <td><code>{{ res.rule.code }}</code></td>
+                        <td class="small">{{ res.rule.name }}</td>
+                        <td>
+                          <span class="badge {% if res.severity == 'ERROR' %}badge-danger{% elif res.severity == 'WARNING' %}badge-warning{% else %}badge-info{% endif %}">
+                            {{ res.get_severity_display }}
+                          </span>
+                        </td>
+                        <td class="small">{{ res.message }}</td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% else %}
+              <div class="small text-success">
+                <i class="icon-check me-1"></i> All deterministic validation checks passed with zero errors or warnings.
+              </div>
+            {% endif %}
+          {% else %}
+            <div class="text-muted small">Validation has not been evaluated for this submission.</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- ANOMALY DETECTION REVIEW -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center">
+            <i class="icon-flag text-danger me-2 fs-5"></i>
+            <div>
+              <h6 class="mb-0 fw-bold text-dark">ESG Anomaly Detection &amp; Operational Patterns Review</h6>
+              <span class="small text-muted">Phase 15 Deterministic Anomaly Engine Telemetry</span>
+            </div>
+          </div>
+          {% if anomalies %}
+            <span class="badge badge-warning text-dark border">
+              {{ anomalies.count }} Anomaly Finding{{ anomalies.count|pluralize }} Detected
+            </span>
+          {% else %}
+            <span class="badge badge-success">
+              <i class="icon-check me-1"></i> Baseline Compliant
+            </span>
+          {% endif %}
+        </div>
+        <div class="card-body p-4">
+          {% if anomalies %}
+            <div class="table-responsive mb-0">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light small text-muted text-uppercase">
+                  <tr>
+                    <th>Severity</th>
+                    <th>Rule &amp; Category</th>
+                    <th>Observed / Baseline</th>
+                    <th>Variance %</th>
+                    <th>Operational Explanation</th>
+                    <th>Status</th>
+                    <th class="text-end">Action</th>
+                  </tr>
+                </thead>
+                <tbody class="small">
+                  {% for anom in anomalies %}
+                    <tr>
+                      <td>
+                        <span class="badge {{ anom.severity_badge_class }}">
+                          {{ anom.get_severity_display }}
+                        </span>
+                      </td>
+                      <td>
+                        <div class="fw-semibold text-dark">{{ anom.rule.name }}</div>
+                        <code class="small text-muted">{{ anom.rule_code }}</code>
+                      </td>
+                      <td>
+                        <div><strong>{{ anom.observed_value }}</strong> {{ record.unit.symbol }}</div>
+                        <small class="text-muted">
+                          Base: {% if anom.baseline_value is not None %}{{ anom.baseline_value }} {{ record.unit.symbol }}{% else %}N/A{% endif %}
+                        </small>
+                      </td>
+                      <td>
+                        {% if anom.deviation_percentage is not None %}
+                          {% if anom.deviation_percentage > 0 %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger font-monospace">
+                              +{{ anom.deviation_percentage }}%
+                            </span>
+                          {% else %}
+                            <span class="badge bg-warning-subtle text-warning border border-warning font-monospace">
+                              {{ anom.deviation_percentage }}%
+                            </span>
+                          {% endif %}
+                        {% else %}
+                          <span class="text-muted">—</span>
+                        {% endif %}
+                      </td>
+                      <td>
+                        <div class="text-dark">{{ anom.explanation }}</div>
+                        {% if anom.review_comment %}
+                          <div class="small text-muted mt-1"><em>Review Note:</em> {{ anom.review_comment }}</div>
+                        {% endif %}
+                      </td>
+                      <td>
+                        <span class="badge {{ anom.badge_class }}">
+                          {{ anom.get_status_display }}
+                        </span>
+                      </td>
+                      <td class="text-end">
+                        <a href="{% url 'core:anomaly_detail' anom.id %}" class="btn btn-sm btn-outline-primary" target="_blank" title="Inspect Anomaly &amp; Actions">
+                          <i class="icon-eye"></i> Inspect
+                        </a>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="text-success small">
+              <i class="icon-check me-1"></i> Zero anomalous deviations detected. Telemetry aligns with historical site averages and expected operating limits.
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- SECTION 5: GOVERNANCE DECISION HISTORY -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-notebook text-primary me-2"></i> 5. Review Decision History Ledger
+          </h6>
+          <span class="badge badge-outline-secondary small">{{ reviews.count }} Decision{{ reviews.count|pluralize }} Recorded</span>
+        </div>
+        <div class="card-body p-0">
+          {% if reviews %}
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light small text-muted text-uppercase">
+                  <tr>
+                    <th>Timestamp</th>
+                    <th>Action</th>
+                    <th>Reviewer</th>
+                    <th>Lifecycle Delta</th>
+                    <th>Comments / Requirements</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for rev in reviews %}
+                    <tr>
+                      <td class="small text-muted">{{ rev.created_at|date:"d M Y, H:i:s" }}</td>
+                      <td>
+                        <span class="badge {{ rev.badge_class }}">{{ rev.get_action_display }}</span>
+                      </td>
+                      <td class="small fw-semibold text-dark">{{ rev.reviewer.username|default:"System" }}</td>
+                      <td class="small">
+                        <code>{{ rev.previous_status }}</code> &rarr; <code>{{ rev.new_status }}</code>
+                      </td>
+                      <td class="small text-muted">
+                        {% if rev.comments %}
+                          <div><strong>Comments:</strong> {{ rev.comments }}</div>
+                        {% endif %}
+                        {% if rev.required_correction %}
+                          <div class="text-danger"><strong>Required Correction:</strong> {{ rev.required_correction }}</div>
+                        {% endif %}
+                        {% if rev.action == 'ESCALATE' %}
+                          <div class="text-purple"><strong>Escalated to:</strong> {{ rev.escalated_to_role }}</div>
+                        {% endif %}
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="p-4 text-center text-muted small">
+              <i class="icon-info me-1"></i> This submission has not yet received a formal governance review decision.
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Organizational Context & Guidance -->
+    <div class="col-lg-4">
+
+      <!-- Organizational Hierarchy Card -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-organization text-primary me-2"></i> Organizational Scope
+          </h6>
+        </div>
+        <div class="card-body p-3">
+          <ul class="list-group list-group-flush small">
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Enterprise Group:</span>
+              <strong class="text-dark">{{ submission.company.name }}</strong>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Subsidiary Division:</span>
+              <span class="fw-semibold text-dark">{{ submission.subsidiary.name }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Infrastructure Project:</span>
+              <span>{{ submission.project.name }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Operational Site:</span>
+              <span class="fw-bold text-success">{{ submission.site.name }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Site Identifier:</span>
+              <code>{{ submission.site.code }}</code>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Temporal Governance Card -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-calendar text-info me-2"></i> Temporal Governance
+          </h6>
+        </div>
+        <div class="card-body p-3">
+          <ul class="list-group list-group-flush small">
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Reporting Period:</span>
+              <strong class="text-dark">{{ submission.reporting_period.name }}</strong>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Cycle Code:</span>
+              <code>{{ submission.reporting_period.code }}</code>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Fiscal Year:</span>
+              <span>{{ submission.reporting_period.fiscal_year }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Period State:</span>
+              <span class="badge {{ submission.reporting_period.status_badge_class }}">
+                {{ submission.reporting_period.get_status_display }}
+              </span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Governance Responsibilities Checklist -->
+      <div class="card border-0 shadow-sm mb-4 border-top border-4 border-primary">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-check text-primary me-2"></i> Reviewer Verification Checklist
+          </h6>
+        </div>
+        <div class="card-body small">
+          <ul class="list-unstyled mb-0">
+            <li class="mb-2">
+              <i class="icon-check text-success me-1"></i>
+              <strong>Completeness:</strong> Activity quantity and unit are physically reasonable for this site.
+            </li>
+            <li class="mb-2">
+              <i class="icon-check text-success me-1"></i>
+              <strong>Evidence:</strong> Document attached is legible, authentic, and matches measurement date.
+            </li>
+            <li class="mb-2">
+              <i class="icon-check text-success me-1"></i>
+              <strong>OCR Reconciliation:</strong> Document quantities align with reported telemetry.
+            </li>
+            <li class="mb-0">
+              <i class="icon-check text-success me-1"></i>
+              <strong>Validation Clean:</strong> Zero blocking deterministic errors are present.
+            </li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- ========================================================================= -->
+<!-- REVIEW ACTION MODALS (POST ONLY & CSRF PROTECTED)                         -->
+<!-- ========================================================================= -->
+
+<!-- 1. VERIFY MODAL -->
+<div class="modal fade" id="verifyModal" tabindex="-1" aria-labelledby="verifyModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title fw-bold" id="verifyModalLabel">
+          <i class="icon-check me-2"></i> Verify Submission #{{ submission.submission_number }}
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="post" action="{% url 'core:submission_verify' submission_id=submission.id %}">
+        {% csrf_token %}
+        <div class="modal-body p-4">
+          <div class="alert alert-success small mb-3">
+            <i class="icon-shield me-1"></i>
+            <strong>First-Line Governance Sign-Off:</strong> Verifying this submission certifies that you have reviewed the activity telemetry, supporting evidence, OCR signals, and validation findings, and consider the record ready for corporate ESG accounting.
+          </div>
+
+          <div class="mb-3">
+            <label for="{{ verify_form.comments.id_for_label }}" class="form-label fw-semibold small text-dark">
+              {{ verify_form.comments.label }}
+            </label>
+            {{ verify_form.comments }}
+            <div class="form-text small text-muted">{{ verify_form.comments.help_text }}</div>
+          </div>
+
+          <div class="form-check p-3 bg-light rounded border mb-2">
+            {{ verify_form.confirm }}
+            <label class="form-check-label small fw-semibold text-dark ms-2" for="{{ verify_form.confirm.id_for_label }}">
+              {{ verify_form.confirm.label }}
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-success btn-sm fw-semibold" id="submit-verify-btn">
+            <i class="icon-check me-1"></i> Confirm Verification
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- 2. REQUEST CORRECTION MODAL -->
+<div class="modal fade" id="correctionModal" tabindex="-1" aria-labelledby="correctionModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title fw-bold" id="correctionModalLabel">
+          <i class="icon-action-undo me-2"></i> Request Correction
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="post" action="{% url 'core:submission_request_correction' submission_id=submission.id %}">
+        {% csrf_token %}
+        <div class="modal-body p-4">
+          <div class="alert alert-warning small mb-3">
+            <i class="icon-exclamation me-1"></i>
+            <strong>Revision Required:</strong> Requesting correction will transition this submission to <strong>Revision Requested</strong>, allowing the Site Manager to correct operational data, re-upload evidence, or rectify discrepancies.
+          </div>
+
+          <div class="mb-3">
+            <label for="{{ correction_form.reason.id_for_label }}" class="form-label fw-semibold small text-dark">
+              {{ correction_form.reason.label }} <span class="text-danger">*</span>
+            </label>
+            {{ correction_form.reason }}
+            <div class="form-text small text-muted">{{ correction_form.reason.help_text }}</div>
+          </div>
+
+          <div class="mb-3">
+            <label for="{{ correction_form.required_correction.id_for_label }}" class="form-label fw-semibold small text-dark">
+              {{ correction_form.required_correction.label }} <span class="text-danger">*</span>
+            </label>
+            {{ correction_form.required_correction }}
+            <div class="form-text small text-muted">{{ correction_form.required_correction.help_text }}</div>
+          </div>
+
+          <div class="mb-3">
+            <label for="{{ correction_form.affected_area.id_for_label }}" class="form-label fw-semibold small text-dark">
+              {{ correction_form.affected_area.label }}
+            </label>
+            {{ correction_form.affected_area }}
+            <div class="form-text small text-muted">{{ correction_form.affected_area.help_text }}</div>
+          </div>
+
+          <div class="form-check p-3 bg-light rounded border mb-2">
+            {{ correction_form.confirm }}
+            <label class="form-check-label small fw-semibold text-dark ms-2" for="{{ correction_form.confirm.id_for_label }}">
+              {{ correction_form.confirm.label }}
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-warning text-dark btn-sm fw-semibold" id="submit-correction-btn">
+            <i class="icon-action-undo me-1"></i> Submit Correction Request
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- 3. EXPLAIN MODAL -->
+<div class="modal fade" id="explainModal" tabindex="-1" aria-labelledby="explainModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title fw-bold" id="explainModalLabel">
+          <i class="icon-note me-2"></i> Record Operating Explanation
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="post" action="{% url 'core:submission_explain' submission_id=submission.id %}">
+        {% csrf_token %}
+        <div class="modal-body p-4">
+          <div class="alert alert-info small mb-3">
+            <i class="icon-info me-1"></i>
+            <strong>Contextual Justification:</strong> Recording an explanation preserves operating context (e.g. seasonal spike, outage, emergency genset use) in the audit trail without altering underlying operational telemetry or bypassing validation findings.
+          </div>
+
+          <div class="mb-3">
+            <label for="{{ explain_form.explanation.id_for_label }}" class="form-label fw-semibold small text-dark">
+              {{ explain_form.explanation.label }} <span class="text-danger">*</span>
+            </label>
+            {{ explain_form.explanation }}
+            <div class="form-text small text-muted">{{ explain_form.explanation.help_text }}</div>
+          </div>
+
+          <div class="form-check p-3 bg-light rounded border mb-2">
+            {{ explain_form.confirm }}
+            <label class="form-check-label small fw-semibold text-dark ms-2" for="{{ explain_form.confirm.id_for_label }}">
+              {{ explain_form.confirm.label }}
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-info text-white btn-sm fw-semibold" id="submit-explain-btn">
+            <i class="icon-note me-1"></i> Save Explanation
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- 4. ESCALATE MODAL -->
+<div class="modal fade" id="escalateModal" tabindex="-1" aria-labelledby="escalateModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title fw-bold" id="escalateModalLabel">
+          <i class="icon-energy me-2"></i> Escalate to Corporate ESG Governance
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="post" action="{% url 'core:submission_escalate' submission_id=submission.id %}">
+        {% csrf_token %}
+        <div class="modal-body p-4">
+          <div class="alert alert-danger small mb-3">
+            <i class="icon-energy me-1"></i>
+            <strong>Governance Escalation:</strong> Escalating this submission routes it to the Corporate ESG Governance Manager for high-level regulatory assessment or dispute resolution.
+          </div>
+
+          <div class="mb-3">
+            <label for="{{ escalate_form.reason.id_for_label }}" class="form-label fw-semibold small text-dark">
+              {{ escalate_form.reason.label }} <span class="text-danger">*</span>
+            </label>
+            {{ escalate_form.reason }}
+            <div class="form-text small text-muted">{{ escalate_form.reason.help_text }}</div>
+          </div>
+
+          <div class="mb-3">
+            <label for="{{ escalate_form.target_role.id_for_label }}" class="form-label fw-semibold small text-dark">
+              {{ escalate_form.target_role.label }}
+            </label>
+            {{ escalate_form.target_role }}
+          </div>
+
+          <div class="form-check p-3 bg-light rounded border mb-2">
+            {{ escalate_form.confirm }}
+            <label class="form-check-label small fw-semibold text-dark ms-2" for="{{ escalate_form.confirm.id_for_label }}">
+              {{ escalate_form.confirm.label }}
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger btn-sm fw-semibold" id="submit-escalate-btn">
+            <i class="icon-energy me-1"></i> Confirm Escalation
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

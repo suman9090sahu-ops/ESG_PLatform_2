@@ -214,6 +214,51 @@ This document tracks all active URL endpoints in **Phase 01 & Phase 02** as well
 | `/evidence/<id>/ocr/runs/<run_id>/` | `apps.core.ocr_views.ocr_run_detail_view` | `core:ocr_run_detail` | Scoped Roles (`SITE_MGR`, `SUB_MGR`, `OPERATOR`, `ESG_MGR`, `AUDITOR`) | Dedicated immutable OCR Run Audit Ledger & entity inspection | Phase 11 |
 | `/evidence/<id>/ocr/runs/<run_id>/retry/` | `apps.core.ocr_views.ocr_run_retry_view` | `core:ocr_run_retry` | `SITE_MGR`, `SUB_MGR`, `OPERATOR`, `ESG_MGR` (IDOR Protected, POST only) | Reprocess document creating new versioned OCRRun attempt | Phase 11 |
 
+### 11. Activity Submission Workflow Routes (`/submissions/...`)
+
+| URL Pattern | View Function | Route Name | Authorized Roles | Purpose | Phase |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `/data-entry/<id>/submit/` | `apps.core.submission_views.activity_record_submit_view` | `core:activity_record_submit` | `SITE_MANAGER`, `MEIL_OPERATOR` (POST only) | Formal record submission; validates period, locks record, emits Submission #1 | Phase 12 |
+| `/submissions/` | `apps.core.submission_views.submission_list_view` | `core:submission_list` | Scoped Roles (`SITE_MGR`, `SUB_MGR`, `OPERATOR`, `ESG_MGR`, `AUDITOR`) | Submission ledger filtered by status, site, and period | Phase 12 |
+| `/site-manager/submissions/` | `apps.core.submission_views.submission_list_view` | `core:site_manager_submission_list` | `SITE_MANAGER`, `MEIL_OPERATOR` | Site Manager focused submission ledger | Phase 12 |
+| `/submissions/<id>/` | `apps.core.submission_views.submission_detail_view` | `core:submission_detail` | Scoped Roles (IDOR Protected) | Comprehensive submission audit page with evidence, OCR, and history | Phase 12 |
+| `/site-manager/submissions/<id>/` | `apps.core.submission_views.submission_detail_view` | `core:site_manager_submission_detail` | `SITE_MANAGER`, `MEIL_OPERATOR` (IDOR Protected) | Site Manager view of submission record | Phase 12 |
+| `/submissions/<id>/withdraw/` | `apps.core.submission_views.submission_withdraw_view` | `core:submission_withdraw` | `SITE_MANAGER`, `MEIL_OPERATOR` (POST only) | Recall pending submission prior to reviewer action; resets record to READY | Phase 12 |
+
+### 12. Subsidiary Manager Review Workflow Routes (`/subsidiary-manager/...`)
+
+| URL Pattern | View Function | Route Name | Authorized Roles | Purpose | Phase |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `/subsidiary-manager/inbox/` | `apps.core.review_views.submission_inbox_view` | `core:subsidiary_submission_inbox` | `SUBSIDIARY_MANAGER`, `MEIL_OPERATOR` | Division Review Inbox for pending telemetry submissions | Phase 13 |
+| `/submissions/inbox/` | `apps.core.review_views.submission_inbox_view` | `core:submission_inbox` | `SUBSIDIARY_MANAGER`, `MEIL_OPERATOR` | Canonical alias for division review inbox | Phase 13 |
+| `/subsidiary-manager/submissions/` | `apps.core.review_views.submission_inbox_view` | `core:subsidiary_submission_list` | `SUBSIDIARY_MANAGER`, `MEIL_OPERATOR` | Filterable submissions list under division jurisdiction | Phase 13 |
+| `/subsidiary-manager/submissions/<id>/review/` | `apps.core.review_views.submission_review_detail_view` | `core:submission_review_detail` | `SUBSIDIARY_MANAGER`, `MEIL_OPERATOR` (IDOR Protected) | Review workspace with evidence, OCR, validation, delta ledger, and timeline | Phase 13 |
+| `/subsidiary-manager/submissions/<id>/verify/` | `apps.core.review_views.submission_verify_view` | `core:submission_verify` | `SUBSIDIARY_MANAGER`, `MEIL_OPERATOR` (POST only) | Verify submission; transitions Submission & Record to VERIFIED | Phase 13 |
+| `/subsidiary-manager/submissions/<id>/request-correction/` | `apps.core.review_views.submission_request_correction_view` | `core:submission_request_correction` | `SUBSIDIARY_MANAGER`, `MEIL_OPERATOR` (POST only) | Request revision; transitions to CORRECTION_REQUESTED, creates CorrectionRequest | Phase 13 |
+| `/subsidiary-manager/submissions/<id>/explain/` | `apps.core.review_views.submission_explain_view` | `core:submission_explain` | `SUBSIDIARY_MANAGER`, `MEIL_OPERATOR` (POST only) | Record operating explanation without altering telemetry data | Phase 13 |
+| `/subsidiary-manager/submissions/<id>/escalate/` | `apps.core.review_views.submission_escalate_view` | `core:submission_escalate` | `SUBSIDIARY_MANAGER`, `MEIL_OPERATOR` (POST only) | Escalate ambiguous telemetry to corporate ESG_MANAGER | Phase 13 |
+
+### 13. Corrections, Explanations & Resubmission Routes (`/corrections/...`)
+
+| URL Pattern | View Function | Route Name | Authorized Roles | Purpose | Phase |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `/corrections/` | `apps.core.correction_views.correction_inbox_view` | `core:correction_inbox` | `SITE_MANAGER`, `MEIL_OPERATOR` | Site Manager Correction Inbox displaying active correction requests | Phase 14 |
+| `/site-manager/corrections/` | `apps.core.correction_views.correction_inbox_view` | `core:site_manager_correction_inbox` | `SITE_MANAGER`, `MEIL_OPERATOR` | Canonical alias for Site Manager correction inbox | Phase 14 |
+| `/corrections/<id>/` | `apps.core.correction_views.correction_detail_view` | `core:correction_detail` | Scoped Roles (IDOR Protected) | Correction detail workspace with original values, reviewer notes, and revision form | Phase 14 |
+| `/corrections/<id>/edit/` | `apps.core.correction_views.correction_edit_view` | `core:correction_edit` | `SITE_MANAGER`, `MEIL_OPERATOR` (POST only) | Save operational telemetry revisions and trigger mandatory Phase 10 revalidation | Phase 14 |
+| `/corrections/<id>/validate/` | `apps.core.correction_views.correction_validate_view` | `core:correction_validate` | `SITE_MANAGER`, `MEIL_OPERATOR` (POST only) | On-demand validation run against revised telemetry | Phase 14 |
+| `/corrections/<id>/resubmit/` | `apps.core.correction_views.correction_resubmit_view` | `core:correction_resubmit` | `SITE_MANAGER`, `MEIL_OPERATOR` (POST only) | Authoritative resubmission; creates Submission #2+ and ActivityRevision #2+, resolves correction | Phase 14 |
+
+### 14. ESG Anomaly Detection Engine Routes (`/anomalies/...`)
+
+| URL Pattern | View Function | Route Name | Authorized Roles | Purpose | Phase |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `/anomalies/` | `apps.core.anomaly_views.anomaly_list_view` | `core:anomaly_list` | `SUBSIDIARY_MANAGER`, `ESG_MANAGER`, `AUDITOR`, `MEIL_OPERATOR`, `SITE_MANAGER` | Anomaly Desk: Multi-dimensional anomaly findings, risk KPIs, and filter matrix | Phase 15 |
+| `/subsidiary-manager/anomalies/` | `apps.core.anomaly_views.anomaly_list_view` | `core:anomaly_desk` | `SUBSIDIARY_MANAGER`, `ESG_MANAGER`, `AUDITOR`, `MEIL_OPERATOR` | Canonical alias for Subsidiary Manager Anomaly Desk | Phase 15 |
+| `/anomalies/<id>/` | `apps.core.anomaly_views.anomaly_detail_view` | `core:anomaly_detail` | Scoped Roles (IDOR Protected) | Detailed Anomaly Audit View: Observed vs baseline, percentage deviation, explainable rationale, review action modals | Phase 15 |
+| `/anomalies/<id>/action/` | `apps.core.anomaly_views.anomaly_review_action_view` | `core:anomaly_review_action` | `SUBSIDIARY_MANAGER`, `ESG_MANAGER`, `MEIL_OPERATOR` (POST only) | Execute controlled review lifecycle action (ACKNOWLEDGE, EXPLAIN, RESOLVE, DISMISS) with mandatory explanation | Phase 15 |
+| `/data-entry/<id>/run-anomaly-detection/` | `apps.core.anomaly_views.anomaly_run_detection_view` | `core:record_run_anomaly_detection` | Scoped Roles (POST only) | On-demand manual anomaly evaluation trigger for an ActivityRecord | Phase 15 |
+
 ---
 
 ### Custom HTTP Error Handlers
@@ -243,7 +288,7 @@ This document tracks all active URL endpoints in **Phase 01 & Phase 02** as well
 │   └── /password-reset/               Password Reset
 │
 ├── /site-manager/dashboard/           [Active - Phase 07]
-├── /subsidiary-manager/dashboard/     [Active - Phase 02]
+├── /subsidiary-manager/dashboard/     [Active - Phase 02 / Phase 13]
 ├── /esg-manager/dashboard/            [Active - Phase 02]
 ├── /auditor/dashboard/                [Active - Phase 02]
 ├── /meil-operator/dashboard/          [Active - Phase 02]
@@ -290,6 +335,7 @@ This document tracks all active URL endpoints in **Phase 01 & Phase 02** as well
 │   ├── /<id>/                         Telemetry Detail, Audit Lineage & Evidence Hook
 │   ├── /<id>/edit/                    Edit Telemetry Record (Draft / Ready States)
 │   ├── /<id>/delete/                  Safe Deletion of Draft Telemetry Records
+│   ├── /<id>/submit/                  [Active - Phase 12] Formal Activity Submission
 │   └── /api/activity-units/           AJAX Endpoint for Permitted Unit Options
 │
 ├── /evidence/                         [Active - Phase 09 Evidence Management]
@@ -307,7 +353,32 @@ This document tracks all active URL endpoints in **Phase 01 & Phase 02** as well
 │   ├── /runs/<id>/                    Immutable Validation Run Ledger & Rule Results
 │   └── /rules/                        Governed Validation Rule Catalog & Configuration
 │
-└── /reports/                          [Planned - Phase 12+ Calculations & BRSR]
+├── /submissions/                      [Active - Phase 12 Formal Submission Workflow]
+│   ├── /                              Submissions Ledger
+│   ├── /<id>/                         Submission Audit Page & Snapshot Inspection
+│   └── /<id>/withdraw/                Recall Pending Submission (POST)
+│
+├── /subsidiary-manager/               [Active - Phase 13 Subsidiary Review Desk]
+│   ├── /inbox/                        Review Queue Filtered by Jurisdiction
+│   ├── /submissions/<id>/review/      Interactive Review Workspace & Findings
+│   ├── /submissions/<id>/verify/      Sign-off and Verification Decision (POST)
+│   ├── /submissions/<id>/request-correction/ Request Operational Revision (POST)
+│   ├── /submissions/<id>/explain/     Record Operating Explanation (POST)
+│   └── /submissions/<id>/escalate/    Route Governance Ambiguity to ESG_MANAGER (POST)
+│
+├── /corrections/                      [Active - Phase 14 Corrections & Resubmission]
+│   ├── /                              Site Manager Correction Request Inbox
+│   ├── /<id>/                         Correction Workspace, Original vs Revised Values
+│   ├── /<id>/edit/                    Save Revised Telemetry & Trigger Revalidation (POST)
+│   ├── /<id>/validate/                On-demand Validation Re-run (POST)
+│   └── /<id>/resubmit/                Authoritative Resubmission & Revision Ledger (POST)
+│
+├── /anomalies/                        [Active - Phase 15 Anomaly Detection Engine]
+│   ├── /                              Enterprise / Division Anomaly Desk & Filtering Matrix
+│   ├── /<id>/                         Detailed Anomaly Investigation & Telemetry Delta View
+│   └── /<id>/action/                  Review Lifecycle Mutations (ACKNOWLEDGE, EXPLAIN, RESOLVE, DISMISS)
+│
+└── /reports/                          [Planned - Phase 16+ Calculations & BRSR]
     ├── /brsr/                         SEBI BRSR Core format generator
     └── /gri/                          Global Reporting Initiative export
 ```

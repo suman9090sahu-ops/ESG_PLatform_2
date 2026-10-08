@@ -661,6 +661,23 @@ class AuthAuditLog(models.Model):
         OCR_RETRIED = "OCR_RETRIED", "OCR Processing Retried"
         SUBMISSION_CREATED = "SUBMISSION_CREATED", "Activity Record Submitted"
         SUBMISSION_WITHDRAWN = "SUBMISSION_WITHDRAWN", "Activity Record Submission Withdrawn"
+        SUBMISSION_REVIEWED = "SUBMISSION_REVIEWED", "Submission Reviewed"
+        SUBMISSION_VERIFIED = "SUBMISSION_VERIFIED", "Submission Verified"
+        CORRECTION_REQUESTED = "CORRECTION_REQUESTED", "Correction Requested"
+        EXPLANATION_RECORDED = "EXPLANATION_RECORDED", "Explanation Recorded"
+        SUBMISSION_ESCALATED = "SUBMISSION_ESCALATED", "Submission Escalated"
+        CORRECTION_STARTED = "CORRECTION_STARTED", "Correction Work Started"
+        CORRECTION_UPDATED = "CORRECTION_UPDATED", "Activity Record Corrected"
+        CORRECTION_RESOLVED = "CORRECTION_RESOLVED", "Correction Request Resolved"
+        RESUBMISSION_CREATED = "RESUBMISSION_CREATED", "Activity Record Resubmitted"
+        ANOMALY_DETECTED = "ANOMALY_DETECTED", "Anomaly Detected"
+        ANOMALY_ACKNOWLEDGED = "ANOMALY_ACKNOWLEDGED", "Anomaly Acknowledged"
+        ANOMALY_EXPLAINED = "ANOMALY_EXPLAINED", "Anomaly Explained"
+        ANOMALY_DISMISSED = "ANOMALY_DISMISSED", "Anomaly Dismissed"
+        ANOMALY_RESOLVED = "ANOMALY_RESOLVED", "Anomaly Resolved"
+        ANOMALY_RULE_CREATED = "ANOMALY_RULE_CREATED", "Anomaly Rule Created"
+        ANOMALY_RULE_UPDATED = "ANOMALY_RULE_UPDATED", "Anomaly Rule Updated"
+        ANOMALY_DETECTION_RUN = "ANOMALY_DETECTION_RUN", "Anomaly Detection Run Executed"
 
     user = models.ForeignKey(
         User,
@@ -2357,6 +2374,10 @@ class SubmissionStatus(models.TextChoices):
     SUBMITTED = "SUBMITTED", "Submitted for Review"
     UNDER_REVIEW = "UNDER_REVIEW", "Under Review"
     WITHDRAWN = "WITHDRAWN", "Withdrawn"
+    VERIFIED = "VERIFIED", "Verified"
+    CORRECTION_REQUESTED = "CORRECTION_REQUESTED", "Correction Requested"
+    EXPLAINED = "EXPLAINED", "Explained"
+    ESCALATED = "ESCALATED", "Escalated"
     APPROVED = "APPROVED", "Approved"
     REJECTED = "REJECTED", "Revision Requested"
 
@@ -2442,6 +2463,14 @@ class Submission(models.Model):
         blank=True,
         help_text="Immutable operational telemetry snapshot at time of submission for audit lineage.",
     )
+    parent_submission = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="resubmissions",
+        help_text="Prior submission instance this submission corrects or supersedes.",
+    )
     is_current = models.BooleanField(
         default=True,
         db_index=True,
@@ -2476,8 +2505,40 @@ class Submission(models.Model):
         return self.status == SubmissionStatus.SUBMITTED
 
     @property
+    def is_resubmission(self):
+        return self.submission_number > 1 or self.parent_submission_id is not None
+
+    @property
+    def latest_correction_request(self):
+        return self.correction_requests.order_by("-created_at").first()
+
+    @property
     def is_withdrawn(self):
         return self.status == SubmissionStatus.WITHDRAWN
+
+    @property
+    def is_verified(self):
+        return self.status in [SubmissionStatus.VERIFIED, SubmissionStatus.APPROVED]
+
+    @property
+    def is_correction_requested(self):
+        return self.status in [SubmissionStatus.CORRECTION_REQUESTED, SubmissionStatus.REJECTED]
+
+    @property
+    def is_explained(self):
+        return self.status == SubmissionStatus.EXPLAINED
+
+    @property
+    def is_escalated(self):
+        return self.status == SubmissionStatus.ESCALATED
+
+    @property
+    def is_reviewable(self):
+        return self.status in [
+            SubmissionStatus.SUBMITTED,
+            SubmissionStatus.UNDER_REVIEW,
+            SubmissionStatus.EXPLAINED,
+        ]
 
     @property
     def badge_class(self):
@@ -2485,6 +2546,10 @@ class Submission(models.Model):
             SubmissionStatus.SUBMITTED: "badge-primary",
             SubmissionStatus.UNDER_REVIEW: "badge-info",
             SubmissionStatus.WITHDRAWN: "badge-secondary",
+            SubmissionStatus.VERIFIED: "badge-success",
+            SubmissionStatus.CORRECTION_REQUESTED: "badge-warning",
+            SubmissionStatus.EXPLAINED: "badge-info",
+            SubmissionStatus.ESCALATED: "badge-danger",
             SubmissionStatus.APPROVED: "badge-success",
             SubmissionStatus.REJECTED: "badge-danger",
         }
@@ -2521,6 +2586,753 @@ class Submission(models.Model):
     @property
     def evidence_files_count(self):
         return self.activity_record.evidence_count
+
+    @property
+    def latest_review(self):
+        return self.reviews.order_by("-created_at").first()
+
+    @property
+    def review_count(self):
+        return self.reviews.count()
+
+
+# -----------------------------------------------------------------------------
+# PHASE 13: SUBSIDIARY MANAGER REVIEW & GOVERNANCE WORKFLOW
+# -----------------------------------------------------------------------------
+
+class ReviewAction(models.TextChoices):
+    VERIFY = "VERIFY", "Verify"
+    REQUEST_CORRECTION = "REQUEST_CORRECTION", "Request Correction"
+    EXPLAIN = "EXPLAIN", "Explain"
+    ESCALATE = "ESCALATE", "Escalate"
+
+
+class SubmissionReview(models.Model):
+    """
+    Authoritative Governance Review Decision & Audit Trail Entity for MEIL ESG CONTROL TOWER.
+
+    Represents an immutable, historically preserved review decision executed by a Subsidiary Manager
+    or authorized ESG governance reviewer on a submitted ActivityRecord / Submission.
+    Preserves:
+    - Relational binding to parent Submission.
+    - Reviewer identity and authoritative timestamp.
+    - Review decision action (VERIFY, REQUEST_CORRECTION, EXPLAIN, ESCALATE).
+    - Status lifecycle delta (previous_status -> new_status).
+    - Reviewer comments, contextual justification, or explanation.
+    - Specific correction requirements for Site Manager if correction requested.
+    - Target escalation authority if escalated.
+    - Metadata snapshot for audit traceability.
+    """
+
+    submission = models.ForeignKey(
+        Submission,
+        on_delete=models.CASCADE,
+        related_name="reviews",
+        help_text="Activity submission subjected to this review decision.",
+    )
+    reviewer = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="submission_reviews",
+        help_text="Subsidiary Manager or authorized reviewer who executed this decision.",
+    )
+    action = models.CharField(
+        max_length=30,
+        choices=ReviewAction.choices,
+        db_index=True,
+        help_text="Authoritative review decision action taken.",
+    )
+    previous_status = models.CharField(
+        max_length=30,
+        choices=SubmissionStatus.choices,
+        help_text="Submission status prior to this review action.",
+    )
+    new_status = models.CharField(
+        max_length=30,
+        choices=SubmissionStatus.choices,
+        help_text="Submission status resulting from this review action.",
+    )
+    comments = models.TextField(
+        blank=True,
+        help_text="Reviewer comments, rationale, or contextual explanation.",
+    )
+    required_correction = models.TextField(
+        blank=True,
+        help_text="Specific correction or revision instructions required from site manager.",
+    )
+    escalated_to_role = models.CharField(
+        max_length=50,
+        blank=True,
+        default=Role.Code.ESG_MANAGER,
+        help_text="Target role or governance authority for escalation.",
+    )
+    metadata = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Contextual telemetry and state snapshot at time of review.",
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        db_index=True,
+        help_text="Timestamp when review decision was recorded.",
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Submission Review Decision"
+        verbose_name_plural = "Submission Review Decisions"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["submission", "action"], name="idx_rev_sub_action"),
+            models.Index(fields=["reviewer", "action"], name="idx_rev_user_action"),
+            models.Index(fields=["created_at"], name="idx_rev_created_at"),
+        ]
+
+    def __str__(self):
+        reviewer_name = self.reviewer.username if self.reviewer else "System"
+        return f"{self.action} on Submission #{self.submission_id} by {reviewer_name} ({self.created_at:%Y-%m-%d %H:%M})"
+
+    @property
+    def badge_class(self):
+        mapping = {
+            ReviewAction.VERIFY: "badge-success",
+            ReviewAction.REQUEST_CORRECTION: "badge-warning",
+            ReviewAction.EXPLAIN: "badge-info",
+            ReviewAction.ESCALATE: "badge-danger",
+        }
+        return mapping.get(self.action, "badge-secondary")
+
+
+# -----------------------------------------------------------------------------
+# PHASE 14: CORRECTIONS, EXPLANATIONS & RESUBMISSION WORKFLOW
+# -----------------------------------------------------------------------------
+
+class CorrectionStatus(models.TextChoices):
+    OPEN = "OPEN", "Correction Requested"
+    IN_PROGRESS = "IN_PROGRESS", "In Correction"
+    READY_FOR_RESUBMISSION = "READY_FOR_RESUBMISSION", "Ready for Resubmission"
+    RESOLVED = "RESOLVED", "Resolved / Resubmitted"
+    CANCELLED = "CANCELLED", "Cancelled"
+
+
+class CorrectionAffectedArea(models.TextChoices):
+    ACTIVITY_DATA = "ACTIVITY_DATA", "Activity Data"
+    EVIDENCE = "EVIDENCE", "Evidence"
+    BOTH = "BOTH", "Activity Data & Evidence"
+    OTHER = "OTHER", "Other"
+
+
+class CorrectionRequest(models.Model):
+    """
+    Formal Correction Request Entity for MEIL ESG CONTROL TOWER.
+
+    Represents a specific, auditable request generated when a Subsidiary Manager
+    returns a submitted ActivityRecord to the Site Manager for correction.
+    Preserves:
+    - Binding to original Submission and Governance Review decision.
+    - Reviewer identity and authoritative timestamp.
+    - Mandatory reason and actionable correction instructions.
+    - Affected operational scope (Activity Data, Evidence, Both, Other).
+    - Status lifecycle progression (OPEN -> IN_PROGRESS -> READY_FOR_RESUBMISSION -> RESOLVED).
+    - Explanatory commentary from Site Manager upon resolving.
+    - Binding to the resulting Resubmission and resolving user.
+    """
+
+    submission = models.ForeignKey(
+        Submission,
+        on_delete=models.CASCADE,
+        related_name="correction_requests",
+        help_text="The submission for which correction was requested.",
+    )
+    review = models.ForeignKey(
+        SubmissionReview,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="correction_requests",
+        help_text="Review decision record that generated this correction request.",
+    )
+    activity_record = models.ForeignKey(
+        ActivityRecord,
+        on_delete=models.CASCADE,
+        related_name="correction_requests",
+        help_text="Parent operational activity record subject to correction.",
+    )
+    requested_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="requested_corrections",
+        help_text="Subsidiary Manager who requested this correction.",
+    )
+    reason = models.TextField(
+        help_text="Authoritative reason why correction is required.",
+    )
+    required_correction = models.TextField(
+        blank=True,
+        help_text="Specific operational changes and revision instructions.",
+    )
+    affected_area = models.CharField(
+        max_length=30,
+        choices=CorrectionAffectedArea.choices,
+        default=CorrectionAffectedArea.ACTIVITY_DATA,
+        help_text="Operational scope of required correction.",
+    )
+    status = models.CharField(
+        max_length=30,
+        choices=CorrectionStatus.choices,
+        default=CorrectionStatus.OPEN,
+        db_index=True,
+        help_text="Lifecycle status of this correction request.",
+    )
+    site_manager_notes = models.TextField(
+        blank=True,
+        help_text="Explanatory notes provided by Site Manager upon correcting.",
+    )
+    resolved_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="resolved_corrections",
+        help_text="Site Manager who resolved and resubmitted this correction.",
+    )
+    resolved_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when correction was resubmitted.",
+    )
+    resubmission = models.ForeignKey(
+        Submission,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="originating_correction_requests",
+        help_text="New submission instance resulting from this correction.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Correction Request"
+        verbose_name_plural = "Correction Requests"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["activity_record", "status"], name="idx_corr_rec_status"),
+            models.Index(fields=["submission", "status"], name="idx_corr_sub_status"),
+            models.Index(fields=["status", "created_at"], name="idx_corr_status_date"),
+        ]
+
+    def __str__(self):
+        return f"Correction #{self.id} for Record #{self.activity_record_id} ({self.status})"
+
+    @property
+    def is_open(self):
+        return self.status in [CorrectionStatus.OPEN, CorrectionStatus.IN_PROGRESS]
+
+    @property
+    def is_resolved(self):
+        return self.status == CorrectionStatus.RESOLVED
+
+    @property
+    def badge_class(self):
+        mapping = {
+            CorrectionStatus.OPEN: "badge-warning",
+            CorrectionStatus.IN_PROGRESS: "badge-info",
+            CorrectionStatus.READY_FOR_RESUBMISSION: "badge-primary",
+            CorrectionStatus.RESOLVED: "badge-success",
+            CorrectionStatus.CANCELLED: "badge-secondary",
+        }
+        return mapping.get(self.status, "badge-secondary")
+
+
+class ActivityRevision(models.Model):
+    """
+    Authoritative Activity Record Revision & Operational Audit Ledger Entity.
+
+    Preserves the historical operational state of an ActivityRecord across
+    correction and resubmission cycles without altering or destroying the original data.
+    """
+
+    activity_record = models.ForeignKey(
+        ActivityRecord,
+        on_delete=models.CASCADE,
+        related_name="revisions",
+        help_text="Parent operational activity record.",
+    )
+    revision_number = models.PositiveIntegerField(
+        default=1,
+        help_text="Sequential revision index for this activity record.",
+    )
+    submission = models.ForeignKey(
+        Submission,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="activity_revisions",
+        help_text="Submission associated with this revision snapshot.",
+    )
+    correction_request = models.ForeignKey(
+        CorrectionRequest,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="activity_revisions",
+        help_text="Correction request that prompted this revision.",
+    )
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="authored_revisions",
+        help_text="User who authored this revision.",
+    )
+    reason = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Brief rationale or lifecycle event (e.g., INITIAL_SUBMISSION, CORRECTION_RESUBMISSION).",
+    )
+    comments = models.TextField(
+        blank=True,
+        help_text="Detailed explanatory notes or commentary.",
+    )
+    quantity = models.DecimalField(
+        max_digits=18,
+        decimal_places=4,
+        help_text="Authoritative operational consumption quantity at this revision.",
+    )
+    unit = models.ForeignKey(
+        UnitOfMeasure,
+        on_delete=models.PROTECT,
+        help_text="Unit of measure applied at this revision.",
+    )
+    measurement_date = models.DateField(
+        help_text="Measurement date for this revision.",
+    )
+    notes = models.TextField(blank=True)
+    evidence_reference = models.CharField(max_length=255, blank=True)
+    validation_status = models.CharField(max_length=30, blank=True)
+    changed_fields = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Field-by-field delta compared to previous revision.",
+    )
+    snapshot_data = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Complete operational and evidence state snapshot.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = "Activity Record Revision"
+        verbose_name_plural = "Activity Record Revisions"
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["activity_record", "revision_number"],
+                name="uniq_rec_rev_number",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["activity_record", "revision_number"], name="idx_rev_rec_num"),
+            models.Index(fields=["created_at"], name="idx_rev_created_at2"),
+        ]
+
+    def __str__(self):
+        return f"Revision #{self.revision_number} for Record #{self.activity_record_id} ({self.created_at:%Y-%m-%d})"
+
+
+# -----------------------------------------------------------------------------
+# PHASE 15: ANOMALY DETECTION ENGINE
+# -----------------------------------------------------------------------------
+
+class AnomalySeverity(models.TextChoices):
+    INFO = "INFO", "Information"
+    LOW = "LOW", "Low Risk"
+    MEDIUM = "MEDIUM", "Medium Risk"
+    HIGH = "HIGH", "High Risk"
+    CRITICAL = "CRITICAL", "Critical Risk"
+
+
+class AnomalyStatus(models.TextChoices):
+    OPEN = "OPEN", "Open / Pending Review"
+    ACKNOWLEDGED = "ACKNOWLEDGED", "Acknowledged"
+    EXPLAINED = "EXPLAINED", "Explained"
+    RESOLVED = "RESOLVED", "Resolved"
+    DISMISSED = "DISMISSED", "Dismissed"
+
+
+class AnomalyCategory(models.TextChoices):
+    HISTORICAL_SPIKE = "HISTORICAL_SPIKE", "Historical Spike"
+    HISTORICAL_DROP = "HISTORICAL_DROP", "Historical Drop"
+    PERIOD_VARIANCE = "PERIOD_VARIANCE", "Period-over-Period Variance"
+    THRESHOLD_BREACH = "THRESHOLD_BREACH", "Threshold Breach"
+    DUPLICATE_SUSPECT = "DUPLICATE_SUSPECT", "Duplicate-Like Activity"
+    INTENSITY_ANOMALY = "INTENSITY_ANOMALY", "Operational Intensity Anomaly"
+
+
+class AnomalyRule(models.Model):
+    """
+    Deterministic Anomaly Detection Rule Definition.
+
+    Configures deterministic baseline, variance, and threshold checks evaluated
+    by the Anomaly Engine across operational ESG data records.
+    Anomaly rules produce review signals and risk indicators, NEVER automatic rejections.
+    """
+
+    code = models.CharField(
+        max_length=50,
+        unique=True,
+        db_index=True,
+        help_text="Stable unique rule identifier (e.g. HIST_SPIKE_100, PERIOD_VAR_50).",
+    )
+    name = models.CharField(
+        max_length=150,
+        help_text="Human-readable rule name.",
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="Operational description explaining what pattern this rule flags.",
+    )
+    category = models.CharField(
+        max_length=40,
+        choices=AnomalyCategory.choices,
+        db_index=True,
+        help_text="Category of anomaly pattern detected.",
+    )
+    severity = models.CharField(
+        max_length=20,
+        choices=AnomalySeverity.choices,
+        default=AnomalySeverity.MEDIUM,
+        help_text="Default risk severity assigned to anomalies flagged by this rule.",
+    )
+    threshold_percentage = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Configured percentage variance threshold (e.g., 100.00 for +100% spike).",
+    )
+    rule_parameters = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Configured parameters (e.g. min_baseline_count, min_val, max_val, tolerance).",
+    )
+    applicable_activity = models.ForeignKey(
+        ActivityMaster,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="anomaly_rules",
+        help_text="Specific activity this rule applies to. If empty, rule evaluates across all activities.",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text="Whether this rule is currently evaluated during detection runs.",
+    )
+    version = models.PositiveIntegerField(
+        default=1,
+        help_text="Monotonic rule version for regulatory lineage and audit traceability.",
+    )
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_anomaly_rules",
+    )
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="updated_anomaly_rules",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Anomaly Rule"
+        verbose_name_plural = "Anomaly Rules"
+        ordering = ["category", "code"]
+
+    def __str__(self):
+        return f"{self.code} (v{self.version}) - {self.name} [{self.severity}]"
+
+    @property
+    def badge_class(self):
+        return {
+            AnomalySeverity.CRITICAL: "badge-danger",
+            AnomalySeverity.HIGH: "badge-danger",
+            AnomalySeverity.MEDIUM: "badge-warning",
+            AnomalySeverity.LOW: "badge-info",
+            AnomalySeverity.INFO: "badge-secondary",
+        }.get(self.severity, "badge-secondary")
+
+
+class AnomalyDetectionRun(models.Model):
+    """
+    Execution History Instance of an Anomaly Detection Evaluation Run.
+
+    Tracks batch or single-record anomaly evaluations for governance transparency and performance telemetry.
+    """
+
+    class ScopeType(models.TextChoices):
+        RECORD = "RECORD", "Single Activity Record"
+        SUBMISSION = "SUBMISSION", "Submission"
+        SITE = "SITE", "Operational Site Batch"
+        PERIOD = "PERIOD", "Reporting Period Batch"
+        ENTERPRISE = "ENTERPRISE", "Enterprise Batch"
+
+    run_number = models.PositiveIntegerField(
+        default=1,
+        help_text="Sequential iteration count of anomaly runs.",
+    )
+    scope_type = models.CharField(
+        max_length=30,
+        choices=ScopeType.choices,
+        default=ScopeType.RECORD,
+        db_index=True,
+    )
+    activity_record = models.ForeignKey(
+        ActivityRecord,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="anomaly_runs",
+    )
+    submission = models.ForeignKey(
+        Submission,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="anomaly_runs",
+    )
+    site = models.ForeignKey(
+        Site,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="anomaly_runs",
+    )
+    reporting_period = models.ForeignKey(
+        ReportingPeriod,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="anomaly_runs",
+    )
+    records_evaluated = models.PositiveIntegerField(default=0)
+    anomalies_detected = models.PositiveIntegerField(default=0)
+    status = models.CharField(max_length=30, default="COMPLETED", db_index=True)
+    summary_message = models.TextField(blank=True)
+    execution_duration_ms = models.PositiveIntegerField(default=0)
+    executed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="executed_anomaly_runs",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = "Anomaly Detection Run"
+        verbose_name_plural = "Anomaly Detection Runs"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"AnomalyRun #{self.id} ({self.scope_type}): {self.anomalies_detected} flagged / {self.records_evaluated} evaluated"
+
+
+class AnomalyRecord(models.Model):
+    """
+    Authoritative ESG Anomaly Result Entity.
+
+    Identifies an unusual, suspicious, or unexpected operational pattern in an ActivityRecord.
+    Preserves:
+    - Target ActivityRecord and governing Submission (if submitted).
+    - Governing rule, code, and version at time of detection.
+    - Risk severity and controlled lifecycle status.
+    - Observed value, baseline value, difference, and variance percentage.
+    - Explainable human-readable justification.
+    - Review lifecycle commentary, reviewer identity, and timestamp.
+    """
+
+    activity_record = models.ForeignKey(
+        ActivityRecord,
+        on_delete=models.CASCADE,
+        related_name="anomalies",
+        help_text="Target operational activity record flagged.",
+    )
+    submission = models.ForeignKey(
+        Submission,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="anomalies",
+        help_text="Governing formal submission instance associated with this anomaly.",
+    )
+    detection_run = models.ForeignKey(
+        AnomalyDetectionRun,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="anomalies",
+        help_text="Detection run that generated this anomaly finding.",
+    )
+    rule = models.ForeignKey(
+        AnomalyRule,
+        on_delete=models.PROTECT,
+        related_name="detected_anomalies",
+        help_text="Governing anomaly rule.",
+    )
+    rule_code = models.CharField(
+        max_length=50,
+        db_index=True,
+        help_text="Rule code snapshot for regulatory lineage.",
+    )
+    rule_version = models.PositiveIntegerField(
+        default=1,
+        help_text="Rule version snapshot.",
+    )
+    severity = models.CharField(
+        max_length=20,
+        choices=AnomalySeverity.choices,
+        default=AnomalySeverity.MEDIUM,
+        db_index=True,
+        help_text="Risk severity of this anomaly finding.",
+    )
+    status = models.CharField(
+        max_length=30,
+        choices=AnomalyStatus.choices,
+        default=AnomalyStatus.OPEN,
+        db_index=True,
+        help_text="Controlled lifecycle review status.",
+    )
+    observed_value = models.DecimalField(
+        max_digits=18,
+        decimal_places=4,
+        help_text="Actual measured consumption quantity recorded.",
+    )
+    baseline_value = models.DecimalField(
+        max_digits=18,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text="Calculated historical baseline or expected comparator value.",
+    )
+    deviation_value = models.DecimalField(
+        max_digits=18,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text="Absolute difference (observed - baseline).",
+    )
+    deviation_percentage = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Percentage variance relative to baseline.",
+    )
+    explanation = models.TextField(
+        help_text="Deterministic explanation why this record was flagged as anomalous.",
+    )
+    context_data = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Operational metadata, historical sample size, duplicate record IDs, etc.",
+    )
+    review_comment = models.TextField(
+        blank=True,
+        help_text="Reviewer remarks, justification, operational context, or resolution explanation.",
+    )
+    reviewed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reviewed_anomalies",
+        help_text="User who conducted review action (acknowledged, explained, resolved, dismissed).",
+    )
+    reviewed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when review action was executed.",
+    )
+    resolution_action = models.CharField(
+        max_length=30,
+        blank=True,
+        help_text="Specific review action taken (e.g. ACKNOWLEDGED, EXPLAINED, RESOLVED, DISMISSED).",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text="Whether this anomaly is the active unresolved finding for this record and rule.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "ESG Anomaly Record"
+        verbose_name_plural = "ESG Anomaly Records"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["activity_record", "status"], name="idx_anom_rec_status"),
+            models.Index(fields=["submission", "status"], name="idx_anom_sub_status"),
+            models.Index(fields=["status", "severity"], name="idx_anom_status_sev"),
+            models.Index(fields=["rule_code", "status"], name="idx_anom_rule_status"),
+        ]
+
+    def __str__(self):
+        return f"Anomaly #{self.id} [{self.severity}] on Record #{self.activity_record_id} ({self.rule_code}): {self.status}"
+
+    @property
+    def is_open(self):
+        return self.status in [AnomalyStatus.OPEN, AnomalyStatus.ACKNOWLEDGED]
+
+    @property
+    def is_resolved_or_dismissed(self):
+        return self.status in [AnomalyStatus.RESOLVED, AnomalyStatus.DISMISSED]
+
+    @property
+    def badge_class(self):
+        return {
+            AnomalyStatus.OPEN: "badge-danger",
+            AnomalyStatus.ACKNOWLEDGED: "badge-warning",
+            AnomalyStatus.EXPLAINED: "badge-info",
+            AnomalyStatus.RESOLVED: "badge-success",
+            AnomalyStatus.DISMISSED: "badge-secondary",
+        }.get(self.status, "badge-secondary")
+
+    @property
+    def severity_badge_class(self):
+        return {
+            AnomalySeverity.CRITICAL: "badge-danger",
+            AnomalySeverity.HIGH: "badge-danger",
+            AnomalySeverity.MEDIUM: "badge-warning",
+            AnomalySeverity.LOW: "badge-info",
+            AnomalySeverity.INFO: "badge-secondary",
+        }.get(self.severity, "badge-secondary")
+
+    @property
+    def site(self):
+        return self.activity_record.site
+
+    @property
+    def activity(self):
+        return self.activity_record.activity
+
+    @property
+    def reporting_period(self):
+        return self.activity_record.reporting_period
 
 
 
