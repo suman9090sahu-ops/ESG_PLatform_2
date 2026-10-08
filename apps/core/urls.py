@@ -8,6 +8,7 @@ from apps.core import (
     activity_views,
     anomaly_views,
     auth_views,
+    calculation_views,
     correction_views,
     data_entry_views,
     evidence_views,
@@ -283,6 +284,19 @@ urlpatterns = [
     path("auditor/reports/", reporting_views.reports_overview_view, name="auditor_reports"),
     path("auditor/trace/", reporting_views.trace_selector_view, name="auditor_trace_selector"),
     path("auditor/trace/<int:record_id>/", reporting_views.trace_number_view, name="auditor_trace_detail"),
+
+    # -------------------------------------------------------------------------
+    # Phase 24 ESG Calculation Engine & Emission Factor Routes
+    # -------------------------------------------------------------------------
+    path("calculations/<int:calculation_id>/", calculation_views.calculation_detail_view, name="calculation_detail"),
+    path("calculations/record/<int:record_id>/", calculation_views.calculation_record_detail_view, name="calculation_record_detail"),
+    path("calculations/quality/", calculation_views.calculation_desk_view, name="calculation_desk"),
+    path("calculations/desk/", calculation_views.calculation_desk_view, name="calculation_desk_alias"),
+    path("calculations/recalculate/<int:record_id>/", calculation_views.recalculate_record_action_view, name="record_recalculate"),
+    path("emission-factors/", calculation_views.emission_factor_list_view, name="emission_factor_list"),
+    path("emission-factors/create/", calculation_views.emission_factor_create_view, name="emission_factor_create"),
+    path("emission-factors/<int:factor_id>/", calculation_views.emission_factor_detail_view, name="emission_factor_detail"),
+    path("emission-factors/<int:factor_id>/edit/", calculation_views.emission_factor_edit_view, name="emission_factor_edit"),
 ]
 
 

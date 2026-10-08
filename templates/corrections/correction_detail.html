@@ -96,13 +96,30 @@
           </div>
 
           {% if correction_req.required_correction %}
-            <div class="p-3 bg-light rounded border">
+            <div class="p-3 bg-light rounded border mb-3">
               <div class="text-muted small text-uppercase fw-semibold mb-1">
                 <i class="icon-wrench text-primary me-1"></i> Required Action from Site Manager
               </div>
               <div class="text-dark">
                 {{ correction_req.required_correction }}
               </div>
+            </div>
+          {% endif %}
+
+          {% if anomalies %}
+            <div class="p-3 bg-warning-subtle rounded border border-warning">
+              <div class="text-warning-emphasis small text-uppercase fw-bold mb-2">
+                <i class="icon-flag me-1"></i> Active Anomalies Flagged on Record ({{ anomalies.count }})
+              </div>
+              {% for anom in anomalies %}
+                <div class="mb-2 pb-2 border-bottom border-warning-subtle last-border-0">
+                  <div class="d-flex align-items-center justify-content-between mb-1">
+                    <strong class="text-dark small">{{ anom.rule.name }} (<code>{{ anom.rule_code }}</code>)</strong>
+                    <span class="badge {{ anom.severity_badge_class }}">{{ anom.get_severity_display }}</span>
+                  </div>
+                  <div class="small text-dark">{{ anom.explanation }}</div>
+                </div>
+              {% endfor %}
             </div>
           {% endif %}
         </div>
@@ -294,12 +311,42 @@
                           {{ ev.file_hash|slice:":12" }}...
                         </code>
                       </td>
-                      <td class="text-end">
-                        <a href="{% url 'core:evidence_detail' evidence_id=ev.id %}" class="btn btn-sm btn-outline-secondary" target="_blank">
+                      <td class="text-end text-nowrap">
+                        {% if can_edit and not correction_req.is_resolved and not ev.latest_ocr_run and ev.is_ocr_supported %}
+                          <form method="post" action="{% url 'core:evidence_ocr_process' evidence_id=ev.id %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-primary py-0 px-2" title="Process OCR Extraction">
+                              <i class="icon-refresh me-1"></i> Run OCR
+                            </button>
+                          </form>
+                        {% endif %}
+                        <a href="{% url 'core:evidence_detail' evidence_id=ev.id %}" class="btn btn-sm btn-outline-secondary py-0 px-2" target="_blank">
                           <i class="icon-eye me-1"></i> View
                         </a>
                       </td>
                     </tr>
+                    {% if ev.latest_ocr_run and ev.latest_ocr_run.comparison_items_list %}
+                      <tr class="bg-light-subtle">
+                        <td colspan="6" class="p-2 ps-4 small">
+                          <strong class="text-muted text-uppercase me-2"><i class="icon-layers text-info me-1"></i>OCR Reconciliation:</strong>
+                          {% for item in ev.latest_ocr_run.comparison_items_list %}
+                            <span class="me-3">
+                              <strong>{{ item.label|default:item.key|title }}:</strong>
+                              OCR extracted <span class="font-monospace fw-bold text-dark">{{ item.ocr_value|default:"N/A" }}</span>
+                              vs entered <span class="font-monospace fw-bold text-dark">{{ item.entered_value|default:"N/A" }}</span>
+                              &mdash;
+                              {% if item.result == 'Match' or item.status == 'MATCH' %}
+                                <span class="badge bg-success-subtle text-success border border-success">Match</span>
+                              {% elif item.result == 'Minor Difference' %}
+                                <span class="badge bg-warning-subtle text-warning border border-warning">Minor Difference ({{ item.variance_pct }}%)</span>
+                              {% else %}
+                                <span class="badge bg-danger-subtle text-danger border border-danger">Significant Difference ({{ item.variance_pct }}%)</span>
+                              {% endif %}
+                            </span>
+                          {% endfor %}
+                        </td>
+                      </tr>
+                    {% endif %}
                   {% endfor %}
                 </tbody>
               </table>

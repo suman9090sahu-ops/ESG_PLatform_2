@@ -65,6 +65,8 @@ def anomaly_list_view(request):
     category_filter = request.GET.get("category", "").strip()
     site_filter = request.GET.get("site", "").strip()
     period_filter = request.GET.get("period", "").strip()
+    subsidiary_filter = request.GET.get("subsidiary", "").strip()
+    esg_cat_filter = request.GET.get("esg_category", "").strip()
 
     qs = base_qs
 
@@ -93,6 +95,12 @@ def anomaly_list_view(request):
     if period_filter:
         qs = qs.filter(activity_record__reporting_period_id=period_filter)
 
+    if subsidiary_filter:
+        qs = qs.filter(activity_record__site__project__subsidiary_id=subsidiary_filter)
+
+    if esg_cat_filter:
+        qs = qs.filter(activity_record__activity__category_id=esg_cat_filter)
+
     # Real metrics without fabrication
     metrics = get_anomaly_dashboard_metrics(user)
 
@@ -101,8 +109,11 @@ def anomaly_list_view(request):
     page_number = request.GET.get("page", 1)
     page_obj = paginator.get_page(page_number)
 
+    from apps.core.scope_services import get_accessible_subsidiaries
     accessible_sites = get_accessible_sites(user).order_by("name")
+    accessible_subsidiaries = get_accessible_subsidiaries(user).order_by("name")
     accessible_periods = get_accessible_reporting_periods(user).order_by("-start_date")
+    accessible_esg_cats = ActivityCategory.objects.filter(is_active=True).order_by("name")
 
     context = {
         "page_title": "ESG Anomaly Desk",
@@ -117,11 +128,15 @@ def anomaly_list_view(request):
         "category_filter": category_filter,
         "site_filter": site_filter,
         "period_filter": period_filter,
+        "subsidiary_filter": subsidiary_filter,
+        "esg_cat_filter": esg_cat_filter,
         "severity_choices": AnomalySeverity.choices,
         "status_choices": AnomalyStatus.choices,
         "category_choices": AnomalyCategory.choices,
         "accessible_sites": accessible_sites,
+        "accessible_subsidiaries": accessible_subsidiaries,
         "accessible_periods": accessible_periods,
+        "accessible_esg_cats": accessible_esg_cats,
     }
     return render(request, "anomalies/anomaly_list.html", context)
 

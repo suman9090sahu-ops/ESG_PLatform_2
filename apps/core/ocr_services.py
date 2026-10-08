@@ -564,10 +564,20 @@ def _normalize_date_string(date_str: str) -> str:
 # 3. OCR VS. ACTIVITY RECORD COMPARISON ENGINE
 # -----------------------------------------------------------------------------
 
+DEFAULT_OCR_TOLERANCE_PCT = Decimal("1.0")
+
+
 def compare_ocr_with_activity_record(ocr_run: OCRRun) -> Dict[str, Any]:
     """
     Compares extracted OCR entities against the parent Activity Record operational data.
-    Provides automated telemetry for future validation, anomaly detection, and auditor review.
+    Provides automated telemetry for validation, anomaly detection, reviewer inspection, and audit.
+
+    Supports configurable comparison tolerance:
+    - Match: perfect match or variance <= 0.01%
+    - Minor Difference: variance <= configured tolerance (default 1.0%)
+    - Significant Difference: variance > configured tolerance
+    - Missing OCR Value: entity was not detected in document
+    - Unable to Compare: format is unparseable or record value missing
 
     Strictly complies with the Core Domain Principle:
     Does NOT overwrite or auto-correct the Activity Record operational data.
@@ -575,73 +585,96 @@ def compare_ocr_with_activity_record(ocr_run: OCRRun) -> Dict[str, Any]:
     evidence = ocr_run.evidence
     record: ActivityRecord = evidence.activity_record
 
+    # Resolve tolerance
+    default_tol = getattr(settings, "OCR_COMPARISON_TOLERANCE_PCT", DEFAULT_OCR_TOLERANCE_PCT)
+    act_rules = (record.activity.validation_rules or {}) if record.activity else {}
+    tolerance_pct = Decimal(str(act_rules.get("ocr_tolerance_percentage", default_tol)))
+
     fields_by_name = {f.field_name: f for f in ocr_run.fields.all()}
 
     comparison = {
         "evaluated": True,
         "activity_record_id": record.id,
         "evidence_id": evidence.id,
+        "tolerance_pct": float(tolerance_pct),
         "overall_status": "MATCH",
         "matches_count": 0,
+        "minor_differences_count": 0,
         "mismatches_count": 0,
         "not_detected_count": 0,
         "items": {},
     }
 
-    # 1. Compare Quantity
+    # 1. Compare Quantity / Consumption
     qty_field = fields_by_name.get("quantity")
     if qty_field and qty_field.normalized_value:
         try:
             extracted_qty = float(qty_field.normalized_value)
-            record_qty = float(record.quantity)
+            record_qty = float(record.quantity) if record.quantity is not None else 0.0
             delta = round(extracted_qty - record_qty, 3)
             delta_pct = round((delta / record_qty * 100), 2) if record_qty != 0 else 0.0
 
-            if abs(delta) < 0.001:
+            if abs(delta) < 0.001 or abs(delta_pct) <= 0.01:
                 qty_status = "MATCH"
+                qty_result = "Match"
                 comparison["matches_count"] += 1
+            elif abs(delta_pct) <= float(tolerance_pct):
+                qty_status = "MINOR_DIFFERENCE"
+                qty_result = "Minor Difference"
+                comparison["minor_differences_count"] += 1
+                if comparison["overall_status"] == "MATCH":
+                    comparison["overall_status"] = "MINOR_DIFFERENCE"
             else:
                 qty_status = "MISMATCH"
+                qty_result = "Significant Difference"
                 comparison["mismatches_count"] += 1
                 comparison["overall_status"] = "MISMATCH"
 
             comparison["items"]["quantity"] = {
                 "label": "Operational Quantity",
                 "status": qty_status,
+                "result": qty_result,
                 "record_value": record_qty,
                 "extracted_value": extracted_qty,
                 "unit": record.unit.symbol if record.unit else "",
                 "delta": delta,
                 "delta_pct": delta_pct,
+                "tolerance_pct": float(tolerance_pct),
             }
         except (ValueError, TypeError):
             comparison["items"]["quantity"] = {
                 "label": "Operational Quantity",
                 "status": "UNPARSEABLE",
-                "record_value": float(record.quantity),
+                "result": "Unable to Compare",
+                "record_value": float(record.quantity) if record.quantity is not None else None,
                 "extracted_value": qty_field.raw_value,
             }
             comparison["not_detected_count"] += 1
+            if comparison["overall_status"] == "MATCH":
+                comparison["overall_status"] = "UNABLE_TO_COMPARE"
     else:
         comparison["items"]["quantity"] = {
             "label": "Operational Quantity",
             "status": "NOT_DETECTED",
-            "record_value": float(record.quantity),
+            "result": "Missing OCR Value",
+            "record_value": float(record.quantity) if record.quantity is not None else None,
             "extracted_value": None,
         }
         comparison["not_detected_count"] += 1
+        if comparison["overall_status"] == "MATCH":
+            comparison["overall_status"] = "MISSING_OCR_VALUE"
 
-    # 2. Compare Unit
+    # 2. Compare Unit of Measure
     if qty_field and qty_field.unit and record.unit:
         rec_unit = record.unit.symbol.strip().lower()
         ext_unit = qty_field.unit.strip().lower()
 
-        # Simple unit symbol normalization mapping
         unit_equivalents = {
             "kwh": ["kwh", "units", "unit"],
             "l": ["l", "liter", "liters", "litres"],
             "kl": ["kl", "kiloliter", "kiloliters"],
             "mt": ["mt", "metric tonnes", "tonnes"],
+            "kg": ["kg", "kilograms", "kgs"],
         }
         is_unit_match = (
             rec_unit == ext_unit
@@ -664,7 +697,7 @@ def compare_ocr_with_activity_record(ocr_run: OCRRun) -> Dict[str, Any]:
     else:
         comparison["items"]["unit"] = {
             "label": "Unit of Measure",
-            "status": "NOT_DETECTED",
+            "status": "MISSING_OCR_VALUE" if qty_field else "NOT_DETECTED",
             "record_value": record.unit.symbol if record.unit else "",
             "extracted_value": None,
         }
@@ -673,7 +706,7 @@ def compare_ocr_with_activity_record(ocr_run: OCRRun) -> Dict[str, Any]:
     # 3. Compare Measurement Date
     date_field = fields_by_name.get("invoice_date")
     if date_field and date_field.normalized_value:
-        rec_date_str = str(record.measurement_date)
+        rec_date_str = str(record.measurement_date) if record.measurement_date else ""
         ext_date_str = date_field.normalized_value
         is_date_match = (rec_date_str == ext_date_str)
 
@@ -692,13 +725,13 @@ def compare_ocr_with_activity_record(ocr_run: OCRRun) -> Dict[str, Any]:
     else:
         comparison["items"]["date"] = {
             "label": "Measurement Date",
-            "status": "NOT_DETECTED",
-            "record_value": str(record.measurement_date),
+            "status": "MISSING_OCR_VALUE",
+            "record_value": str(record.measurement_date) if record.measurement_date else None,
             "extracted_value": None,
         }
         comparison["not_detected_count"] += 1
 
-    # 4. Compare Invoice Reference Number
+    # 4. Compare Document Reference Number
     inv_field = fields_by_name.get("invoice_number")
     record_ref = (record.evidence_reference or "").strip()
     if inv_field and record_ref:
@@ -729,7 +762,7 @@ def compare_ocr_with_activity_record(ocr_run: OCRRun) -> Dict[str, Any]:
     else:
         comparison["items"]["reference"] = {
             "label": "Document Reference",
-            "status": "NOT_DETECTED",
+            "status": "MISSING_OCR_VALUE",
             "record_value": record_ref or None,
             "extracted_value": None,
         }
@@ -874,12 +907,15 @@ def execute_ocr_run(
         if auto_extract:
             extract_structured_fields(ocr_run, result.extracted_text)
 
-        # 8. Compute telemetry comparison with Activity Record or Procurement Record
+        # 8. Compute telemetry comparison with Activity Record, Procurement Record, or Transport Record
         if evidence.activity_record:
             comparison = compare_ocr_with_activity_record(ocr_run)
         elif evidence.procurement_record:
             from apps.core.procurement_services import compare_ocr_with_procurement
             comparison = compare_ocr_with_procurement(ocr_run, evidence.procurement_record)
+        elif getattr(evidence, "transport_record", None):
+            from apps.core.transport_services import compare_ocr_with_transport
+            comparison = compare_ocr_with_transport(ocr_run, evidence.transport_record)
         else:
             comparison = {}
         result.raw_metadata["comparison"] = comparison
@@ -899,6 +935,20 @@ def execute_ocr_run(
             "completed_at": ocr_run.completed_at.isoformat() if ocr_run.completed_at else None,
         }
         evidence.save(update_fields=["ocr_metadata", "updated_at"])
+
+        # Automatic post-OCR revalidation and anomaly evaluation
+        if evidence.activity_record:
+            try:
+                from apps.core.validation_services import execute_validation_run
+                execute_validation_run(evidence.activity_record, executed_by=user, request=request)
+            except Exception as v_err:
+                logger.warning("Post-OCR revalidation failed for Record %s: %s", evidence.activity_record.id, v_err)
+
+            try:
+                from apps.core.anomaly_services import detect_anomalies_for_record
+                detect_anomalies_for_record(evidence.activity_record, user=user, request=request)
+            except Exception as a_err:
+                logger.warning("Post-OCR anomaly evaluation failed for Record %s: %s", evidence.activity_record.id, a_err)
 
         # 10. Audit event
         event_type = (

@@ -230,6 +230,11 @@
                     {% endif %}
                   </td>
                   <td class="text-end text-nowrap">
+                    {% if d.calculation_url %}
+                      <a href="{{ d.calculation_url }}" class="btn btn-sm btn-outline-secondary py-1 px-2 shadow-xs me-1" title="Calculation Engine Detail">
+                        <i class="icon-calculator me-1"></i> Calc
+                      </a>
+                    {% endif %}
                     <a href="{{ d.trace_url }}" class="btn btn-sm btn-primary py-1 px-3 shadow-xs" title="Trace 5-layer regulatory lineage">
                       <i class="icon-directions me-1"></i> Trace Lineage
                     </a>

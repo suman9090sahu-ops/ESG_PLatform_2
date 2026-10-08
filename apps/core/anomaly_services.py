@@ -49,6 +49,7 @@ from apps.core.models import (
     AnomalySeverity,
     AnomalyStatus,
     AuthAuditLog,
+    EvidenceStatus,
     RecordStatus,
     ReportingPeriod,
     Role,
@@ -128,6 +129,24 @@ def ensure_default_anomaly_rules() -> List[AnomalyRule]:
             "category": AnomalyCategory.INTENSITY_ANOMALY,
             "severity": AnomalySeverity.LOW,
             "threshold_percentage": Decimal("100.00"),
+            "rule_parameters": {},
+        },
+        {
+            "code": "OCR_MISMATCH",
+            "name": "Supporting Evidence OCR Mismatch",
+            "description": "Flags records where OCR-extracted quantity or parameters from uploaded invoices or utility bills deviate from entered ESG values.",
+            "category": AnomalyCategory.OCR_MISMATCH,
+            "severity": AnomalySeverity.HIGH,
+            "threshold_percentage": Decimal("5.00"),
+            "rule_parameters": {"variance_threshold_pct": 5.0},
+        },
+        {
+            "code": "MISSING_EVIDENCE",
+            "name": "High-Impact Unsubstantiated Entry (Missing Evidence)",
+            "description": "Flags material ESG activity records lacking mandatory supporting audit documentation.",
+            "category": AnomalyCategory.MISSING_EVIDENCE,
+            "severity": AnomalySeverity.HIGH,
+            "threshold_percentage": None,
             "rule_parameters": {},
         },
     ]
@@ -613,6 +632,131 @@ def evaluate_intensity_anomaly(
     return None
 
 
+def evaluate_ocr_mismatch(
+    record: ActivityRecord,
+    rule: AnomalyRule,
+) -> Optional[Dict[str, Any]]:
+    """
+    Category G: Supporting Evidence OCR Mismatch Detection.
+    Evaluates whether active supporting evidence OCR extracted values deviate from entered values.
+    Returns explainable anomaly answering WHAT, WHY, WHERE, EVIDENCE, ACTION.
+    """
+    if record.quantity is None:
+        return None
+
+    active_evidences = record.evidence_files.filter(status=EvidenceStatus.ACTIVE)
+    for ev in active_evidences:
+        ocr_run = ev.ocr_runs.order_by("-created_at").first()
+        if not ocr_run or not ocr_run.comparison_summary:
+            continue
+        comp = ocr_run.comparison_summary
+        items = comp.get("items", {})
+        qty_item = items.get("quantity")
+        if qty_item and (qty_item.get("status") == "MISMATCH" or qty_item.get("result") in ["Significant Difference", "Minor Difference"]):
+            status = qty_item.get("status")
+            result = qty_item.get("result", "")
+            var_pct = qty_item.get("variance_pct")
+
+            threshold_pct = rule.threshold_percentage or Decimal("5.00")
+            is_anomalous = False
+            if status == "MISMATCH" or result == "Significant Difference":
+                is_anomalous = True
+            elif var_pct is not None and abs(Decimal(str(var_pct))) >= threshold_pct:
+                is_anomalous = True
+
+            if is_anomalous:
+                ocr_val = qty_item.get("ocr_value")
+                entered_val = qty_item.get("entered_value", record.quantity)
+                unit_sym = record.unit.symbol if record.unit else ""
+
+                try:
+                    ocr_dec = Decimal(str(ocr_val))
+                    entered_dec = Decimal(str(entered_val))
+                    diff = entered_dec - ocr_dec
+                except Exception:
+                    diff = Decimal("0")
+                    ocr_dec = None
+
+                var_dec = Decimal(str(var_pct)) if var_pct is not None else None
+
+                if var_dec and abs(var_dec) >= Decimal("15.0"):
+                    severity = AnomalySeverity.CRITICAL
+                elif status == "MISMATCH":
+                    severity = AnomalySeverity.HIGH
+                else:
+                    severity = rule.severity or AnomalySeverity.MEDIUM
+
+                explanation = (
+                    f"WHAT: Discrepancy between entered ESG value and OCR extracted bill value. "
+                    f"WHY: Entered quantity ({entered_val} {unit_sym}) deviates from OCR extracted invoice value "
+                    f"({ocr_val} {unit_sym}) by {var_pct}% (Tolerance exceeded). "
+                    f"WHERE: Site '{record.site.name}', Record #{record.id}. "
+                    f"EVIDENCE: Attached '{ev.original_filename}' (Evidence #{ev.id}). "
+                    f"ACTION: Reviewer should request correction from Site Manager or record formal justification."
+                )
+
+                return {
+                    "rule": rule,
+                    "severity": severity,
+                    "observed_value": record.quantity,
+                    "baseline_value": ocr_dec,
+                    "deviation_value": diff,
+                    "deviation_percentage": var_dec,
+                    "explanation": explanation,
+                    "context_data": {
+                        "evidence_id": ev.id,
+                        "evidence_filename": ev.original_filename,
+                        "ocr_run_id": ocr_run.id,
+                        "ocr_extracted_quantity": float(ocr_dec) if ocr_dec else None,
+                        "entered_quantity": float(record.quantity),
+                        "variance_pct": float(var_dec) if var_dec else None,
+                        "comparison_status": status,
+                    },
+                }
+    return None
+
+
+def evaluate_missing_evidence(
+    record: ActivityRecord,
+    rule: AnomalyRule,
+) -> Optional[Dict[str, Any]]:
+    """
+    Category H: Missing Supporting Audit Documentation for Material ESG Activity.
+    """
+    act_rules = (record.activity.validation_rules or {}) if record.activity else {}
+    is_mandatory = (
+        act_rules.get("evidence_required") is True
+        or act_rules.get("evidence_mandatory") is True
+        or (record.activity and record.activity.code in ["FUEL-DIESEL-STAT", "ELEC-GRID", "WASTE-HAZARDOUS"])
+    )
+    if not is_mandatory:
+        return None
+
+    active_ev_count = record.evidence_files.filter(status=EvidenceStatus.ACTIVE).count()
+    if active_ev_count == 0:
+        explanation = (
+            f"WHAT: High-impact ESG activity record missing supporting audit documentation. "
+            f"WHY: Mandatory compliance policy requires verified utility bill, fuel challan, or receipt for {record.activity.name}. "
+            f"WHERE: Site '{record.site.name}', Record #{record.id}. "
+            f"EVIDENCE: No active supporting document attached. "
+            f"ACTION: Site Manager must upload supporting evidence document before submission verification."
+        )
+        return {
+            "rule": rule,
+            "severity": AnomalySeverity.HIGH,
+            "observed_value": record.quantity or Decimal("0"),
+            "baseline_value": None,
+            "deviation_value": None,
+            "deviation_percentage": None,
+            "explanation": explanation,
+            "context_data": {
+                "activity_code": record.activity.code if record.activity else "",
+                "evidence_count": 0,
+            },
+        }
+    return None
+
+
 # Rule category dispatcher mapping
 RULE_DISPATCHER = {
     AnomalyCategory.HISTORICAL_SPIKE: evaluate_historical_spike,
@@ -621,6 +765,8 @@ RULE_DISPATCHER = {
     AnomalyCategory.DUPLICATE_SUSPECT: evaluate_duplicate_suspect,
     AnomalyCategory.THRESHOLD_BREACH: evaluate_threshold_breach,
     AnomalyCategory.INTENSITY_ANOMALY: evaluate_intensity_anomaly,
+    AnomalyCategory.OCR_MISMATCH: evaluate_ocr_mismatch,
+    AnomalyCategory.MISSING_EVIDENCE: evaluate_missing_evidence,
 }
 
 

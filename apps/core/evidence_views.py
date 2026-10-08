@@ -105,6 +105,25 @@ def evidence_list_view(request):
     else:
         total_storage_formatted = f"{total_bytes / (1024 * 1024):.2f} MB"
 
+    # Evidence Completeness & Quality Intelligence Metrics (Section 25)
+    from apps.core.scope_services import get_accessible_sites
+    from apps.core.models import AnomalyRecord, AnomalyStatus, ValidationStatus, OCRStatus
+    accessible_sites = get_accessible_sites(user)
+    records_qs = ActivityRecord.objects.filter(site__in=accessible_sites)
+    total_records = records_qs.count()
+    records_with_evidence = records_qs.filter(evidence_files__status=EvidenceStatus.ACTIVE).distinct().count()
+    records_without_evidence = max(0, total_records - records_with_evidence)
+
+    ocr_processed_docs = qs.filter(ocr_runs__status=OCRStatus.COMPLETED).distinct().count()
+    ocr_pending_docs = max(0, active_docs - ocr_processed_docs)
+
+    val_errors = records_qs.filter(validation_status=ValidationStatus.INVALID).count()
+    val_warnings = records_qs.filter(validation_status=ValidationStatus.WARNING).count()
+
+    anomalies_qs = AnomalyRecord.objects.filter(activity_record__site__in=accessible_sites, is_active=True)
+    total_anomalies = anomalies_qs.count()
+    unresolved_anomalies = anomalies_qs.filter(status__in=[AnomalyStatus.OPEN, AnomalyStatus.ACKNOWLEDGED]).count()
+
     # Pagination
     paginator = Paginator(qs, 20)
     page_number = request.GET.get("page", 1)
@@ -123,6 +142,17 @@ def evidence_list_view(request):
         "active_docs": active_docs,
         "retired_docs": retired_docs,
         "total_storage_formatted": total_storage_formatted,
+        "quality_metrics": {
+            "total_records": total_records,
+            "records_with_evidence": records_with_evidence,
+            "records_without_evidence": records_without_evidence,
+            "ocr_processed_docs": ocr_processed_docs,
+            "ocr_pending_docs": ocr_pending_docs,
+            "val_errors": val_errors,
+            "val_warnings": val_warnings,
+            "total_anomalies": total_anomalies,
+            "unresolved_anomalies": unresolved_anomalies,
+        },
     }
     return render(request, "evidence/evidence_list.html", context)
 

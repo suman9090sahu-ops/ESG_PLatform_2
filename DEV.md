@@ -1581,3 +1581,128 @@ ACCEPTANCE TEST SUMMARY: Total: 22 | Passed: 22 | Failed: 0 (100% PASS)
      - Layer 3: Verified Submission Batch & Subsidiary Sign-off
      - Layer 4: Source Activity Record, Operating Site, Project, & Measurement Date
      - Layer 5: Supporting Evidence (SHA-256 checksum) & Immutable Audit Trail (Actors, Roles, Timestamps)
+
+
+---
+
+## 21. Phase 23 — Evidence, OCR, Validation & ESG Anomaly Intelligence
+
+Strengthened the core evidence governance layer under the operational mandate:
+**"Capture Once. Verify Intelligently. Calculate Consistently. Trace Everything."**
+
+### Architectural Deliverables & Upgrades
+1. **Model & Database Architecture (`apps/core/models.py`)**:
+   - Added `OCR_MISMATCH` and `MISSING_EVIDENCE` choices to `AnomalyCategory`.
+   - Added `comparison_overall_status` and `comparison_items_list` properties to `OCRRun` for dynamic template rendering without method collisions.
+   - Dynamic comparison self-healing: `OCRRun.comparison_summary` dynamically re-computes against modified operational values to prevent stale comparisons.
+   - Generated & applied migration `apps/core/migrations/0017_alter_anomalyrule_category.py`.
+2. **Deterministic 5-State OCR Comparison Engine (`apps/core/ocr_services.py`)**:
+   - Implemented 5 distinct outcomes: `Match`, `Minor Difference`, `Significant Difference`, `Missing OCR Value`, `Unable to Compare`.
+   - Configurable percentage tolerance (`DEFAULT_OCR_TOLERANCE_PCT = 1.0%` or activity rule override).
+   - Post-OCR pipeline triggers automatic deterministic validation and anomaly detection.
+3. **Layer 5 OCR Validation Engine (`apps/core/validation_services.py`)**:
+   - Implemented `check_evid_ocr_comparison(record, rule)` (Code: `EVID_OCR_COMPARISON`):
+     - `PASS`: OCR extracted values align with entered telemetry within tolerance.
+     - `WARNING`: Minor difference within tolerance or optional OCR missing.
+     - `ERROR` (Blocking): Significant difference / mismatch between entered data and invoice.
+4. **Explainable Anomaly Intelligence (`apps/core/anomaly_services.py`)**:
+   - Implemented `evaluate_ocr_mismatch` and `evaluate_missing_evidence` answering:
+     - **WHAT**: Specific metric and variance detected.
+     - **WHY**: Mathematical divergence or missing regulatory artifact.
+     - **WHERE**: Site, reporting period, activity record.
+     - **EVIDENCE**: Supporting document ID and SHA-256 checksum.
+     - **ACTION**: Recommended remediation for reviewer and submitter.
+5. **Review Decision Governance Gate (`apps/core/review_services.py`)**:
+   - Added governance lock in `verify_submission`: blocks verification if `validation_status == ValidationStatus.INVALID` or if unexplained active `CRITICAL` anomalies exist.
+6. **Reprocessing & Dynamic Reconciliation (`apps/core/correction_services.py`)**:
+   - Updating operational telemetry during remediation refreshes OCR comparisons, re-runs validation, and triggers anomaly detection.
+7. **Evidence Completeness Dashboard & Multi-Dimensional Anomaly Desk**:
+   - Database-backed quality metrics (`total_records`, `records_with_evidence`, `records_without_evidence`, `ocr_processed_docs`, `ocr_pending_docs`, `val_errors`, `val_warnings`, `total_anomalies`).
+   - Subsidiary and category filtering on Anomaly Desk (`/anomalies/`).
+8. **6-Tier Auditor Trace Lineage (`apps/core/reporting_services.py`)**:
+   - Trace detail incorporates Layer 4b (Operational Anomaly Intelligence) and Layer 5 (Evidence & OCR Live Reconciliation).
+
+### Verification Suites
+- **Authoritative Phase 23 Suite (`tests/test_phase23_evidence_ocr_intelligence.py`)**: `6/6 PASSED` (100%)
+- **Full Monolith Regression Suite across 8 Phases**: `152/152 PASSED` (100%)
+- **Automated HTTP Workflow Verification (`scripts/verify_phase23_flows.py`)**: `6/6 FLOWS PASSED` (100%)
+- **Demo Scenario Seeding (`scripts/seed_phase23_demo_scenarios.py`)**: Scenario A (Clean) and Scenario B (Problem & Remediation) seeded into live database.
+
+---
+
+## 22. Phase 24 — ESG Calculation, Emission Factors & Traceable Metric Engine
+
+Built, integrated, and hardened the authoritative ESG calculation layer under the core architectural mandate:
+> **A reported ESG number must be reproducible from its source data and calculation logic.**
+
+### Architectural Deliverables & Upgrades
+1. **Model & Database Architecture (`apps/core/models.py`)**:
+   - `CalculationStatus`: `NOT_CALCULATED`, `CALCULATED`, `FAILED`, `REQUIRES_CONFIGURATION`, `OUTDATED`.
+   - `EmissionFactorStatus`: `ACTIVE`, `DRAFT`, `ARCHIVED`, `SUPERSEDED`.
+   - `EmissionFactor`: Regulatory baseline factor table supporting code, name, activity binding, scope (`SCOPE_1`, `SCOPE_2`, `SCOPE_3`), factor value (`DecimalField` with 6 decimal places), factor unit, input unit (`ForeignKey(UnitOfMeasure)`), output unit, source reference, vintage year, geography, and versioning.
+   - `CalculationResult`: Persistent, immutable calculation ledger linking source `ActivityRecord`, `EmissionFactor`, raw inputs, normalized quantity, conversion factor applied, factor value snapshot, calculated value, result unit (`tCO₂e`), calculation status, calculation formula string, execution timestamp, and `is_latest` version pointer.
+   - `AuthAuditLog.EventType`: Extended with `EMISSION_FACTOR_CREATED`, `EMISSION_FACTOR_UPDATED`, `EMISSION_FACTOR_ARCHIVED`, `CALCULATION_EXECUTED`, `RECALCULATION_EXECUTED`.
+   - Applied database migration: `0018_alter_authauditlog_event_type_emissionfactor_and_more.py`.
+
+2. **Centralized Unit Normalization Service (`apps/core/conversion_services.py`)**:
+   - Standardized physical dimension preservation (`VOLUME`, `ENERGY`, `MASS`, `DISTANCE`).
+   - Dimension mismatch guard: strictly rejects cross-dimensional conversion (e.g. Volume to Mass without specific gravity) raising `UnitDimensionMismatchError`.
+   - Unsupported unit guard: rejects unmapped units raising `UnsupportedUnitError`.
+   - High-precision Decimal conversions ensuring exact reproducibility across industrial telemetry.
+   - `UnitConversionService` facade class.
+
+3. **Deterministic Centralized Calculation Engine (`apps/core/calculation_services.py`)**:
+   - `select_emission_factor()`: Contextual regulatory factor selector resolving applicable factor by activity master, scope, reporting period, geography, and active status, with zero synthetic guessing.
+   - `calculate_activity_record()`: Deterministic pipeline executing quantity validation, Scope 1 / Scope 2 / Scope 3 calculations, unit normalization, factor multiplication, formula generation, and immutable ledger persistence.
+   - Missing factor safety: sets status `REQUIRES_CONFIGURATION` with informative diagnostic notice; strictly returns `0.0000` with zero fabricated numbers.
+   - `recalculate_record()`: Server-side recalculation service updating calculation results, preserving historical audit runs and logging `RECALCULATION_EXECUTED`.
+   - `batch_recalculate_reporting_period()`: Period-wide batch execution.
+
+4. **Consolidation Integration & Double-Counting Protection (`apps/core/reporting_services.py`)**:
+   - `get_consolidated_report()`: Consumes live calculation results from database; double-counting protection filters for verified and current submissions (`is_current=True`), preventing duplicate counting from corrections or re-submissions.
+   - `get_trace_lineage_context()`: Extended 6-tier audit lineage linking reporting disclosure directly to `CalculationResult`, `EmissionFactor`, formula string, source `ActivityRecord`, uploaded `Evidence`, `Verification`, and `AuthAuditLog`.
+
+5. **Calculation Quality Desk & Factor Governance Views (`apps/core/calculation_views.py`)**:
+   - `/calculations/desk/`: Calculation Quality Desk with 5 KPI summary cards (Total Verified Records, Calculated, Requires Configuration, Failed, Reporting-Ready Scope 1/2 GHG Total).
+   - `/calculations/<id>/`: Calculation Detail Page rendering 4-step pipeline cards, formula representation, factor governance metadata, and historical calculation runs ledger.
+   - `/calculations/recalculate/<id>/`: POST endpoint for authorized recalculation; strictly blocks Auditor and Site Manager with HTTP 403 Forbidden.
+   - `/emission-factors/`: Regulatory Factor Directory with search, scope filter, and status filter.
+   - `/emission-factors/<id>/`: Factor Detail view displaying baseline specifications and recent calculation runs.
+   - `/emission-factors/create/` & `/emission-factors/<id>/edit/`: Factor administrative management restricted to ESG Manager.
+
+6. **Deterministic Demo Scenarios (`scripts/seed_phase24_demo_scenarios.py`)**:
+   - Regulatory Factors: IPCC 2006 Stationary Diesel (`2.68 kg CO₂e / L`), Mobile Diesel (`2.68 kg CO₂e / L`), Mobile Petrol (`2.31 kg CO₂e / L`), CEA Baseline v19 Grid Electricity (`0.82 kg CO₂e / kWh`), Captive Solar (`0.00 kg CO₂e / kWh`).
+   - Scenario 1 (Deterministic Simple Calculation): 1,000 L Diesel × 2.68 kg CO₂e/L ÷ 1,000 = `2.6800 tCO₂e` (Record #100).
+   - Scenario 2 (Multi-Site Consolidation Reconciliation): Site A (2.6800 tCO₂e) + Site B (5.3600 tCO₂e) + Site C (8.0400 tCO₂e) = `16.0800 tCO₂e` project total.
+   - Scenario 3 (Missing Factor Safety): SF6 Gas without factor enters `REQUIRES_CONFIGURATION` with `0.0000 tCO₂e` and diagnostic notice.
+   - Scenario 4 (Auditor 6-Tier Traceability): Complete verified lineage linking metric to calculation, factor, submission, evidence, review, and audit log.
+
+### Manual Reconciliation Results
+| Check | Input | Factor / Rule | Expected | Actual | Result |
+|---|---|---|---:|---:|:---:|
+| **Unit Conversion (Volume)** | 2.5 kL | 1,000 L / kL | 2,500.0000 L | 2,500.0000 L | **PASS** |
+| **Unit Conversion (Energy)** | 10.0 MWh | 1,000 kWh / MWh | 10,000.0000 kWh | 10,000.0000 kWh | **PASS** |
+| **Scope 1 Calculation** | 1,000 L Diesel | 2.6800 kg CO₂e / L | 2.6800 tCO₂e | 2.6800 tCO₂e | **PASS** |
+| **Scope 2 Calculation** | 10,000 kWh Grid | 0.8200 kg CO₂e / kWh | 8.2000 tCO₂e | 8.2000 tCO₂e | **PASS** |
+| **Multi-Site Consolidation** | Sites A (1kL), B (2kL), C (3kL) | Reconciled Sum | 16.0800 tCO₂e | 16.0800 tCO₂e | **PASS** |
+
+### Automated & Regression Testing Matrix
+- `tests.test_phase24_calculation_engine`: **19/19 PASSED** (100% OK)
+- `tests.test_phase20_workflow_and_trace`: **4/4 PASSED** (100% OK)
+- `tests.test_phase23_evidence_ocr_intelligence`: **6/6 PASSED** (100% OK)
+- `tests.test_rbac`: **12/12 PASSED** (100% OK)
+
+### Live Browser Acceptance Verification (`scripts/verify_phase24_live_browser.py`)
+| Test | Result | Notes |
+|---|:---:|---|
+| Emission Factor Catalog | **PASS** | HTTP 200, rendered catalog with regulatory factor records |
+| Emission Factor Detail | **PASS** | HTTP 200, factor specifications, methodology, and runs rendered |
+| Calculation Quality Desk | **PASS** | HTTP 200, quality KPIs and calculation ledger rendered |
+| Calculation Detail Page | **PASS** | HTTP 200, formula and deterministic result (2.6800 tCO₂e) rendered |
+| Multi-Site Consolidation in Reports | **PASS** | HTTP 200, reconciled Scope 1 total (16.0800 tCO₂e) rendered in reporting overview |
+| Missing Factor Safety State | **PASS** | HTTP 200, status REQUIRES_CONFIGURATION safely rendered with zero fabricated numbers |
+| Auditor Read-Only Assurance Mode | **PASS** | HTTP 200 on all inspection screens; Auditor badge displayed in UI |
+| Trace This Number Lineage | **PASS** | HTTP 200, 6-Tier lineage links report -> calculation -> factor -> evidence |
+| RBAC: Auditor Recalculation Blocked | **PASS** | HTTP 403 Forbidden returned on mutation attempt |
+| RBAC: Site Manager Recalculation Blocked | **PASS** | HTTP 403 Forbidden returned on Site Manager mutation attempt |
+| RBAC: Factor Administration Boundaries | **PASS** | HTTP 403 Forbidden on create (403) and edit (403) |

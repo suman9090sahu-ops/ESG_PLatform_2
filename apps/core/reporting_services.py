@@ -143,65 +143,10 @@ DEFAULT_SCOPE2_FACTOR = Decimal("0.8200")
 def calculate_record_emissions(record: ActivityRecord) -> Dict[str, Any]:
     """
     Computes greenhouse gas emissions and standard regulatory metadata for an ActivityRecord.
-
-    Returns dict containing:
-    - emissions_tco2e: Decimal emissions in metric tonnes CO2e (or 0 for non-GHG)
-    - emission_factor: Decimal factor value
-    - factor_unit: string unit description
-    - factor_source: string standard source
-    - methodology: string formula representation
-    - scope: ScopeClassification string
+    Delegates directly to the centralized database-backed ESG Calculation Engine.
     """
-    activity_code = record.activity.code if record.activity else ""
-    qty = record.quantity or Decimal("0")
-    unit_sym = record.unit.symbol if record.unit else ""
-
-    info = EMISSION_FACTORS.get(activity_code)
-
-    if not info:
-        # Fallback to category / scope heuristics
-        scope = record.activity.scope_classification if record.activity else ScopeClassification.SCOPE_1
-        if scope == ScopeClassification.SCOPE_1:
-            factor = DEFAULT_SCOPE1_FACTOR
-            factor_unit = "kg CO₂e / unit"
-            source = "IPCC 2006 Default Combustion Factor"
-        elif scope == ScopeClassification.SCOPE_2:
-            factor = DEFAULT_SCOPE2_FACTOR
-            factor_unit = "kg CO₂e / kWh"
-            source = "CEA CO₂ Baseline Database v19"
-        else:
-            factor = Decimal("0.0000")
-            factor_unit = f"{unit_sym} logged"
-            source = "Operational Physical Observation"
-        methodology = f"Quantity ({qty} {unit_sym}) × {factor} {factor_unit} ÷ 1,000"
-    else:
-        factor = info["factor"]
-        factor_unit = info["factor_unit"]
-        scope = info["scope"]
-        source = info["source"]
-        methodology = info["methodology"]
-
-    # Compute emissions in metric tonnes (1 tCO2e = 1,000 kg CO2e)
-    if scope in [ScopeClassification.SCOPE_1, ScopeClassification.SCOPE_2, ScopeClassification.SCOPE_3]:
-        # Handle MWh conversion if needed (1 MWh = 1,000 kWh)
-        multiplier = Decimal("1.0")
-        if unit_sym.upper() == "MWH":
-            multiplier = Decimal("1000.0")
-        elif unit_sym.upper() == "KL" and "DIESEL" in activity_code:
-            multiplier = Decimal("1000.0")
-
-        emissions_tco2e = (qty * multiplier * factor) / Decimal("1000.0")
-    else:
-        emissions_tco2e = Decimal("0.0000")
-
-    return {
-        "emissions_tco2e": round(emissions_tco2e, 4),
-        "emission_factor": factor,
-        "factor_unit": factor_unit,
-        "factor_source": source,
-        "methodology": methodology,
-        "scope": scope,
-    }
+    from apps.core.calculation_services import calculate_record_emissions as engine_calc
+    return engine_calc(record)
 
 
 # -----------------------------------------------------------------------------
@@ -286,21 +231,27 @@ def get_consolidated_report(
         calc = calculate_record_emissions(rec)
         scope = calc["scope"]
         tco2e = calc["emissions_tco2e"]
+        calc_status = calc.get("calculation_status", "CALCULATED")
 
-        if scope == ScopeClassification.SCOPE_1:
-            total_scope1_tco2e += tco2e
-        elif scope == ScopeClassification.SCOPE_2:
-            total_scope2_tco2e += tco2e
-        elif scope == ScopeClassification.SCOPE_3:
-            total_scope3_tco2e += tco2e
-        elif "WATER" in rec.activity.code:
-            total_water_kl += rec.quantity or Decimal("0")
-        elif "WASTE" in rec.activity.code:
-            total_waste_tonnes += rec.quantity or Decimal("0")
+        # Double-counting protection: verified and validly calculated records only
+        if calc_status == "CALCULATED":
+            if scope == ScopeClassification.SCOPE_1:
+                total_scope1_tco2e += tco2e
+            elif scope == ScopeClassification.SCOPE_2:
+                total_scope2_tco2e += tco2e
+            elif scope == ScopeClassification.SCOPE_3:
+                total_scope3_tco2e += tco2e
+            elif "WATER" in rec.activity.code:
+                total_water_kl += calc.get("normalized_quantity", rec.quantity or Decimal("0"))
+            elif "WASTE" in rec.activity.code:
+                total_waste_tonnes += calc.get("normalized_quantity", rec.quantity or Decimal("0"))
 
         # Find latest verified submission and review
         latest_sub = rec.submissions.order_by("-submission_number").first()
         latest_review = latest_sub.latest_review if latest_sub else None
+
+        calc_id = calc.get("calculation_id")
+        calc_url = reverse("core:calculation_detail", kwargs={"calculation_id": calc_id}) if calc_id else None
 
         item = {
             "record": rec,
@@ -318,6 +269,8 @@ def get_consolidated_report(
             "formatted_value": f"{rec.quantity:,.4f}" if rec.quantity else "0.0000",
             "unit": rec.unit.symbol if rec.unit else "",
             "unit_symbol": rec.unit.symbol if rec.unit else "",
+            "normalized_quantity": calc.get("normalized_quantity", rec.quantity),
+            "normalized_unit": calc.get("normalized_unit", rec.unit.symbol if rec.unit else ""),
             "emissions_tco2e": tco2e,
             "calculated_emissions_tco2e": tco2e,
             "emission_factor": calc["emission_factor"],
@@ -326,6 +279,9 @@ def get_consolidated_report(
             "methodology": calc["methodology"],
             "status": rec.status,
             "status_display": rec.get_status_display(),
+            "calculation_status": calc_status,
+            "calculation_id": calc_id,
+            "calculation_url": calc_url,
             "latest_submission": latest_sub,
             "verified_by": latest_review.reviewer if latest_review else None,
             "verified_at": latest_review.created_at if latest_review else rec.updated_at,
@@ -559,7 +515,7 @@ def get_auditor_dashboard_context(user) -> Dict[str, Any]:
 # 5. 5-LAYER "TRACE THIS NUMBER" LINEAGE ENGINE
 # -----------------------------------------------------------------------------
 
-def get_trace_lineage_context(record_id: int, user=None) -> Dict[str, Any]:
+def get_trace_lineage_context(record_id: Any, user=None) -> Dict[str, Any]:
     """
     Constructs the authoritative 5-tier audit lineage for an ESG metric / ActivityRecord.
 
@@ -570,6 +526,15 @@ def get_trace_lineage_context(record_id: int, user=None) -> Dict[str, Any]:
     Tier 5: Supporting Audit Evidence & Cryptographic Checksum (SHA-256, OCR Intelligence)
     Tier 6: Chronological Audit Trail (AuthAuditLog events)
     """
+    if isinstance(record_id, ActivityRecord):
+        rec_id = record_id.pk
+    elif hasattr(record_id, "activity_record_id"):
+        rec_id = record_id.activity_record_id
+    elif hasattr(record_id, "activity_record"):
+        rec_id = record_id.activity_record.pk
+    else:
+        rec_id = record_id
+
     record = (
         ActivityRecord.objects.select_related(
             "site",
@@ -598,7 +563,7 @@ def get_trace_lineage_context(record_id: int, user=None) -> Dict[str, Any]:
             "validation_runs__results",
             "anomalies",
         )
-        .filter(pk=record_id)
+        .filter(pk=rec_id)
         .first()
     )
 
@@ -690,11 +655,17 @@ def get_trace_lineage_context(record_id: int, user=None) -> Dict[str, Any]:
             "scope": calc["scope"],
             "raw_quantity": record.quantity,
             "unit": record.unit.symbol if record.unit else "",
+            "normalized_quantity": calc.get("normalized_quantity", record.quantity),
+            "normalized_unit": calc.get("normalized_unit", record.unit.symbol if record.unit else ""),
+            "conversion_factor": calc.get("conversion_factor", Decimal("1.0")),
             "emissions_tco2e": calc["emissions_tco2e"],
             "emission_factor": calc["emission_factor"],
             "factor_unit": calc["factor_unit"],
             "factor_source": calc["factor_source"],
             "methodology": calc["methodology"],
+            "calculation_id": calc.get("calculation_id"),
+            "calculation_status": calc.get("calculation_status", "CALCULATED"),
+            "calculation_url": reverse("core:calculation_detail", kwargs={"calculation_id": calc.get("calculation_id")}) if calc.get("calculation_id") else None,
         },
         # Layer 2: Consolidated Scope
         "layer2_consolidated": {
@@ -733,6 +704,11 @@ def get_trace_lineage_context(record_id: int, user=None) -> Dict[str, Any]:
             "validation_status": record.validation_status,
             "latest_validation_run": latest_val_run,
             "validation_results": val_results,
+        },
+        # Layer 4b: Anomaly Detection Intelligence
+        "layer4b_anomalies": {
+            "total_count": record.anomalies.count(),
+            "anomalies_list": list(record.anomalies.select_related("rule", "reviewed_by").order_by("-created_at")),
         },
         # Layer 5: Evidence & Cryptographic Checksum
         "layer5_evidence": {

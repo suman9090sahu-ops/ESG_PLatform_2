@@ -517,6 +517,18 @@ def get_role_sidebar_menu(user):
                         "icon": "icon-check text-warning",
                     },
                     {
+                        "nav_id": "emission_factors",
+                        "label": "Emission Factors",
+                        "url": reverse("core:emission_factor_list"),
+                        "icon": "icon-chemistry text-info",
+                    },
+                    {
+                        "nav_id": "calculation_desk",
+                        "label": "Calculation Desk",
+                        "url": reverse("core:calculation_desk"),
+                        "icon": "icon-calculator text-warning",
+                    },
+                    {
                         "nav_id": "consolidation",
                         "label": "Consolidation Engine",
                         "url": reverse("core:reports_overview"),

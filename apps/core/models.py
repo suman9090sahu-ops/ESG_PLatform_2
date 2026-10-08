@@ -13,6 +13,7 @@ import re
 from decimal import Decimal
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.utils import timezone
 
 
 class Role(models.Model):
@@ -709,6 +710,12 @@ class AuthAuditLog(models.Model):
         TRANSPORT_CORRECTED = "TRANSPORT_CORRECTED", "Transport Record Corrected"
         TRANSPORT_RESUBMITTED = "TRANSPORT_RESUBMITTED", "Transport Record Resubmitted"
         TRANSPORT_ANOMALY_DETECTED = "TRANSPORT_ANOMALY_DETECTED", "Transport Anomaly Detected"
+        # Phase 24: ESG Calculations & Emission Factors
+        EMISSION_FACTOR_CREATED = "EMISSION_FACTOR_CREATED", "Emission Factor Created"
+        EMISSION_FACTOR_UPDATED = "EMISSION_FACTOR_UPDATED", "Emission Factor Updated"
+        EMISSION_FACTOR_ARCHIVED = "EMISSION_FACTOR_ARCHIVED", "Emission Factor Archived"
+        CALCULATION_EXECUTED = "CALCULATION_EXECUTED", "ESG Calculation Executed"
+        RECALCULATION_EXECUTED = "RECALCULATION_EXECUTED", "ESG Recalculation Executed"
 
     user = models.ForeignKey(
         User,
@@ -1614,6 +1621,11 @@ class ActivityRecord(models.Model):
         """Returns True if record is under review or approved downstream."""
         return self.status in [RecordStatus.SUBMITTED, RecordStatus.VERIFIED, RecordStatus.APPROVED]
 
+    @property
+    def latest_calculation(self):
+        """Returns the active or most recent CalculationResult for this record."""
+        return self.calculation_results.filter(is_latest=True).first()
+
 
 # -----------------------------------------------------------------------------
 # PHASE 09: EVIDENCE MANAGEMENT & AUDIT VERIFICATION
@@ -2400,7 +2412,81 @@ class OCRRun(models.Model):
     @property
     def comparison_summary(self):
         """Returns structured comparison between this OCR run and the parent Activity Record."""
-        return self.raw_metadata.get("comparison", {})
+        comp = self.raw_metadata.get("comparison", {})
+        try:
+            if self.evidence_id and hasattr(self, "evidence") and self.evidence and self.evidence.activity_record_id:
+                rec = self.evidence.activity_record
+                cached_qty = comp.get("items", {}).get("quantity", {}).get("entered_value")
+                if cached_qty is not None and rec.quantity is not None:
+                    from decimal import Decimal
+                    if Decimal(str(cached_qty)) != Decimal(str(rec.quantity)):
+                        from apps.core.ocr_services import compare_ocr_with_activity_record
+                        comp = compare_ocr_with_activity_record(self)
+                        self.raw_metadata["comparison"] = comp
+                        if self.pk:
+                            OCRRun.objects.filter(pk=self.pk).update(raw_metadata=self.raw_metadata)
+        except Exception:
+            pass
+        return comp
+
+    @property
+    def comparison_overall_status(self):
+        comp = self.comparison_summary
+        if not comp or not isinstance(comp, dict):
+            return "NOT_EVALUATED"
+        return comp.get("overall_status", "UNKNOWN")
+
+    @property
+    def comparison_items_list(self):
+        """
+        Returns structured list of comparison items for template rendering
+        avoiding dict.items method collision in Django templates.
+        """
+        comp = self.comparison_summary
+        if not comp or not isinstance(comp, dict):
+            return []
+        items_dict = comp.get("items")
+        if not isinstance(items_dict, dict):
+            return []
+        res = []
+        for key, data in items_dict.items():
+            if isinstance(data, dict):
+                st = data.get("status", "UNKNOWN")
+                res_display = data.get("result")
+                badge_class = {
+                    "MATCH": "badge-success",
+                    "MINOR_DIFFERENCE": "badge-warning",
+                    "SIGNIFICANT_DIFFERENCE": "badge-danger",
+                    "MISMATCH": "badge-danger",
+                    "MISSING_OCR_VALUE": "badge-secondary",
+                    "NOT_DETECTED": "badge-secondary",
+                    "UNABLE_TO_COMPARE": "badge-secondary",
+                    "RECORD_UNSPECIFIED": "badge-light text-muted border",
+                }.get(st, "badge-secondary")
+                if not res_display:
+                    res_display = {
+                        "MATCH": "Match",
+                        "MINOR_DIFFERENCE": "Minor Difference",
+                        "SIGNIFICANT_DIFFERENCE": "Significant Difference",
+                        "MISMATCH": "Mismatch",
+                        "MISSING_OCR_VALUE": "Missing OCR Value",
+                        "NOT_DETECTED": "Missing OCR Value",
+                        "UNABLE_TO_COMPARE": "Unable to Compare",
+                        "RECORD_UNSPECIFIED": "Record Unspecified",
+                    }.get(st, st)
+                res.append({
+                    "key": key,
+                    "label": data.get("label", key.replace("_", " ").title()),
+                    "status": st,
+                    "status_display": res_display,
+                    "badge_class": badge_class,
+                    "record_value": data.get("record_value") if data.get("record_value") is not None else data.get("stored_value"),
+                    "extracted_value": data.get("extracted_value"),
+                    "unit": data.get("unit", ""),
+                    "delta": data.get("delta"),
+                    "delta_pct": data.get("delta_pct"),
+                })
+        return res
 
 
 class OCRField(models.Model):
@@ -3080,6 +3166,8 @@ class AnomalyCategory(models.TextChoices):
     THRESHOLD_BREACH = "THRESHOLD_BREACH", "Threshold Breach"
     DUPLICATE_SUSPECT = "DUPLICATE_SUSPECT", "Duplicate-Like Activity"
     INTENSITY_ANOMALY = "INTENSITY_ANOMALY", "Operational Intensity Anomaly"
+    OCR_MISMATCH = "OCR_MISMATCH", "OCR Document Discrepancy"
+    MISSING_EVIDENCE = "MISSING_EVIDENCE", "Missing Evidence Anomaly"
 
 
 class AnomalyRule(models.Model):
@@ -4748,6 +4836,315 @@ class TransportRecord(models.Model):
             ValidationStatus.INVALID: "badge-danger",
             ValidationStatus.UNVALIDATED: "badge-secondary",
         }.get(self.validation_status, "badge-secondary")
+
+
+# -----------------------------------------------------------------------------
+# PHASE 24: ESG CALCULATION, EMISSION FACTORS & TRACEABLE METRIC ENGINE
+# -----------------------------------------------------------------------------
+
+class CalculationStatus(models.TextChoices):
+    """
+    Standard lifecycle status for deterministic ESG and Carbon metric calculations.
+    """
+    CALCULATED = "CALCULATED", "Calculated"
+    REQUIRES_CONFIGURATION = "REQUIRES_CONFIGURATION", "Requires Configuration"
+    FAILED = "FAILED", "Failed"
+    NOT_CALCULATED = "NOT_CALCULATED", "Not Calculated"
+    OUTDATED = "OUTDATED", "Outdated"
+
+
+class EmissionFactorStatus(models.TextChoices):
+    """
+    Governance and operational status for Emission Factors.
+    """
+    ACTIVE = "ACTIVE", "Active"
+    DRAFT = "DRAFT", "Draft"
+    ARCHIVED = "ARCHIVED", "Archived"
+
+
+class EmissionFactor(models.Model):
+    """
+    Controlled Regulatory Emission Factor for ESG Greenhouse Gas & Resource Accounting.
+    Supports IPCC, Central Electricity Authority (CEA), India GHG Program, and SEBI BRSR standards.
+    Preserves audit lineage, source authority, effective baseline vintage, versioning, and status.
+    """
+    name = models.CharField(
+        max_length=200,
+        help_text="Human-readable factor title (e.g. IPCC 2006 Diesel Stationary Combustion).",
+    )
+    code = models.CharField(
+        max_length=100,
+        unique=True,
+        db_index=True,
+        help_text="Unique factor code e.g. EF-DIESEL-STAT-2024.",
+    )
+    activity = models.ForeignKey(
+        ActivityMaster,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="emission_factors",
+        help_text="Primary Activity Master this factor applies to.",
+    )
+    activity_code = models.CharField(
+        max_length=100,
+        db_index=True,
+        blank=True,
+        help_text="Activity code match (e.g. FUEL-DIESEL-STAT).",
+    )
+    scope = models.CharField(
+        max_length=30,
+        choices=ScopeClassification.choices,
+        default=ScopeClassification.SCOPE_1,
+        help_text="GHG Protocol Scope (Scope 1, Scope 2, Scope 3, or Non-GHG).",
+    )
+    factor_value = models.DecimalField(
+        max_digits=16,
+        decimal_places=6,
+        help_text="Factor coefficient (e.g. 2.680000 kg CO2e per input unit).",
+    )
+    factor_unit = models.CharField(
+        max_length=50,
+        help_text="Factor unit expression (e.g. kg CO₂e / L, kg CO₂e / kWh).",
+    )
+    input_unit = models.ForeignKey(
+        UnitOfMeasure,
+        on_delete=models.PROTECT,
+        related_name="input_emission_factors",
+        help_text="Input unit expected by this factor before multiplication.",
+    )
+    output_unit = models.CharField(
+        max_length=50,
+        default="kg CO₂e",
+        help_text="Output unit of the raw calculation before metric tonne scaling.",
+    )
+    source = models.CharField(
+        max_length=255,
+        help_text="Authoritative regulatory or scientific standard source.",
+    )
+    effective_year = models.IntegerField(
+        default=2024,
+        help_text="Baseline or publication vintage year.",
+    )
+    reporting_period = models.ForeignKey(
+        ReportingPeriod,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="emission_factors",
+        help_text="Optional specific reporting period constraint.",
+    )
+    geography = models.CharField(
+        max_length=100,
+        default="India (National)",
+        help_text="Geographical or grid jurisdiction.",
+    )
+    version = models.CharField(
+        max_length=20,
+        default="v1.0",
+        help_text="Factor version identifier.",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=EmissionFactorStatus.choices,
+        default=EmissionFactorStatus.ACTIVE,
+        db_index=True,
+        help_text="Lifecycle state of this emission factor.",
+    )
+    methodology_notes = models.TextField(
+        blank=True,
+        help_text="Formula and methodology notes.",
+    )
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_factors",
+    )
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="updated_factors",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Emission Factor"
+        verbose_name_plural = "Emission Factors"
+        ordering = ["scope", "activity_code", "-effective_year", "-version"]
+
+    def __str__(self):
+        return f"{self.name} ({self.factor_value} {self.factor_unit}) [{self.version}]"
+
+    def clean(self):
+        super().clean()
+        if self.code:
+            self.code = self.code.strip().upper()
+        if self.activity and not self.activity_code:
+            self.activity_code = self.activity.code
+
+    @property
+    def status_badge_class(self):
+        return {
+            EmissionFactorStatus.ACTIVE: "badge-success",
+            EmissionFactorStatus.DRAFT: "badge-warning",
+            EmissionFactorStatus.ARCHIVED: "badge-secondary",
+        }.get(self.status, "badge-secondary")
+
+
+class CalculationResult(models.Model):
+    """
+    Immutable, Audit-Traceable ESG Metric Calculation Result.
+    Represents the deterministic transformation of Activity Data into an ESG / Carbon Metric:
+    Activity Data + Unit Normalization + Emission Factor = Calculated ESG Metric.
+    """
+    activity_record = models.ForeignKey(
+        ActivityRecord,
+        on_delete=models.CASCADE,
+        related_name="calculation_results",
+        help_text="Source operational activity record.",
+    )
+    activity = models.ForeignKey(
+        ActivityMaster,
+        on_delete=models.CASCADE,
+        related_name="calculation_results",
+        help_text="Activity master taxonomy reference.",
+    )
+    reporting_period = models.ForeignKey(
+        ReportingPeriod,
+        on_delete=models.CASCADE,
+        related_name="calculation_results",
+        help_text="Reporting cycle boundary.",
+    )
+    site = models.ForeignKey(
+        Site,
+        on_delete=models.CASCADE,
+        related_name="calculation_results",
+        help_text="Operating facility / site.",
+    )
+    emission_factor = models.ForeignKey(
+        EmissionFactor,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="calculation_results",
+        help_text="Applied emission factor snapshot.",
+    )
+    status = models.CharField(
+        max_length=30,
+        choices=CalculationStatus.choices,
+        default=CalculationStatus.NOT_CALCULATED,
+        db_index=True,
+        help_text="Calculation engine outcome state.",
+    )
+    # Raw Telemetry Snapshot
+    raw_quantity = models.DecimalField(
+        max_digits=16,
+        decimal_places=4,
+        help_text="Original operational quantity entered.",
+    )
+    raw_unit = models.ForeignKey(
+        UnitOfMeasure,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="calc_raw_records",
+        help_text="Original entered measurement unit.",
+    )
+    raw_unit_symbol = models.CharField(max_length=20, blank=True)
+
+    # Unit Normalization Snapshot
+    normalized_quantity = models.DecimalField(
+        max_digits=16,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text="Normalized quantity matching factor input unit.",
+    )
+    normalized_unit = models.ForeignKey(
+        UnitOfMeasure,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="calc_norm_records",
+        help_text="Target unit required by the calculation rule.",
+    )
+    normalized_unit_symbol = models.CharField(max_length=20, blank=True)
+    conversion_factor_applied = models.DecimalField(
+        max_digits=12,
+        decimal_places=6,
+        default=Decimal("1.000000"),
+        help_text="Multiplier applied during unit normalization.",
+    )
+
+    # Applied Emission Factor Snapshot (Preserves historical reproducibility if factor is changed)
+    factor_value_applied = models.DecimalField(max_digits=16, decimal_places=6, null=True, blank=True)
+    factor_unit_applied = models.CharField(max_length=50, blank=True)
+    factor_source_applied = models.CharField(max_length=255, blank=True)
+    factor_version_applied = models.CharField(max_length=20, blank=True)
+
+    # Calculation Result
+    calculated_value = models.DecimalField(
+        max_digits=16,
+        decimal_places=4,
+        default=Decimal("0.0000"),
+        help_text="Final calculated metric value (e.g. tCO2e or kL).",
+    )
+    result_unit = models.CharField(
+        max_length=30,
+        default="tCO₂e",
+        help_text="Reported output metric unit.",
+    )
+    scope = models.CharField(max_length=30, blank=True)
+    formula_repr = models.TextField(
+        blank=True,
+        help_text="Deterministic formula representation string.",
+    )
+    error_message = models.TextField(
+        blank=True,
+        help_text="Explanatory error message if calculation failed or requires configuration.",
+    )
+
+    calculated_at = models.DateTimeField(default=timezone.now)
+    is_latest = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text="Denormalized pointer to latest run for this activity record.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Calculation Result"
+        verbose_name_plural = "Calculation Results"
+        ordering = ["-calculated_at"]
+        indexes = [
+            models.Index(fields=["activity_record", "is_latest"], name="idx_calc_rec_latest"),
+            models.Index(fields=["site", "status"], name="idx_calc_site_status"),
+            models.Index(fields=["reporting_period", "status"], name="idx_calc_period_status"),
+        ]
+
+    def __str__(self):
+        return f"Calc #{self.id} for Record #{self.activity_record_id} [{self.status}]: {self.calculated_value} {self.result_unit}"
+
+    @property
+    def is_calculated(self):
+        return self.status == CalculationStatus.CALCULATED
+
+    @property
+    def status_badge_class(self):
+        return {
+            CalculationStatus.CALCULATED: "badge-success",
+            CalculationStatus.REQUIRES_CONFIGURATION: "badge-warning",
+            CalculationStatus.FAILED: "badge-danger",
+            CalculationStatus.NOT_CALCULATED: "badge-secondary",
+            CalculationStatus.OUTDATED: "badge-info",
+        }.get(self.status, "badge-secondary")
+
 
 
 

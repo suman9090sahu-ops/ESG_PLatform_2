@@ -440,6 +440,109 @@ def check_evid_file_integrity(record: ActivityRecord, rule: ValidationRule) -> O
     return None
 
 
+def check_evid_ocr_comparison(record: ActivityRecord, rule: ValidationRule) -> Optional[ValidationFinding]:
+    """
+    Layer 5: Supporting Evidence OCR Extraction vs Entered Activity Telemetry Alignment.
+
+    Evaluates active evidence documents for attached OCRRun results and comparison findings:
+    - PASS: OCR extracted values match entered ESG values within allowable tolerance.
+    - WARNING: Minor variance within allowable tolerance or optional OCR failed/unprocessed.
+    - ERROR (Blocking): Significant difference / MISMATCH between entered ESG value and supporting invoice.
+    """
+    if not record.id:
+        return None
+
+    active_evidences = record.evidence_files.filter(status=EvidenceStatus.ACTIVE)
+    if not active_evidences.exists():
+        return None
+
+    for ev in active_evidences:
+        ocr_run = ev.ocr_runs.order_by("-created_at").first()
+        if not ocr_run:
+            continue
+
+        if ocr_run.status == "FAILED":
+            return ValidationFinding(
+                rule_code=rule.code,
+                severity=ValidationSeverity.WARNING,
+                message=(
+                    f"OCR document extraction failed on attached evidence file '{ev.original_filename}'. "
+                    f"Manual document inspection required."
+                ),
+                field_name="evidence",
+                is_blocking=False,
+                context_data={"evidence_id": ev.id, "ocr_status": "FAILED"},
+            )
+
+        comp = ocr_run.comparison_summary
+        if not comp:
+            continue
+
+        items = comp.get("items", {})
+
+        # 1. Check for Significant Discrepancies (MISMATCH)
+        for field_key, item in items.items():
+            item_status = item.get("status")
+            item_result = item.get("result", "")
+            if item_status == "MISMATCH" or item_result == "Significant Difference":
+                entered_val = item.get("entered_value", record.quantity)
+                ocr_val = item.get("ocr_value", "N/A")
+                var_pct = item.get("variance_pct", "N/A")
+                label = item.get("label", field_key)
+                return ValidationFinding(
+                    rule_code=rule.code,
+                    severity=ValidationSeverity.ERROR,
+                    message=(
+                        f"Significant discrepancy detected between entered ESG data and supporting document OCR: "
+                        f"{label} entered as {entered_val}, but document OCR extracted {ocr_val} "
+                        f"(variance: {var_pct}%). Supporting evidence does not substantiate entered value."
+                    ),
+                    field_name=field_key,
+                    is_blocking=rule.is_blocking,
+                    context_data={
+                        "evidence_id": ev.id,
+                        "filename": ev.original_filename,
+                        "field": field_key,
+                        "entered_value": str(entered_val),
+                        "ocr_value": str(ocr_val),
+                        "variance_pct": str(var_pct),
+                        "result": item_result,
+                    },
+                )
+
+        # 2. Check for Minor Differences (WARNING)
+        for field_key, item in items.items():
+            item_status = item.get("status")
+            item_result = item.get("result", "")
+            if item_status == "WARNING" or item_result == "Minor Difference":
+                entered_val = item.get("entered_value", record.quantity)
+                ocr_val = item.get("ocr_value", "N/A")
+                var_pct = item.get("variance_pct", "N/A")
+                label = item.get("label", field_key)
+                return ValidationFinding(
+                    rule_code=rule.code,
+                    severity=ValidationSeverity.WARNING,
+                    message=(
+                        f"Minor variance between entered ESG data and supporting document OCR: "
+                        f"{label} entered as {entered_val}, OCR extracted {ocr_val} "
+                        f"(variance: {var_pct}% within allowable tolerance)."
+                    ),
+                    field_name=field_key,
+                    is_blocking=False,
+                    context_data={
+                        "evidence_id": ev.id,
+                        "filename": ev.original_filename,
+                        "field": field_key,
+                        "entered_value": str(entered_val),
+                        "ocr_value": str(ocr_val),
+                        "variance_pct": str(var_pct),
+                        "result": item_result,
+                    },
+                )
+
+    return None
+
+
 # --- Layer 6: Consistency & Duplicate Validators ---
 
 def check_consist_positive_quantity(record: ActivityRecord, rule: ValidationRule) -> Optional[ValidationFinding]:
@@ -545,6 +648,7 @@ RULE_REGISTRY = {
     "EVID_MANDATORY_CHECK": check_evid_mandatory_check,
     "EVID_TYPE_MATCH": check_evid_type_match,
     "EVID_FILE_INTEGRITY": check_evid_file_integrity,
+    "EVID_OCR_COMPARISON": check_evid_ocr_comparison,
     # Layer 6: Consistency
     "CONSIST_POSITIVE_QUANTITY": check_consist_positive_quantity,
     "CONSIST_ZERO_QUANTITY": check_consist_zero_quantity,
@@ -936,6 +1040,15 @@ STANDARD_VALIDATION_RULES = [
         "severity": ValidationSeverity.ERROR,
         "is_blocking": True,
         "description": "Verifies that attached evidence documents have positive file size and cryptographic SHA-256 fingerprint.",
+    },
+    {
+        "code": "EVID_OCR_COMPARISON",
+        "name": "OCR Document Extraction vs Entered ESG Data Alignment",
+        "category": ValidationCategory.EVIDENCE,
+        "severity": ValidationSeverity.ERROR,
+        "is_blocking": True,
+        "description": "Verifies that entered ESG activity values align with OCR-extracted values from supporting documentation within allowable tolerance.",
+        "rule_parameters": {"tolerance_pct": 1.0},
     },
     # Layer 6: Consistency
     {

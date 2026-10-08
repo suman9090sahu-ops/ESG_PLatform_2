@@ -139,8 +139,21 @@
               <strong class="text-dark">{{ layer1_report.raw_quantity }} {{ layer1_report.unit }}</strong>
             </div>
             <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="text-muted small">Unit Normalization:</span>
+              <span class="text-dark small">
+                <strong>{{ layer1_report.raw_quantity }} {{ layer1_report.unit }}</strong> → 
+                <strong class="text-primary">{{ layer1_report.normalized_quantity|default:layer1_report.raw_quantity }} {{ layer1_report.normalized_unit|default:layer1_report.unit }}</strong>
+              </span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-2">
               <span class="text-muted small">Applied Emission Factor:</span>
               <span class="fw-bold text-primary">{{ layer1_report.emission_factor }} {{ layer1_report.factor_unit }}</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="text-muted small">Calculation Status:</span>
+              <span class="badge {% if layer1_report.calculation_status == 'CALCULATED' %}bg-success-subtle text-success border border-success{% elif layer1_report.calculation_status == 'REQUIRES_CONFIGURATION' %}bg-warning-subtle text-warning border border-warning{% else %}bg-secondary-subtle text-secondary border{% endif %}">
+                {{ layer1_report.calculation_status|default:"CALCULATED" }}
+              </span>
             </div>
             <div class="d-flex justify-content-between align-items-center mb-2">
               <span class="text-muted small">Calculated Scope Metric:</span>
@@ -152,8 +165,13 @@
             </div>
             <div class="border-top pt-2 mt-2">
               <div class="small text-muted"><strong>Calculation Formula:</strong></div>
-              <code class="small text-dark d-block">{{ layer1_report.methodology }}</code>
-              <div class="small text-muted mt-1"><strong>Factor Source:</strong> {{ layer1_report.factor_source }}</div>
+              <code class="small text-dark d-block mb-1">{{ layer1_report.methodology }}</code>
+              <div class="small text-muted"><strong>Factor Source:</strong> {{ layer1_report.factor_source }}</div>
+              {% if layer1_report.calculation_url %}
+                <a href="{{ layer1_report.calculation_url }}" class="btn btn-xs btn-outline-primary mt-2 w-100">
+                  <i class="icon-calculator me-1"></i> Open Calculation Engine Audit Ledger
+                </a>
+              {% endif %}
             </div>
           </div>
         </div>
@@ -405,6 +423,33 @@
             {% endif %}
           </div>
         </div>
+        {% if layer4b_anomalies.total_count %}
+          <div class="col-12 mt-3">
+            <div class="p-3 border rounded bg-warning-subtle">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="fw-bold text-dark small text-uppercase"><i class="icon-flag text-danger me-1"></i>Operational Anomaly Intelligence</span>
+                <span class="badge bg-warning text-dark border">{{ layer4b_anomalies.total_count }} Anomaly Finding{{ layer4b_anomalies.total_count|pluralize }}</span>
+              </div>
+              {% for anom in layer4b_anomalies.anomalies_list %}
+                <div class="p-2 bg-white rounded border small mb-1">
+                  <div class="d-flex justify-content-between">
+                    <strong>{{ anom.rule.name }} (<code>{{ anom.rule_code }}</code>)</strong>
+                    <span class="badge {{ anom.severity_badge_class }}">{{ anom.get_severity_display }}</span>
+                  </div>
+                  <div class="text-dark mt-1">{{ anom.explanation }}</div>
+                  <div class="small text-muted mt-1">Status: <strong>{{ anom.get_status_display }}</strong> {% if anom.review_comment %}&bull; Review Note: {{ anom.review_comment }}{% endif %}</div>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        {% else %}
+          <div class="col-12 mt-3">
+            <div class="p-2 border rounded bg-light d-flex align-items-center justify-content-between">
+              <span class="small fw-semibold text-dark"><i class="icon-shield text-success me-1"></i>Operational Anomaly Intelligence</span>
+              <span class="badge bg-success text-white"><i class="icon-check me-1"></i>0 Anomalies Detected (Clean Record)</span>
+            </div>
+          </div>
+        {% endif %}
       </div>
     </div>
   </div>
@@ -470,38 +515,72 @@
                     <td colspan="7" class="p-3">
                       <div class="d-flex align-items-center mb-2">
                         <i class="icon-refresh text-primary me-2"></i>
-                        <strong class="text-dark small text-uppercase">Phase 11 OCR Document Intelligence Run #{{ ev.latest_ocr.run_number }}</strong>
-                        <span class="badge bg-success-subtle text-success border border-success ms-2">{{ ev.latest_ocr.status }}</span>
-                        {% if ev.latest_ocr.confidence_score %}
-                          <span class="badge bg-light text-dark border ms-2">Confidence: {{ ev.latest_ocr.confidence_score }}%</span>
+                        <strong class="text-dark small text-uppercase">OCR Document Intelligence Run #{{ ev.latest_ocr.run_number }}</strong>
+                        <span class="badge {{ ev.latest_ocr.badge_class }} ms-2">{{ ev.latest_ocr.get_status_display }}</span>
+                        {% if ev.latest_ocr.confidence %}
+                          <span class="badge bg-light text-dark border ms-2">Confidence: {{ ev.latest_ocr.confidence }}%</span>
                         {% endif %}
+                        <span class="badge bg-light text-muted border ms-2">Engine: {{ ev.latest_ocr.get_engine_display }}</span>
                       </div>
-                      {% if ev.ocr_fields %}
-                        <div class="table-responsive">
+
+                      {% if ev.latest_ocr.comparison_items_list %}
+                        <div class="table-responsive mb-2">
                           <table class="table table-sm table-bordered bg-white mb-0 small">
                             <thead class="bg-light">
                               <tr>
-                                <th>Extracted Field</th>
-                                <th>OCR Value</th>
-                                <th>Telemetry Match</th>
-                                <th>Confidence</th>
+                                <th>Reconciliation Field</th>
+                                <th>Reported ESG Value</th>
+                                <th>OCR Extracted Value</th>
+                                <th>Variance</th>
+                                <th class="text-center">Audit Result</th>
                               </tr>
                             </thead>
                             <tbody>
-                              {% for field in ev.ocr_fields %}
+                              {% for item in ev.latest_ocr.comparison_items_list %}
                                 <tr>
-                                  <td><code>{{ field.field_name }}</code></td>
-                                  <td><strong>{{ field.field_value }}</strong></td>
+                                  <td><code>{{ item.label|default:item.key }}</code></td>
+                                  <td><strong>{{ item.entered_value }}</strong></td>
+                                  <td><strong>{{ item.ocr_value|default:"—" }}</strong></td>
                                   <td>
-                                    <span class="badge bg-success-subtle text-success border border-success">
-                                      <i class="icon-check me-1"></i>Matched
-                                    </span>
+                                    {% if item.variance_pct is not None %}
+                                      {{ item.variance_pct }}%
+                                    {% else %}
+                                      —
+                                    {% endif %}
                                   </td>
-                                  <td>{{ field.confidence|default:"98" }}%</td>
+                                  <td class="text-center">
+                                    {% if item.result == 'Match' or item.status == 'MATCH' %}
+                                      <span class="badge bg-success-subtle text-success border border-success">
+                                        <i class="icon-check me-1"></i>Match
+                                      </span>
+                                    {% elif item.result == 'Minor Difference' %}
+                                      <span class="badge bg-warning-subtle text-warning border border-warning">
+                                        <i class="icon-info me-1"></i>Minor Difference
+                                      </span>
+                                    {% elif item.result == 'Significant Difference' or item.status == 'MISMATCH' %}
+                                      <span class="badge bg-danger-subtle text-danger border border-danger">
+                                        <i class="icon-close me-1"></i>Significant Difference
+                                      </span>
+                                    {% else %}
+                                      <span class="badge bg-light text-muted border">{{ item.result|default:"N/A" }}</span>
+                                    {% endif %}
+                                  </td>
                                 </tr>
                               {% endfor %}
                             </tbody>
                           </table>
+                        </div>
+                      {% endif %}
+
+                      {% if ev.ocr_fields %}
+                        <div class="small fw-semibold text-muted mb-1">Extracted Entities ({{ ev.ocr_fields|length }}):</div>
+                        <div class="d-flex flex-wrap gap-2">
+                          {% for field in ev.ocr_fields %}
+                            <span class="badge bg-white text-dark border p-1 px-2 small font-monospace">
+                              {{ field.field_name }}: <strong>{{ field.normalized_value|default:field.raw_value }}</strong>
+                              {% if field.confidence %}<small class="text-muted">({{ field.confidence }}%)</small>{% endif %}
+                            </span>
+                          {% endfor %}
                         </div>
                       {% endif %}
                     </td>

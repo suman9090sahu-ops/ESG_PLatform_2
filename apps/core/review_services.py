@@ -223,6 +223,27 @@ def verify_submission(
     if not is_valid:
         raise ValidationError(err_msg)
 
+    # 2b. Data Validation Conformance & Anomaly Governance Check
+    if locked_rec.validation_status == ValidationStatus.INVALID:
+        raise ValidationError(
+            f"Cannot verify Submission #{locked_sub.submission_number}: Associated Activity Record #{locked_rec.id} "
+            f"has unresolved blocking validation errors. Review validation findings and request correction."
+        )
+
+    from apps.core.models import AnomalyRecord, AnomalySeverity, AnomalyStatus
+    unresolved_critical_anomalies = AnomalyRecord.objects.filter(
+        activity_record=locked_rec,
+        is_active=True,
+        severity=AnomalySeverity.CRITICAL,
+        status__in=[AnomalyStatus.OPEN, AnomalyStatus.ACKNOWLEDGED],
+    )
+    if unresolved_critical_anomalies.exists() and not comments.strip():
+        crit_count = unresolved_critical_anomalies.count()
+        raise ValidationError(
+            f"Cannot verify Submission #{locked_sub.submission_number}: {crit_count} active critical anomaly finding(s) "
+            f"detected on this record. Reviewers must request correction from the Site Manager or record a justifying explanation in the review comments."
+        )
+
     previous_status = locked_sub.status
 
     # 3. Mutate Lifecycle State

@@ -232,7 +232,15 @@ def correction_detail_view(request, correction_id):
     )
 
     # Baseline comparison data
-    prev_snapshot = correction_req.submission.snapshot_data or {}
+    prev_snapshot = (
+        correction_req.submission.snapshot_data
+        if (correction_req.submission and correction_req.submission.snapshot_data)
+        else {}
+    )
+    anomalies = (
+        record.anomalies.select_related("rule", "reviewed_by")
+        .order_by("-created_at")
+    )
 
     context = {
         "page_title": f"Correction Request #{correction_req.id}",
@@ -246,6 +254,7 @@ def correction_detail_view(request, correction_id):
         "evidence_files": evidence_files,
         "val_run": val_run,
         "val_results": val_results,
+        "anomalies": anomalies,
         "timeline": timeline,
         "update_form": update_form,
         "resubmit_form": resubmit_form,

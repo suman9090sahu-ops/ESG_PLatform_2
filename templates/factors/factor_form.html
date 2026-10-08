@@ -1,0 +1,151 @@
+{% extends "layouts/dashboard.html" %}
+{% load static esg_tags %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block header_actions %}
+  <a href="{% url 'core:emission_factor_list' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="icon-arrow-left me-1"></i> Back to Factor Directory
+  </a>
+{% endblock %}
+
+{% block main_panel %}
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+          <h6 class="mb-0 fw-bold text-dark">
+            {% if is_create %}
+              <i class="icon-plus text-primary me-2"></i> Configure Regulatory Emission Factor
+            {% else %}
+              <i class="icon-pencil text-primary me-2"></i> Edit Emission Factor: {{ factor.code }}
+            {% endif %}
+          </h6>
+          <span class="badge bg-light text-muted border">Role: ESG Manager / MEIL Operator</span>
+        </div>
+        <div class="card-body p-4">
+          {% if not is_create %}
+            <div class="alert alert-info py-2 px-3 small mb-4">
+              <i class="icon-info me-1"></i> <strong>Factor Change Safety:</strong> Updating factor parameters updates future calculations. Historical calculation results retain immutable snapshots of the factor value and version at the time of calculation.
+            </div>
+          {% endif %}
+
+          <form method="post" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger py-2 px-3 small mb-3">
+                {% for err in form.non_field_errors %}
+                  <div>{{ err }}</div>
+                {% endfor %}
+              </div>
+            {% endif %}
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-8">
+                <label class="form-label small fw-bold">Factor Title / Descriptive Name <span class="text-danger">*</span></label>
+                {{ form.name }}
+                {% if form.name.errors %}<div class="text-danger small mt-1">{{ form.name.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-bold">Unique Factor Code <span class="text-danger">*</span></label>
+                {{ form.code }}
+                {% if form.code.errors %}<div class="text-danger small mt-1">{{ form.code.errors.0 }}</div>{% endif %}
+              </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-4">
+                <label class="form-label small fw-bold">GHG Scope Protocol <span class="text-danger">*</span></label>
+                {{ form.scope }}
+                {% if form.scope.errors %}<div class="text-danger small mt-1">{{ form.scope.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-bold">Factor Value <span class="text-danger">*</span></label>
+                {{ form.factor_value }}
+                {% if form.factor_value.errors %}<div class="text-danger small mt-1">{{ form.factor_value.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-bold">Factor Expression Unit <span class="text-danger">*</span></label>
+                {{ form.factor_unit }}
+                <div class="form-text small" style="font-size: 0.72rem;">e.g. kg CO₂e / L, kg CO₂e / kWh</div>
+                {% if form.factor_unit.errors %}<div class="text-danger small mt-1">{{ form.factor_unit.errors.0 }}</div>{% endif %}
+              </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-4">
+                <label class="form-label small fw-bold">Expected Input Unit <span class="text-danger">*</span></label>
+                {{ form.input_unit }}
+                {% if form.input_unit.errors %}<div class="text-danger small mt-1">{{ form.input_unit.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-bold">Output Metric Unit</label>
+                {{ form.output_unit }}
+                {% if form.output_unit.errors %}<div class="text-danger small mt-1">{{ form.output_unit.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-bold">Applies to Activity (Optional)</label>
+                {{ form.activity }}
+                {% if form.activity.errors %}<div class="text-danger small mt-1">{{ form.activity.errors.0 }}</div>{% endif %}
+              </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label small fw-bold">Authoritative Source Standard <span class="text-danger">*</span></label>
+                {{ form.source }}
+                <div class="form-text small" style="font-size: 0.72rem;">e.g. India GHG Program, IPCC 2006, CEA Baseline v19</div>
+                {% if form.source.errors %}<div class="text-danger small mt-1">{{ form.source.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-bold">Baseline Vintage Year</label>
+                {{ form.effective_year }}
+                {% if form.effective_year.errors %}<div class="text-danger small mt-1">{{ form.effective_year.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small fw-bold">Factor Version</label>
+                {{ form.version }}
+                {% if form.version.errors %}<div class="text-danger small mt-1">{{ form.version.errors.0 }}</div>{% endif %}
+              </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-4">
+                <label class="form-label small fw-bold">Geographical Scope / Grid</label>
+                {{ form.geography }}
+                {% if form.geography.errors %}<div class="text-danger small mt-1">{{ form.geography.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-bold">Specific Reporting Cycle (Optional)</label>
+                {{ form.reporting_period }}
+                {% if form.reporting_period.errors %}<div class="text-danger small mt-1">{{ form.reporting_period.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label small fw-bold">Operational Status <span class="text-danger">*</span></label>
+                {{ form.status }}
+                {% if form.status.errors %}<div class="text-danger small mt-1">{{ form.status.errors.0 }}</div>{% endif %}
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label small fw-bold">Calculation Methodology &amp; Regulatory Notes</label>
+              {{ form.methodology_notes }}
+              {% if form.methodology_notes.errors %}<div class="text-danger small mt-1">{{ form.methodology_notes.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+              <a href="{% url 'core:emission_factor_list' %}" class="btn btn-sm btn-outline-secondary">
+                Cancel
+              </a>
+              <button type="submit" class="btn btn-sm btn-primary px-4">
+                <i class="icon-check me-1"></i> Save Emission Factor
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

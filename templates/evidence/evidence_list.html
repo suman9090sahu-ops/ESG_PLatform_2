@@ -57,6 +57,72 @@
     </div>
   </div>
 
+  <!-- Section 25: Evidence Completeness & Quality Intelligence Panel -->
+  <div class="card border-0 shadow-sm mb-4 border-top border-4 border-primary">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center">
+        <i class="icon-speedometer text-primary me-2 fs-5"></i>
+        <div>
+          <h6 class="mb-0 fw-bold text-dark">Evidence Completeness &amp; Intelligence Summary</h6>
+          <span class="small text-muted">Authoritative Database-Backed Verification &amp; Extraction Telemetry</span>
+        </div>
+      </div>
+      <span class="badge bg-primary-subtle text-primary border border-primary">Governance Quality Desk</span>
+    </div>
+    <div class="card-body p-3">
+      <div class="row g-2 text-center">
+        <div class="col-6 col-md-3 col-xl">
+          <div class="p-2 border rounded bg-light h-100">
+            <span class="text-muted d-block small">Total ESG Records</span>
+            <span class="fw-bold fs-5 text-dark font-monospace">{{ quality_metrics.total_records }}</span>
+          </div>
+        </div>
+        <div class="col-6 col-md-3 col-xl">
+          <div class="p-2 border rounded bg-light h-100">
+            <span class="text-muted d-block small">Records w/ Evidence</span>
+            <span class="fw-bold fs-5 text-success font-monospace">{{ quality_metrics.records_with_evidence }}</span>
+          </div>
+        </div>
+        <div class="col-6 col-md-3 col-xl">
+          <div class="p-2 border rounded bg-light h-100">
+            <span class="text-muted d-block small">Missing Evidence</span>
+            <span class="fw-bold fs-5 {% if quality_metrics.records_without_evidence > 0 %}text-warning{% else %}text-muted{% endif %} font-monospace">{{ quality_metrics.records_without_evidence }}</span>
+          </div>
+        </div>
+        <div class="col-6 col-md-3 col-xl">
+          <div class="p-2 border rounded bg-light h-100">
+            <span class="text-muted d-block small">OCR Processed</span>
+            <span class="fw-bold fs-5 text-info font-monospace">{{ quality_metrics.ocr_processed_docs }}</span>
+          </div>
+        </div>
+        <div class="col-6 col-md-3 col-xl">
+          <div class="p-2 border rounded bg-light h-100">
+            <span class="text-muted d-block small">OCR Pending</span>
+            <span class="fw-bold fs-5 text-secondary font-monospace">{{ quality_metrics.ocr_pending_docs }}</span>
+          </div>
+        </div>
+        <div class="col-6 col-md-3 col-xl">
+          <div class="p-2 border rounded bg-light h-100">
+            <span class="text-muted d-block small">Validation Errors</span>
+            <span class="fw-bold fs-5 {% if quality_metrics.val_errors > 0 %}text-danger{% else %}text-muted{% endif %} font-monospace">{{ quality_metrics.val_errors }}</span>
+          </div>
+        </div>
+        <div class="col-6 col-md-3 col-xl">
+          <div class="p-2 border rounded bg-light h-100">
+            <span class="text-muted d-block small">Validation Warnings</span>
+            <span class="fw-bold fs-5 {% if quality_metrics.val_warnings > 0 %}text-warning{% else %}text-muted{% endif %} font-monospace">{{ quality_metrics.val_warnings }}</span>
+          </div>
+        </div>
+        <div class="col-6 col-md-3 col-xl">
+          <div class="p-2 border rounded bg-light h-100">
+            <span class="text-muted d-block small">Active Anomalies</span>
+            <span class="fw-bold fs-5 {% if quality_metrics.unresolved_anomalies > 0 %}text-danger{% else %}text-muted{% endif %} font-monospace">{{ quality_metrics.unresolved_anomalies }} / {{ quality_metrics.total_anomalies }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Filter & Search Toolbar Card -->
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">

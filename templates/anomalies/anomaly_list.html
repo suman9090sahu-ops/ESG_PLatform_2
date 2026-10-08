@@ -76,28 +76,10 @@
         </div>
 
         <div class="col-md-2">
-          <select name="severity" class="form-select form-select-sm" onchange="this.form.submit()">
-            <option value="">All Severities</option>
-            {% for code, label in severity_choices %}
-              <option value="{{ code }}" {% if severity_filter == code %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <div class="col-md-2">
-          <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
-            <option value="">All Statuses</option>
-            {% for code, label in status_choices %}
-              <option value="{{ code }}" {% if status_filter == code %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <div class="col-md-2">
-          <select name="category" class="form-select form-select-sm" onchange="this.form.submit()">
-            <option value="">All Categories</option>
-            {% for code, label in category_choices %}
-              <option value="{{ code }}" {% if category_filter == code %}selected{% endif %}>{{ label }}</option>
+          <select name="subsidiary" class="form-select form-select-sm" onchange="this.form.submit()">
+            <option value="">All Subsidiaries</option>
+            {% for sub in accessible_subsidiaries %}
+              <option value="{{ sub.id }}" {% if subsidiary_filter == sub.id|stringformat:"s" %}selected{% endif %}>{{ sub.name }}</option>
             {% endfor %}
           </select>
         </div>
@@ -111,9 +93,36 @@
           </select>
         </div>
 
+        <div class="col-md-1">
+          <select name="severity" class="form-select form-select-sm" onchange="this.form.submit()">
+            <option value="">Severity</option>
+            {% for code, label in severity_choices %}
+              <option value="{{ code }}" {% if severity_filter == code %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-1">
+          <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+            <option value="">Status</option>
+            {% for code, label in status_choices %}
+              <option value="{{ code }}" {% if status_filter == code %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-2">
+          <select name="category" class="form-select form-select-sm" onchange="this.form.submit()">
+            <option value="">Pattern Category</option>
+            {% for code, label in category_choices %}
+              <option value="{{ code }}" {% if category_filter == code %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
         <div class="col-md-1 d-flex gap-1">
           <button type="submit" class="btn btn-sm btn-primary w-100">Filter</button>
-          {% if search_query or severity_filter or status_filter or category_filter or site_filter %}
+          {% if search_query or severity_filter or status_filter or category_filter or site_filter or subsidiary_filter or esg_cat_filter %}
             <a href="{% url 'core:anomaly_list' %}" class="btn btn-sm btn-outline-secondary" title="Reset Filters"><i class="icon-refresh"></i></a>
           {% endif %}
         </div>

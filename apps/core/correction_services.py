@@ -30,6 +30,7 @@ from apps.core.models import (
     CorrectionAffectedArea,
     CorrectionRequest,
     CorrectionStatus,
+    EvidenceStatus,
     MasterStatus,
     OrganizationStatus,
     PeriodStatus,
@@ -377,9 +378,21 @@ def update_corrected_record(
     if site_notes:
         locked_corr.site_manager_notes = site_notes
 
-    # 4. Mandatory Revalidation using Phase 10 Validation Engine
+    # 4. Mandatory Reprocessing: Refresh OCR Comparisons, Validation & Anomaly Intelligence
+    from apps.core.ocr_services import compare_ocr_with_activity_record
+    for ev in locked_rec.evidence_files.filter(status=EvidenceStatus.ACTIVE):
+        latest_ocr = ev.ocr_runs.order_by("-created_at").first()
+        if latest_ocr:
+            comp = compare_ocr_with_activity_record(latest_ocr)
+            latest_ocr.raw_metadata["comparison"] = comp
+            latest_ocr.save(update_fields=["raw_metadata"])
+
     val_run = execute_validation_run(locked_rec, executed_by=user, request=request)
     locked_rec.refresh_from_db()
+
+    # Refresh anomaly intelligence scan with updated telemetry
+    from apps.core.anomaly_services import detect_anomalies_for_record
+    detect_anomalies_for_record(locked_rec, user=user)
 
     # 5. Advance correction state based on validation outcome
     if locked_rec.validation_status in [ValidationStatus.VALID, ValidationStatus.WARNING]:
