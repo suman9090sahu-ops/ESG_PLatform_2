@@ -18,8 +18,17 @@
       </form>
     {% endif %}
     {% if can_edit %}
-      <a href="{% url 'core:activity_record_edit' record_id=record.id %}" class="btn btn-sm btn-primary">
+      <a href="{% url 'core:activity_record_edit' record_id=record.id %}" class="btn btn-sm btn-outline-primary">
         <i class="icon-pencil me-1"></i> Edit Record
+      </a>
+    {% endif %}
+    {% if can_submit %}
+      <a href="{% url 'core:activity_record_submit' record_id=record.id %}" class="btn btn-sm btn-primary" title="Submit record for downstream review">
+        <i class="icon-paper-plane me-1"></i> Submit for Review
+      </a>
+    {% elif latest_submission %}
+      <a href="{% url 'core:submission_detail' submission_id=latest_submission.id %}" class="btn btn-sm btn-info text-white" title="Inspect formal submission">
+        <i class="icon-paper-plane me-1"></i> Submission #{{ latest_submission.submission_number }}
       </a>
     {% endif %}
     {% if can_delete %}
@@ -414,6 +423,7 @@
                     <th>Type</th>
                     <th>Size</th>
                     <th>Uploaded By</th>
+                    <th>OCR Intel</th>
                     <th>Status</th>
                     <th class="text-end">Actions</th>
                   </tr>
@@ -447,6 +457,17 @@
                       <td>
                         <span class="text-dark">{{ ev.uploaded_by.username|default:"System" }}</span>
                         <span class="text-muted d-block small">{{ ev.created_at|date:"M d, Y" }}</span>
+                      </td>
+                      <td>
+                        {% if ev.has_ocr_run %}
+                          <span class="badge {{ ev.ocr_badge_class }}">
+                            <i class="icon-camera me-1"></i> {{ ev.ocr_status }}
+                          </span>
+                        {% elif ev.is_ocr_supported %}
+                          <span class="badge bg-light text-muted border">Not Processed</span>
+                        {% else %}
+                          <span class="text-muted small">—</span>
+                        {% endif %}
                       </td>
                       <td>
                         <span class="badge {{ ev.status_badge_class }}">{{ ev.get_status_display }}</span>
@@ -506,6 +527,71 @@
 
     <!-- Side Column: Hierarchy & Temporal Lineage -->
     <div class="col-lg-4">
+
+      <!-- Side Card 0: Phase 12 Submission Handover -->
+      <div class="card border-0 shadow-sm mb-4 border-top border-4 {% if record.status == 'SUBMITTED' %}border-primary{% elif is_eligible_for_submission %}border-success{% else %}border-warning{% endif %}">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-paper-plane text-primary me-2"></i> Review Handover
+          </h6>
+          <span class="badge {{ record.status_badge_class }}">
+            {{ record.get_status_display }}
+          </span>
+        </div>
+        <div class="card-body p-3">
+          {% if latest_submission %}
+            <div class="mb-3 p-2 bg-light rounded small">
+              <div class="d-flex justify-content-between mb-1">
+                <span class="text-muted">Submission:</span>
+                <strong>#{{ latest_submission.submission_number }}</strong>
+              </div>
+              <div class="d-flex justify-content-between mb-1">
+                <span class="text-muted">Status:</span>
+                <span class="badge {{ latest_submission.badge_class }}">{{ latest_submission.get_status_display }}</span>
+              </div>
+              <div class="d-flex justify-content-between mb-1">
+                <span class="text-muted">Submitted By:</span>
+                <span>{{ latest_submission.submitted_by.username|default:"System" }}</span>
+              </div>
+              <div class="d-flex justify-content-between">
+                <span class="text-muted">Submitted At:</span>
+                <span>{{ latest_submission.submitted_at|date:"d M Y, H:i" }}</span>
+              </div>
+            </div>
+            <div class="d-grid gap-2">
+              <a href="{% url 'core:submission_detail' latest_submission.id %}" class="btn btn-sm btn-outline-primary">
+                <i class="icon-magnifier me-1"></i> View Formal Lineage
+              </a>
+            </div>
+          {% else %}
+            {% if is_eligible_for_submission %}
+              <div class="alert alert-success d-flex align-items-center py-2 px-3 small mb-3">
+                <i class="icon-check me-2 fs-5"></i>
+                <div>
+                  <strong>Ready for Review</strong>
+                  <div class="text-muted">Data and validation checks satisfied.</div>
+                </div>
+              </div>
+              {% if can_submit %}
+                <div class="d-grid">
+                  <a href="{% url 'core:activity_record_submit' record.id %}" class="btn btn-sm btn-primary">
+                    <i class="icon-paper-plane me-1"></i> Submit Activity Record
+                  </a>
+                </div>
+              {% endif %}
+            {% else %}
+              <div class="alert alert-warning py-2 px-3 small mb-3">
+                <div class="fw-semibold mb-1"><i class="icon-exclamation me-1"></i> Submission Prerequisites:</div>
+                <ul class="mb-0 ps-3">
+                  {% for err in submission_errors %}
+                    <li>{{ err }}</li>
+                  {% endfor %}
+                </ul>
+              </div>
+            {% endif %}
+          {% endif %}
+        </div>
+      </div>
 
       <!-- Side Card 1: Operational Site Boundary -->
       <div class="card border-0 shadow-sm mb-4">

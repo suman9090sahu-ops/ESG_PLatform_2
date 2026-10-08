@@ -1,0 +1,275 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block page_actions %}
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'core:activity_record_detail' record_id=record.id %}" class="btn btn-sm btn-outline-secondary">
+      <i class="icon-arrow-left me-1"></i> Back to Record
+    </a>
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+  <!-- Eligibility Banner / Warning if Ineligible -->
+  {% if not is_eligible %}
+    <div class="alert alert-danger d-flex align-items-start mb-4 shadow-sm border-0">
+      <i class="icon-close fs-3 text-danger me-3 mt-1"></i>
+      <div class="flex-grow-1">
+        <h5 class="alert-heading fw-bold mb-1">Submission Prerequisites Not Met</h5>
+        <p class="mb-2 small">This operational activity record cannot be submitted until all regulatory and validation requirements are satisfied:</p>
+        <ul class="mb-0 ps-3 small">
+          {% for err in errors %}
+            <li><strong>{{ err }}</strong></li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  {% else %}
+    {% if warnings %}
+      <div class="alert alert-warning d-flex align-items-start mb-4 shadow-sm border-0">
+        <i class="icon-exclamation fs-3 text-warning me-3 mt-1"></i>
+        <div class="flex-grow-1">
+          <h5 class="alert-heading fw-bold mb-1">Advisory Notices Detected</h5>
+          <p class="mb-1 small">This record satisfies baseline validation rules and is eligible for submission, but contains advisory warnings that will be flagged to downstream reviewers:</p>
+          <ul class="mb-0 ps-3 small">
+            {% for warn in warnings %}
+              <li>{{ warn }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    {% else %}
+      <div class="alert alert-success d-flex align-items-center mb-4 shadow-sm border-0">
+        <i class="icon-check fs-3 text-success me-3"></i>
+        <div>
+          <h5 class="alert-heading fw-bold mb-0">Record Ready for Formal Submission</h5>
+          <small class="text-muted">All structural, hierarchy, temporal, and evidence validation checks have been passed successfully.</small>
+        </div>
+      </div>
+    {% endif %}
+  {% endif %}
+
+  <div class="row g-4">
+    <!-- Left Column: Record Summary & Verification Checklist -->
+    <div class="col-lg-7">
+
+      <!-- Card 1: Record Summary -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-docs text-primary me-2"></i> Operational Record Summary
+          </h6>
+          <span class="badge {{ record.status_badge_class }}">{{ record.get_status_display }}</span>
+        </div>
+        <div class="card-body p-4">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <span class="text-muted small d-block">Activity Master</span>
+              <strong class="text-dark fs-6">{{ record.activity.name }}</strong>
+              <div class="small text-muted">{{ record.activity.code }} &bull; {{ record.activity.category.name }}</div>
+            </div>
+            <div class="col-sm-6">
+              <span class="text-muted small d-block">Scope Classification</span>
+              <span class="badge {{ record.activity.scope_badge_class }} fs-6 mt-1">
+                {{ record.activity.get_scope_classification_display }}
+              </span>
+            </div>
+            <div class="col-sm-6">
+              <span class="text-muted small d-block">Measured Consumption Quantity</span>
+              <div class="h4 fw-bold text-primary mb-0 font-monospace">
+                {{ record.quantity|floatformat:2 }} <span class="fs-6 text-muted">{{ record.unit.symbol }}</span>
+              </div>
+              <small class="text-muted">{{ record.unit.name }}</small>
+            </div>
+            <div class="col-sm-6">
+              <span class="text-muted small d-block">Measurement / Invoice Date</span>
+              <div class="fw-bold text-dark fs-6 mt-1">
+                <i class="icon-calendar text-muted me-1"></i> {{ record.measurement_date|date:"d M Y" }}
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <span class="text-muted small d-block">Operational Site</span>
+              <div class="fw-semibold text-dark">{{ record.site.name }} (<code>{{ record.site.code }}</code>)</div>
+              <small class="text-muted">{{ record.site.project.name }} &bull; {{ record.site.project.subsidiary.name }}</small>
+            </div>
+            <div class="col-sm-6">
+              <span class="text-muted small d-block">Reporting Cycle</span>
+              <div class="fw-semibold text-dark">{{ record.reporting_period.name }}</div>
+              <small class="text-muted">{{ record.reporting_period.fiscal_year }} &bull; {{ record.reporting_period.code }}</small>
+            </div>
+          </div>
+
+          {% if record.notes %}
+            <div class="mt-3 pt-3 border-top">
+              <span class="text-muted small d-block">Operational Notes:</span>
+              <div class="small text-dark mt-1 p-2 bg-light rounded">{{ record.notes }}</div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Card 2: Verification Checklist -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-list text-success me-2"></i> Regulatory Readiness Checklist
+          </h6>
+        </div>
+        <div class="card-body p-0">
+          <ul class="list-group list-group-flush small">
+            <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+              <div>
+                <strong>Site Authorization & Scoping</strong>
+                <div class="text-muted">User is assigned to site {{ record.site.code }} and authorized for data submission.</div>
+              </div>
+              <span class="badge bg-success-subtle text-success border border-success px-2 py-1">
+                <i class="icon-check me-1"></i> Verified
+              </span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+              <div>
+                <strong>Reporting Period Temporal Lifecycle</strong>
+                <div class="text-muted">Cycle {{ record.reporting_period.code }} is currently {{ record.reporting_period.get_status_display }} and accepts modifications.</div>
+              </div>
+              {% if record.reporting_period.allows_data_modification %}
+                <span class="badge bg-success-subtle text-success border border-success px-2 py-1">
+                  <i class="icon-check me-1"></i> Open Cycle
+                </span>
+              {% else %}
+                <span class="badge bg-danger-subtle text-danger border border-danger px-2 py-1">
+                  <i class="icon-close me-1"></i> Closed
+                </span>
+              {% endif %}
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+              <div>
+                <strong>Phase 10 Deterministic Validation Engine</strong>
+                <div class="text-muted">
+                  {% if latest_validation_run %}
+                    Evaluated Run #{{ latest_validation_run.run_number }}: {{ latest_validation_run.error_count }} error(s), {{ latest_validation_run.warning_count }} warning(s).
+                  {% else %}
+                    Record will be evaluated upon submission.
+                  {% endif %}
+                </div>
+              </div>
+              <span class="badge {{ record.validation_badge_class }} px-2 py-1">
+                {{ record.get_validation_status_display }}
+              </span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+              <div>
+                <strong>Phase 09 Supporting Evidence Documents</strong>
+                <div class="text-muted">
+                  {{ record.evidence_count }} active document{{ record.evidence_count|pluralize }} attached.
+                  {% if record.activity.requires_evidence %}
+                    (Mandatory for {{ record.activity.name }})
+                  {% else %}
+                    (Optional for this activity)
+                  {% endif %}
+                </div>
+              </div>
+              {% if record.has_evidence %}
+                <span class="badge bg-success-subtle text-success border border-success px-2 py-1">
+                  <i class="icon-check me-1"></i> Complete ({{ record.evidence_count }})
+                </span>
+              {% elif record.activity.requires_evidence %}
+                <span class="badge bg-danger-subtle text-danger border border-danger px-2 py-1">
+                  <i class="icon-close me-1"></i> Required Missing
+                </span>
+              {% else %}
+                <span class="badge bg-secondary px-2 py-1">None Attached</span>
+              {% endif %}
+            </li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Submission Form & Action Gate -->
+    <div class="col-lg-5">
+
+      <div class="card border-0 shadow-sm border-top border-4 border-primary">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-paper-plane text-primary me-2"></i> Handover Confirmation
+          </h6>
+        </div>
+        <div class="card-body p-4">
+
+          <div class="alert alert-light border small text-muted mb-4">
+            <i class="icon-info text-primary me-1"></i>
+            <strong>Downstream Governance Handover:</strong> Submitting moves this record from operational Site Manager control into the Subsidiary Manager review queue. Once submitted, the record is locked from further site editing.
+          </div>
+
+          <form method="post" action="{% url 'core:activity_record_submit' record_id=record.id %}">
+            {% csrf_token %}
+
+            <div class="mb-3">
+              <label for="{{ form.comments.id_for_label }}" class="form-label fw-semibold small text-dark">
+                {{ form.comments.label }}
+              </label>
+              {{ form.comments }}
+              <div class="form-text small text-muted">{{ form.comments.help_text }}</div>
+              {% if form.comments.errors %}
+                <div class="text-danger small mt-1">{{ form.comments.errors|join:", " }}</div>
+              {% endif %}
+            </div>
+
+            <div class="mb-4">
+              <div class="form-check p-3 bg-light rounded border">
+                {{ form.confirm }}
+                <label class="form-check-label small fw-semibold text-dark ms-2" for="{{ form.confirm.id_for_label }}">
+                  {{ form.confirm.label }}
+                </label>
+              </div>
+              {% if form.confirm.errors %}
+                <div class="text-danger small mt-1 fw-semibold">{{ form.confirm.errors|join:", " }}</div>
+              {% endif %}
+            </div>
+
+            <div class="d-grid gap-2">
+              {% if is_eligible %}
+                <button type="submit" class="btn btn-primary py-2 fw-semibold" id="confirm-submit-btn">
+                  <i class="icon-paper-plane me-2"></i> Confirm &amp; Submit for Review
+                </button>
+              {% else %}
+                <button type="button" class="btn btn-secondary py-2 fw-semibold" disabled title="Resolve blocking requirements before submission">
+                  <i class="icon-lock me-2"></i> Submission Prohibited
+                </button>
+                <div class="text-center mt-2">
+                  <a href="{% url 'core:activity_record_detail' record_id=record.id %}" class="small text-decoration-none">
+                    <i class="icon-arrow-left me-1"></i> Return to Record to Resolve Errors
+                  </a>
+                </div>
+              {% endif %}
+            </div>
+
+          </form>
+
+        </div>
+      </div>
+
+      <!-- Context Information Card -->
+      <div class="card border-0 shadow-sm mt-4">
+        <div class="card-body p-3 small text-muted">
+          <div class="d-flex align-items-center mb-2">
+            <i class="icon-shield text-success me-2 fs-5"></i>
+            <strong class="text-dark">Regulatory Audit Trail</strong>
+          </div>
+          <p class="mb-0">
+            This submission action creates an immutable historical event record with full parameter snapshot, validation outcome, and user timestamp in accordance with SEBI BRSR and GHG Protocol audit assurance principles.
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}

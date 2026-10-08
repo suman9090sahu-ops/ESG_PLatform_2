@@ -310,7 +310,7 @@ def get_role_sidebar_menu(user):
                     {
                         "nav_id": "submissions",
                         "label": "Submissions",
-                        "url": "#",
+                        "url": reverse("core:submission_list"),
                         "icon": "icon-paper-plane text-success",
                     },
                 ],
@@ -378,7 +378,7 @@ def get_role_sidebar_menu(user):
                     {
                         "nav_id": "submission_inbox",
                         "label": "Submission Inbox",
-                        "url": "#",
+                        "url": reverse("core:submission_list"),
                         "icon": "icon-envelope-letter text-warning",
                         "badge": {"text": "Pending", "class": "badge-warning"},
                     },

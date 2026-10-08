@@ -237,3 +237,11 @@ LOGGING = {
         },
     },
 }
+
+# -----------------------------------------------------------------------------
+# OCR & DOCUMENT INTELLIGENCE CONFIGURATION (Phase 11)
+# -----------------------------------------------------------------------------
+OCR_DEFAULT_PROVIDER = os.getenv("OCR_DEFAULT_PROVIDER", "pypdf").strip()
+OCR_TESSERACT_CMD = os.getenv("OCR_TESSERACT_CMD", "").strip()
+OCR_TIMEOUT = int(os.getenv("OCR_TIMEOUT", "60"))
+OCR_AUTO_EXTRACT_FIELDS = os.getenv("OCR_AUTO_EXTRACT_FIELDS", "True").lower() in ("true", "1", "yes")

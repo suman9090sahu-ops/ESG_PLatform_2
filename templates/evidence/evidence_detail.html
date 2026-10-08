@@ -162,38 +162,277 @@
         </div>
       </div>
 
-      <!-- Card 3: Downstream Module Integration Hooks -->
+      <!-- Card 3: Phase 11 — OCR Document Intelligence & Entity Extraction -->
       <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header bg-white py-3 border-bottom">
-          <h6 class="mb-0 fw-bold text-dark">
-            <i class="icon-layers text-primary me-2"></i> Downstream Pipeline Readiness
-          </h6>
-        </div>
-        <div class="card-body p-4">
-          <div class="row g-3">
-            <div class="col-md-6">
-              <div class="border rounded p-3 h-100">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                  <span class="fw-bold text-dark small text-uppercase">1. Validation Engine (Phase 10)</span>
-                  <span class="badge bg-secondary">Pending Rules</span>
-                </div>
-                <p class="small text-muted mb-0">
-                  Evidence metadata is structured for automated threshold comparisons, date boundary verification, and supplier tax validations.
-                </p>
-              </div>
-            </div>
-            <div class="col-md-6">
-              <div class="border rounded p-3 h-100">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                  <span class="fw-bold text-dark small text-uppercase">2. OCR Ingestion (Phase 11)</span>
-                  <span class="badge bg-secondary">Pipeline Ready</span>
-                </div>
-                <p class="small text-muted mb-0">
-                  Source file binary is preserved in safe storage with SHA-256 hash ready for optical character recognition extraction.
-                </p>
-              </div>
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <div class="d-flex align-items-center">
+            <i class="icon-camera text-primary fs-4 me-2"></i>
+            <div>
+              <h6 class="mb-0 fw-bold text-dark">OCR Document Intelligence &amp; Extraction</h6>
+              <span class="small text-muted">Optical Character Recognition &amp; Structured Field Analysis</span>
             </div>
           </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge {{ evidence.ocr_badge_class }} fs-6 py-1 px-3">
+              {{ evidence.ocr_status }}
+            </span>
+            {% if can_process_ocr and evidence.is_ocr_supported %}
+              <form method="post" action="{% url 'core:evidence_ocr_process' evidence.id %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-primary" title="Trigger OCR text and entity extraction">
+                  <i class="icon-refresh me-1"></i>
+                  {% if latest_ocr_run %}Reprocess OCR{% else %}Run OCR Extraction{% endif %}
+                </button>
+              </form>
+            {% elif not evidence.is_ocr_supported %}
+              <span class="badge bg-light text-muted border">Unsupported Format ({{ evidence.file_extension }})</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="card-body p-4">
+          {% if latest_ocr_run %}
+            <!-- KPI Counters Row -->
+            <div class="row g-2 mb-3 text-center">
+              <div class="col-6 col-md-3">
+                <div class="p-2 border rounded bg-light">
+                  <span class="text-muted d-block small">Engine</span>
+                  <strong class="text-dark small">{{ latest_ocr_run.engine }}</strong>
+                </div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="p-2 border rounded bg-light">
+                  <span class="text-muted d-block small">Confidence</span>
+                  <strong class="{% if latest_ocr_run.confidence and latest_ocr_run.confidence >= 80 %}text-success{% else %}text-warning{% endif %}">
+                    {{ latest_ocr_run.confidence|default:"N/A" }}%
+                  </strong>
+                </div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="p-2 border rounded bg-light">
+                  <span class="text-muted d-block small">Pages</span>
+                  <strong class="text-dark">{{ latest_ocr_run.page_count }}</strong>
+                </div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="p-2 border rounded bg-light">
+                  <span class="text-muted d-block small">Fields Extracted</span>
+                  <strong class="text-primary">{{ ocr_fields|length }}</strong>
+                </div>
+              </div>
+            </div>
+
+            {% if latest_ocr_run.is_failed %}
+              <!-- Failure State Alert -->
+              <div class="alert alert-danger d-flex align-items-start mb-3 border-0 shadow-sm">
+                <i class="icon-close fs-4 text-danger me-3 mt-1"></i>
+                <div class="flex-grow-1">
+                  <div class="fw-bold">OCR Processing Failed (Run #{{ latest_ocr_run.run_number }})</div>
+                  <div class="small">{{ latest_ocr_run.error_message }}</div>
+                  {% if can_process_ocr %}
+                    <div class="mt-2">
+                      <form method="post" action="{% url 'core:evidence_ocr_process' evidence.id %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-danger">
+                          <i class="icon-refresh me-1"></i> Retry Processing
+                        </button>
+                      </form>
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+            {% else %}
+
+              <!-- Telemetry Comparison with Activity Record -->
+              {% if ocr_comparison and ocr_comparison.items %}
+                <div class="mb-4">
+                  <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted small fw-bold text-uppercase">
+                      <i class="icon-energy text-info me-1"></i> Operational Telemetry Verification (OCR vs. Activity Record)
+                    </span>
+                    <span class="badge {% if ocr_comparison.overall_status == 'MATCH' %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                      {{ ocr_comparison.overall_status }}
+                    </span>
+                  </div>
+                  <div class="table-responsive border rounded">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                      <thead class="table-light small">
+                        <tr>
+                          <th>Telemetry Attribute</th>
+                          <th>Activity Record (Operational)</th>
+                          <th>OCR Extracted (Document)</th>
+                          <th class="text-end">Verification State</th>
+                        </tr>
+                      </thead>
+                      <tbody class="small">
+                        {% for key, item in ocr_comparison.items.items %}
+                          <tr>
+                            <td class="fw-semibold text-dark">{{ item.label }}</td>
+                            <td>
+                              {% if item.record_value is not None %}
+                                <span class="font-monospace fw-bold">{{ item.record_value }}</span>
+                                {% if item.unit %}<span class="text-muted">{{ item.unit }}</span>{% endif %}
+                              {% else %}
+                                <span class="text-muted fst-italic">Not specified</span>
+                              {% endif %}
+                            </td>
+                            <td>
+                              {% if item.extracted_value is not None %}
+                                <span class="font-monospace text-primary fw-bold">{{ item.extracted_value }}</span>
+                                {% if item.delta and item.delta != 0 %}
+                                  <span class="small text-muted ms-1">(&Delta; {{ item.delta }} / {{ item.delta_pct }}%)</span>
+                                {% endif %}
+                              {% else %}
+                                <span class="text-muted fst-italic">Not detected</span>
+                              {% endif %}
+                            </td>
+                            <td class="text-end">
+                              {% if item.status == 'MATCH' %}
+                                <span class="badge bg-success"><i class="icon-check me-1"></i> MATCH</span>
+                              {% elif item.status == 'MISMATCH' %}
+                                <span class="badge bg-danger"><i class="icon-close me-1"></i> MISMATCH</span>
+                              {% else %}
+                                <span class="badge bg-light text-muted border">{{ item.status }}</span>
+                              {% endif %}
+                            </td>
+                          </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                  <small class="text-muted mt-1 d-block fst-italic">
+                    * OCR output is treated as unverified document data and does not overwrite authoritative operational records.
+                  </small>
+                </div>
+              {% endif %}
+
+              <!-- Structured Extracted Fields -->
+              {% if ocr_fields %}
+                <div class="mb-4">
+                  <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="text-muted small fw-bold text-uppercase">
+                      <i class="icon-list text-primary me-1"></i> Extracted Structured Fields
+                    </span>
+                    <span class="badge bg-light text-dark border">{{ ocr_fields|length }} Entities</span>
+                  </div>
+                  <div class="table-responsive border rounded">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                      <thead class="table-light small">
+                        <tr>
+                          <th>Field Name</th>
+                          <th>Raw Extracted Value</th>
+                          <th>Normalized Value</th>
+                          <th>Confidence</th>
+                          <th class="text-end">Method</th>
+                        </tr>
+                      </thead>
+                      <tbody class="small">
+                        {% for f in ocr_fields %}
+                          <tr>
+                            <td>
+                              <code class="text-primary fw-bold">{{ f.field_name }}</code>
+                            </td>
+                            <td class="text-dark">{{ f.raw_value }}</td>
+                            <td>
+                              {% if f.normalized_value %}
+                                <span class="font-monospace fw-semibold">{{ f.normalized_value }}</span>
+                                {% if f.unit %}<span class="badge bg-light text-dark border ms-1">{{ f.unit }}</span>{% endif %}
+                              {% else %}
+                                <span class="text-muted">—</span>
+                              {% endif %}
+                            </td>
+                            <td>
+                              {% if f.confidence %}
+                                <span class="{% if f.confidence >= 90 %}text-success{% else %}text-warning{% endif %} fw-semibold">
+                                  {{ f.confidence }}%
+                                </span>
+                              {% else %}
+                                <span class="text-muted">—</span>
+                              {% endif %}
+                            </td>
+                            <td class="text-end">
+                              <span class="badge bg-light text-muted border" style="font-size: 0.7rem;">{{ f.extraction_method }}</span>
+                            </td>
+                          </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              {% endif %}
+
+              <!-- Raw Extracted Text -->
+              <div class="mb-3">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                  <span class="text-muted small fw-bold text-uppercase">
+                    <i class="icon-doc text-secondary me-1"></i> Document Text Content
+                  </span>
+                  <a class="small text-primary text-decoration-none" data-bs-toggle="collapse" href="#rawTextCollapse" role="button">
+                    Toggle Raw Text View <i class="icon-arrow-down small ms-1"></i>
+                  </a>
+                </div>
+                <div class="collapse show" id="rawTextCollapse">
+                  <div class="p-3 bg-light rounded border font-monospace small" style="max-height: 250px; overflow-y: auto; white-space: pre-wrap; word-break: break-word;">{{ latest_ocr_run.extracted_text|default:"No text could be extracted from this document." }}</div>
+                </div>
+              </div>
+
+            {% endif %}
+
+            <!-- Historical Runs Dropdown -->
+            {% if ocr_runs|length > 1 %}
+              <div class="border-top pt-3 mt-3">
+                <div class="d-flex align-items-center justify-content-between">
+                  <span class="text-muted small">
+                    <i class="icon-clock me-1"></i> Historical Runs: <strong>{{ ocr_runs|length }} attempts recorded</strong>
+                  </span>
+                  <a class="small text-primary text-decoration-none" data-bs-toggle="collapse" href="#ocrHistoryCollapse" role="button">
+                    View Run History <i class="icon-arrow-down small ms-1"></i>
+                  </a>
+                </div>
+                <div class="collapse mt-2" id="ocrHistoryCollapse">
+                  <div class="list-group list-group-flush border rounded small">
+                    {% for hrun in ocr_runs %}
+                      <div class="list-group-item d-flex align-items-center justify-content-between p-2 {% if forloop.first %}bg-light{% endif %}">
+                        <div>
+                          <strong>Run #{{ hrun.run_number }}</strong>
+                          <span class="badge {{ hrun.badge_class }} ms-2">{{ hrun.status }}</span>
+                          <span class="text-muted ms-2">({{ hrun.engine }})</span>
+                          <span class="text-muted small ms-2">{{ hrun.created_at|date:"d M Y H:i:s" }}</span>
+                        </div>
+                        <div>
+                          <a href="{% url 'core:ocr_run_detail' evidence.id hrun.id %}" class="btn btn-xs btn-outline-secondary py-0 px-2" style="font-size: 0.75rem;">
+                            Audit Ledger
+                          </a>
+                        </div>
+                      </div>
+                    {% endfor %}
+                  </div>
+                </div>
+              </div>
+            {% endif %}
+
+          {% else %}
+            <!-- Unprocessed State Prompt -->
+            <div class="p-4 bg-light rounded text-center">
+              <div class="mb-2"><i class="icon-camera text-muted display-6"></i></div>
+              <h6 class="fw-bold text-dark mb-1">OCR Analysis Not Yet Executed</h6>
+              <p class="small text-muted mb-3" style="max-width: 480px; margin: 0 auto;">
+                Process this evidence document to automatically extract invoice numbers, utility consumption quantities, billing dates, and verify data consistency against operational telemetry.
+              </p>
+              {% if can_process_ocr and evidence.is_ocr_supported %}
+                <form method="post" action="{% url 'core:evidence_ocr_process' evidence.id %}">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-sm btn-primary">
+                    <i class="icon-refresh me-1"></i> Execute OCR Document Extraction
+                  </button>
+                </form>
+              {% elif not evidence.is_ocr_supported %}
+                <span class="badge bg-secondary">File format ({{ evidence.file_extension }}) not supported for OCR</span>
+              {% else %}
+                <span class="badge bg-secondary">OCR processing restricted for current role</span>
+              {% endif %}
+            </div>
+          {% endif %}
         </div>
       </div>
 

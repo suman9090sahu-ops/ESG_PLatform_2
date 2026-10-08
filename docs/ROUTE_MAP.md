@@ -205,7 +205,14 @@ This document tracks all active URL endpoints in **Phase 01 & Phase 02** as well
 | `/validation/rules/create/` | `apps.core.validation_views.validation_rule_create_view` | `core:validation_rule_create` | `MEIL_OPERATOR`, `ESG_MANAGER` | Create new deterministic validation rule definition | Phase 10 |
 | `/validation/rules/<id>/` | `apps.core.validation_views.validation_rule_detail_view` | `core:validation_rule_detail` | `MEIL_OPERATOR`, `ESG_MANAGER`, `AUDITOR` (Read-only) | View rule parameters, version, and execution stats | Phase 10 |
 | `/validation/rules/<id>/edit/` | `apps.core.validation_views.validation_rule_edit_view` | `core:validation_rule_edit` | `MEIL_OPERATOR`, `ESG_MANAGER` | Edit rule parameters, severity, and blocking flag | Phase 10 |
-| `/validation/rules/<id>/toggle/` | `apps.core.validation_views.validation_rule_toggle_view` | `core:validation_rule_toggle` | `MEIL_OPERATOR`, `ESG_MANAGER` (POST only) | Toggle active status of validation rule | Phase 10 |
+### 10. OCR Document Intelligence & Extraction Routes (`/evidence/.../ocr/...`)
+
+| URL Pattern | View Function | Route Name | Authorized Roles | Purpose | Phase |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `/evidence/<id>/ocr/process/` | `apps.core.ocr_views.ocr_process_view` | `core:ocr_process` | `SITE_MGR`, `SUB_MGR`, `OPERATOR`, `ESG_MGR` (IDOR Protected, POST only) | Trigger synchronous OCR run and structured field extraction | Phase 11 |
+| `/evidence/<id>/ocr/status/` | `apps.core.ocr_views.ocr_status_api_view` | `core:ocr_status_api` | Scoped Roles (`SITE_MGR`, `SUB_MGR`, `OPERATOR`, `ESG_MGR`, `AUDITOR`) | Telemetry JSON status endpoint for OCR run polling | Phase 11 |
+| `/evidence/<id>/ocr/runs/<run_id>/` | `apps.core.ocr_views.ocr_run_detail_view` | `core:ocr_run_detail` | Scoped Roles (`SITE_MGR`, `SUB_MGR`, `OPERATOR`, `ESG_MGR`, `AUDITOR`) | Dedicated immutable OCR Run Audit Ledger & entity inspection | Phase 11 |
+| `/evidence/<id>/ocr/runs/<run_id>/retry/` | `apps.core.ocr_views.ocr_run_retry_view` | `core:ocr_run_retry` | `SITE_MGR`, `SUB_MGR`, `OPERATOR`, `ESG_MGR` (IDOR Protected, POST only) | Reprocess document creating new versioned OCRRun attempt | Phase 11 |
 
 ---
 
@@ -287,12 +294,20 @@ This document tracks all active URL endpoints in **Phase 01 & Phase 02** as well
 │
 ├── /evidence/                         [Active - Phase 09 Evidence Management]
 │   ├── /                              Audit Evidence Repository & Filter Explorer
-│   ├── /<id>/                         Evidence Metadata, SHA-256 Checksum & ESG Lineage
+│   ├── /<id>/                         Evidence Metadata, SHA-256 Checksum, OCR & Lineage
 │   ├── /<id>/download/                Secure Authenticated Attachment Download
 │   ├── /<id>/preview/                 Secure Authenticated Inline Preview (PDF, Images)
-│   └── /<id>/retire/                  Controlled Evidence Retirement with Audit Justification
+│   ├── /<id>/retire/                  Controlled Evidence Retirement with Audit Justification
+│   ├── /<id>/ocr/process/             [Active - Phase 11] Synchronous OCR Execution
+│   ├── /<id>/ocr/status/              [Active - Phase 11] Telemetry Status JSON API
+│   ├── /<id>/ocr/runs/<run_id>/       [Active - Phase 11] Immutable OCR Run Audit Ledger
+│   └── /<id>/ocr/runs/<run_id>/retry/ [Active - Phase 11] Re-run & History Preservation
 │
-└── /reports/                          [Planned - Phase 10+ Calculations & BRSR]
+├── /validation/                       [Active - Phase 10 Validation Engine]
+│   ├── /runs/<id>/                    Immutable Validation Run Ledger & Rule Results
+│   └── /rules/                        Governed Validation Rule Catalog & Configuration
+│
+└── /reports/                          [Planned - Phase 12+ Calculations & BRSR]
     ├── /brsr/                         SEBI BRSR Core format generator
     └── /gri/                          Global Reporting Initiative export
 ```

@@ -1,0 +1,480 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block page_actions %}
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'core:submission_list' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="icon-arrow-left me-1"></i> Submissions Ledger
+    </a>
+    <a href="{% url 'core:activity_record_detail' record_id=record.id %}" class="btn btn-sm btn-outline-primary">
+      <i class="icon-doc me-1"></i> Source Record #{{ record.id }}
+    </a>
+    {% if can_withdraw %}
+      <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#withdrawSubmissionModal">
+        <i class="icon-action-undo me-1"></i> Withdraw Submission
+      </button>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+  <!-- Executive Header Status Banner -->
+  <div class="card border-0 shadow-sm mb-4 border-start border-5 {% if submission.status == 'SUBMITTED' %}border-primary{% elif submission.status == 'APPROVED' %}border-success{% elif submission.status == 'WITHDRAWN' %}border-secondary{% else %}border-info{% endif %}">
+    <div class="card-body p-4">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <span class="badge {{ submission.badge_class }} fs-6 py-1 px-3">
+              {{ submission.get_status_display }}
+            </span>
+            <span class="badge bg-light text-dark border font-monospace">Iteration #{{ submission.submission_number }}</span>
+            {% if submission.is_current %}
+              <span class="badge bg-success-subtle text-success border border-success">Current Active Submission</span>
+            {% else %}
+              <span class="badge bg-secondary-subtle text-muted border">Superceded / Historical</span>
+            {% endif %}
+          </div>
+          <h4 class="fw-bold text-dark mb-1">{{ submission.activity.name }}</h4>
+          <div class="small text-muted">
+            Submitted by <strong>{{ submission.submitted_by.get_full_name|default:submission.submitted_by.username }}</strong>
+            on <strong>{{ submission.submitted_at|date:"d M Y, H:i:s" }}</strong>
+            &bull; Operational Boundary: <strong>{{ submission.site.name }}</strong> ({{ submission.site.code }})
+          </div>
+        </div>
+        <div class="text-sm-end">
+          <div class="text-muted small text-uppercase fw-semibold">Measured Telemetry</div>
+          <div class="h3 fw-bold text-primary mb-0 font-monospace">
+            {{ submission.quantity|floatformat:2 }} <span class="fs-6 text-muted">{{ submission.unit.symbol }}</span>
+          </div>
+          <small class="text-muted">{{ submission.measurement_date|date:"d M Y" }}</small>
+        </div>
+      </div>
+
+      {% if submission.comments %}
+        <div class="mt-3 pt-3 border-top">
+          <span class="text-muted small d-block fw-semibold">Submitter Handover Notes:</span>
+          <div class="p-2 bg-light rounded small text-dark mt-1">{{ submission.comments|linebreaksbr }}</div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Main Column: Lineage & Data Snapshots -->
+    <div class="col-lg-8">
+
+      <!-- Card 1: Handover Operational Telemetry Snapshot -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-speedometer text-primary me-2"></i> Operational Telemetry Snapshot
+          </h6>
+          <span class="badge bg-light text-dark border">Immutable Handover State</span>
+        </div>
+        <div class="card-body p-4">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <span class="text-muted small d-block">Activity Item</span>
+              <strong class="text-dark">{{ submission.activity.name }}</strong>
+              <div class="small text-muted">{{ submission.activity.code }} &bull; {{ submission.activity.category.name }}</div>
+            </div>
+            <div class="col-sm-6">
+              <span class="text-muted small d-block">Scope Classification</span>
+              <span class="badge {{ submission.activity.scope_badge_class }} mt-1">
+                {{ submission.activity.get_scope_classification_display }}
+              </span>
+            </div>
+            <div class="col-sm-6">
+              <span class="text-muted small d-block">Consumption Quantity</span>
+              <div class="h5 fw-bold text-dark mb-0 font-monospace">
+                {{ submission.quantity|floatformat:2 }} {{ submission.unit.symbol }}
+              </div>
+              <small class="text-muted">{{ submission.unit.name }}</small>
+            </div>
+            <div class="col-sm-6">
+              <span class="text-muted small d-block">Measurement Date</span>
+              <div class="fw-semibold text-dark mt-1">
+                <i class="icon-calendar text-muted me-1"></i> {{ submission.measurement_date|date:"d M Y" }}
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <span class="text-muted small d-block">Document Reference</span>
+              <div class="mt-1">
+                {% if record.evidence_reference %}
+                  <code class="fw-bold">{{ record.evidence_reference }}</code>
+                {% else %}
+                  <span class="text-muted small">—</span>
+                {% endif %}
+              </div>
+            </div>
+            <div class="col-sm-6">
+              <span class="text-muted small d-block">Operational Notes</span>
+              <div class="small text-dark mt-1">{{ record.notes|default:"—" }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Phase 10 Validation Run Audit -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center">
+            <i class="icon-check text-success me-2 fs-5"></i>
+            <div>
+              <h6 class="mb-0 fw-bold text-dark">Phase 10 Deterministic Validation Audit</h6>
+              <span class="small text-muted">
+                {% if validation_run %}
+                  Run #{{ validation_run.run_number }} Evaluated at {{ validation_run.executed_at|date:"d M Y, H:i" }}
+                {% else %}
+                  Validation record attached
+                {% endif %}
+              </span>
+            </div>
+          </div>
+          <span class="badge {{ record.validation_badge_class }} fs-6 py-1 px-3">
+            {{ submission.get_validation_status_display }}
+          </span>
+        </div>
+        <div class="card-body p-4">
+          {% if validation_run %}
+            <div class="row g-2 mb-3 text-center">
+              <div class="col-6 col-md-3">
+                <div class="p-2 border rounded bg-light">
+                  <span class="text-muted d-block small">Rules Evaluated</span>
+                  <span class="fw-bold fs-6 text-dark">{{ validation_run.total_rules_evaluated }}</span>
+                </div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="p-2 border rounded bg-light">
+                  <span class="text-muted d-block small">Errors Detected</span>
+                  <span class="fw-bold fs-6 {% if validation_run.error_count > 0 %}text-danger{% else %}text-muted{% endif %}">
+                    {{ validation_run.error_count }}
+                  </span>
+                </div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="p-2 border rounded bg-light">
+                  <span class="text-muted d-block small">Advisory Warnings</span>
+                  <span class="fw-bold fs-6 {% if validation_run.warning_count > 0 %}text-warning{% else %}text-muted{% endif %}">
+                    {{ validation_run.warning_count }}
+                  </span>
+                </div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="p-2 border rounded bg-light">
+                  <span class="text-muted d-block small">Evaluation Latency</span>
+                  <span class="fw-bold fs-6 text-muted font-monospace">{{ validation_run.execution_duration_ms }} ms</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="alert alert-light border small text-muted mb-3">
+              <i class="icon-info text-primary me-1"></i>
+              <strong>Validation Verdict:</strong> {{ validation_run.summary_message }}
+            </div>
+
+            {% if validation_results %}
+              <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                  <thead class="bg-light">
+                    <tr class="small text-muted">
+                      <th>Rule Code</th>
+                      <th>Rule Name</th>
+                      <th>Severity</th>
+                      <th>Finding / Message</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for res in validation_results %}
+                      <tr>
+                        <td><code>{{ res.rule.code }}</code></td>
+                        <td class="small">{{ res.rule.name }}</td>
+                        <td>
+                          <span class="badge {% if res.severity == 'ERROR' %}badge-danger{% elif res.severity == 'WARNING' %}badge-warning{% else %}badge-info{% endif %}">
+                            {{ res.get_severity_display }}
+                          </span>
+                        </td>
+                        <td class="small">{{ res.message }}</td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% else %}
+              <div class="small text-success">
+                <i class="icon-check me-1"></i> No non-conformances or warnings recorded during this execution run.
+              </div>
+            {% endif %}
+          {% else %}
+            <div class="text-muted small">No validation run attached to this submission.</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Card 3: Phase 09 Supporting Evidence Attachments -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center">
+            <i class="icon-docs text-primary me-2 fs-5"></i>
+            <div>
+              <h6 class="mb-0 fw-bold text-dark">Supporting Audit Evidence</h6>
+              <span class="small text-muted">{{ evidence_files.count }} Document{{ evidence_files.count|pluralize }} Attached</span>
+            </div>
+          </div>
+        </div>
+        <div class="card-body p-0">
+          {% if evidence_files %}
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                  <tr class="small text-muted text-uppercase">
+                    <th>Document</th>
+                    <th>Classification</th>
+                    <th>Size</th>
+                    <th>SHA-256 Hash</th>
+                    <th>OCR Status</th>
+                    <th class="text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for ev in evidence_files %}
+                    <tr>
+                      <td>
+                        <div class="fw-semibold text-dark">{{ ev.original_filename }}</div>
+                        <small class="text-muted">{{ ev.created_at|date:"d M Y, H:i" }}</small>
+                      </td>
+                      <td>
+                        <span class="badge bg-light text-dark border">{{ ev.get_evidence_type_display }}</span>
+                      </td>
+                      <td class="small font-monospace">{{ ev.file_size_formatted }}</td>
+                      <td>
+                        <code class="small text-truncate d-inline-block" style="max-width: 120px;" title="{{ ev.file_hash }}">
+                          {{ ev.file_hash|slice:":12" }}...
+                        </code>
+                      </td>
+                      <td>
+                        <span class="badge {{ ev.ocr_badge_class }}">
+                          {{ ev.ocr_status }}
+                        </span>
+                      </td>
+                      <td class="text-end">
+                        <div class="btn-group btn-group-sm">
+                          <a href="{% url 'core:evidence_detail' ev.id %}" class="btn btn-outline-primary" title="Evidence Audit Record">
+                            <i class="icon-eye"></i>
+                          </a>
+                          <a href="{% url 'core:evidence_download' ev.id %}" class="btn btn-outline-secondary" title="Download Document">
+                            <i class="icon-cloud-download"></i>
+                          </a>
+                        </div>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="p-4 text-center text-muted small">
+              <i class="icon-info me-1"></i> No supporting evidence files attached to this activity record.
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Card 4: Security & Compliance Audit Log Trail -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-shield text-info me-2"></i> Security &amp; Compliance Audit Lineage
+          </h6>
+          <span class="badge badge-outline-secondary small">AuthAuditLog Trace</span>
+        </div>
+        <div class="card-body p-0">
+          {% if audit_logs %}
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                  <tr class="small text-muted text-uppercase">
+                    <th>Timestamp</th>
+                    <th>Event Type</th>
+                    <th>User</th>
+                    <th>Details</th>
+                    <th class="text-end">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for log in audit_logs %}
+                    <tr>
+                      <td class="small text-muted">{{ log.created_at|date:"d M Y, H:i:s" }}</td>
+                      <td><span class="badge bg-light text-dark border">{{ log.event_type }}</span></td>
+                      <td class="small fw-semibold">{{ log.user.username|default:"System" }}</td>
+                      <td class="small text-muted text-truncate d-inline-block" style="max-width: 280px;" title="{{ log.details }}">
+                        {{ log.details|default:"—" }}
+                      </td>
+                      <td class="text-end">
+                        {% if log.success %}
+                          <span class="badge bg-success-subtle text-success border border-success"><i class="icon-check me-1"></i>SUCCESS</span>
+                        {% else %}
+                          <span class="badge bg-danger-subtle text-danger border border-danger"><i class="icon-close me-1"></i>FAILED</span>
+                        {% endif %}
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="p-3 text-muted small text-center">No explicit audit events logged for this resource.</div>
+          {% endif %}
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Side Column: Organizational & Temporal Lineage -->
+    <div class="col-lg-4">
+
+      <!-- Side Card 1: Organizational Hierarchy Boundary -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-location-pin text-success me-2"></i> Organizational Lineage
+          </h6>
+        </div>
+        <div class="card-body p-3">
+          <ul class="list-group list-group-flush small">
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Enterprise Group:</span>
+              <strong class="text-dark">{{ submission.company.name }}</strong>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Subsidiary Division:</span>
+              <span class="fw-semibold text-dark">{{ submission.subsidiary.name }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Infrastructure Project:</span>
+              <span>{{ submission.project.name }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Operational Site:</span>
+              <span class="fw-bold text-success">{{ submission.site.name }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Site Identifier:</span>
+              <code>{{ submission.site.code }}</code>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Side Card 2: Reporting Period Temporal Governance -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-calendar text-info me-2"></i> Temporal Governance
+          </h6>
+        </div>
+        <div class="card-body p-3">
+          <ul class="list-group list-group-flush small">
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Reporting Period:</span>
+              <strong class="text-dark">{{ submission.reporting_period.name }}</strong>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Cycle Code:</span>
+              <code>{{ submission.reporting_period.code }}</code>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Fiscal Year:</span>
+              <span>{{ submission.reporting_period.fiscal_year }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Window Boundary:</span>
+              <span>{{ submission.reporting_period.start_date|date:"d M Y" }} &ndash; {{ submission.reporting_period.end_date|date:"d M Y" }}</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between px-0">
+              <span class="text-muted">Period State:</span>
+              <span class="badge {{ submission.reporting_period.status_badge_class }}">
+                {{ submission.reporting_period.get_status_display }}
+              </span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Side Card 3: Downstream Review Readiness (Phase 13 Integration Point) -->
+      <div class="card border-0 shadow-sm mb-4 border-top border-4 border-info">
+        <div class="card-header bg-white py-3 border-bottom">
+          <h6 class="mb-0 fw-bold text-dark">
+            <i class="icon-share text-info me-2"></i> Phase 13 Review Integration
+          </h6>
+        </div>
+        <div class="card-body p-3 small text-muted">
+          <p class="mb-2">
+            This submission establishes the formal boundary between operational site telemetry and downstream governance review.
+          </p>
+          <div class="p-2 bg-light rounded mb-2">
+            <strong>Target Review Scope:</strong><br>
+            Subsidiary Manager for <em>{{ submission.subsidiary.name }}</em>
+          </div>
+          <div class="text-muted" style="font-size: 0.8rem;">
+            <i class="icon-check text-success me-1"></i> Data lineage, validation snapshot, and evidence attachments are locked and ready for Subsidiary verification.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Withdraw Submission Modal -->
+{% if can_withdraw %}
+  <div class="modal fade" id="withdrawSubmissionModal" tabindex="-1" aria-labelledby="withdrawSubmissionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title fw-bold" id="withdrawSubmissionModalLabel">
+            <i class="icon-action-undo me-2"></i> Withdraw Submission #{{ submission.submission_number }}
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form method="post" action="{% url 'core:submission_withdraw' submission_id=submission.id %}">
+          {% csrf_token %}
+          <div class="modal-body p-4">
+            <div class="alert alert-warning small mb-3">
+              <i class="icon-exclamation me-1"></i>
+              <strong>Warning:</strong> Withdrawing this submission will return Activity Record #{{ record.id }} to <strong>DRAFT</strong> status, allowing you to edit the operational quantities, dates, or attached evidence files.
+            </div>
+
+            <div class="mb-3">
+              <label for="{{ withdraw_form.reason.id_for_label }}" class="form-label fw-semibold small text-dark">
+                {{ withdraw_form.reason.label }} <span class="text-danger">*</span>
+              </label>
+              {{ withdraw_form.reason }}
+              <div class="form-text small text-muted">{{ withdraw_form.reason.help_text }}</div>
+            </div>
+
+            <div class="form-check p-3 bg-light rounded border mb-2">
+              {{ withdraw_form.confirm }}
+              <label class="form-check-label small fw-semibold text-dark ms-2" for="{{ withdraw_form.confirm.id_for_label }}">
+                {{ withdraw_form.confirm.label }}
+              </label>
+            </div>
+          </div>
+          <div class="modal-footer bg-light">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-danger btn-sm fw-semibold">
+              <i class="icon-action-undo me-1"></i> Confirm Withdrawal
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

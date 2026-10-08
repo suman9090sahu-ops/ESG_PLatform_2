@@ -177,6 +177,14 @@ def evidence_detail_view(request, evidence_id):
     can_retire = user_can_retire_evidence(user, evidence)
     can_delete = user_can_delete_evidence(user, evidence)
 
+    # Phase 11: OCR Processing & Entity Intelligence
+    from apps.core.ocr_services import user_can_process_ocr
+    can_process_ocr = user_can_process_ocr(user, evidence)
+    latest_ocr_run = evidence.latest_ocr_run
+    ocr_runs = evidence.ocr_runs.order_by("-run_number")
+    ocr_fields = latest_ocr_run.fields.all() if latest_ocr_run else []
+    ocr_comparison = latest_ocr_run.comparison_summary if latest_ocr_run else {}
+
     context = {
         "page_title": f"Evidence #{evidence.id}",
         "page_subtitle": f"{evidence.original_filename} ({evidence.get_evidence_type_display()})",
@@ -185,6 +193,11 @@ def evidence_detail_view(request, evidence_id):
         "can_download": can_download,
         "can_retire": can_retire,
         "can_delete": can_delete,
+        "can_process_ocr": can_process_ocr,
+        "latest_ocr_run": latest_ocr_run,
+        "ocr_runs": ocr_runs,
+        "ocr_fields": ocr_fields,
+        "ocr_comparison": ocr_comparison,
     }
     return render(request, "evidence/evidence_detail.html", context)
 

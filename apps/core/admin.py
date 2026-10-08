@@ -27,6 +27,10 @@ from apps.core.models import (
     ValidationRule,
     ValidationRun,
     ValidationResult,
+    OCRRun,
+    OCRField,
+    OCRStatus,
+    Submission,
 )
 
 
@@ -708,6 +712,153 @@ class ValidationResultAdmin(admin.ModelAdmin):
         "context_data",
         "created_at",
     )
+
+
+# -----------------------------------------------------------------------------
+# PHASE 11: OCR & DOCUMENT EXTRACTION ADMIN
+# -----------------------------------------------------------------------------
+
+class OCRFieldInline(admin.TabularInline):
+    model = OCRField
+    extra = 0
+    fields = ("field_name", "raw_value", "normalized_value", "unit", "confidence", "extraction_method")
+    readonly_fields = ("field_name", "raw_value", "normalized_value", "unit", "confidence", "extraction_method")
+    can_delete = False
+    show_change_link = True
+
+
+@admin.register(OCRRun)
+class OCRRunAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "evidence",
+        "run_number",
+        "status",
+        "engine",
+        "page_count",
+        "confidence",
+        "is_latest",
+        "processed_by",
+        "created_at",
+    )
+    list_filter = (
+        "status",
+        "engine",
+        "is_latest",
+        "created_at",
+    )
+    search_fields = (
+        "evidence__original_filename",
+        "evidence__activity_record__activity__name",
+        "extracted_text",
+        "error_message",
+    )
+    readonly_fields = (
+        "evidence",
+        "run_number",
+        "status",
+        "engine",
+        "engine_version",
+        "language",
+        "page_count",
+        "confidence",
+        "extracted_text",
+        "page_data",
+        "raw_metadata",
+        "error_message",
+        "execution_duration_ms",
+        "processed_by",
+        "started_at",
+        "completed_at",
+        "created_at",
+        "updated_at",
+    )
+    inlines = [OCRFieldInline]
+    ordering = ("-created_at",)
+
+
+@admin.register(OCRField)
+class OCRFieldAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "ocr_run",
+        "field_name",
+        "raw_value",
+        "normalized_value",
+        "unit",
+        "confidence",
+        "page_number",
+        "extraction_method",
+        "created_at",
+    )
+    list_filter = (
+        "field_name",
+        "extraction_method",
+        "created_at",
+    )
+    search_fields = (
+        "field_name",
+        "raw_value",
+        "normalized_value",
+        "ocr_run__evidence__original_filename",
+    )
+    readonly_fields = (
+        "ocr_run",
+        "field_name",
+        "raw_value",
+        "normalized_value",
+        "unit",
+        "confidence",
+        "page_number",
+        "bounding_box",
+        "extraction_method",
+        "created_at",
+    )
+    ordering = ("-created_at",)
+
+
+@admin.register(Submission)
+class SubmissionAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "submission_number",
+        "activity_record",
+        "site",
+        "reporting_period",
+        "status",
+        "validation_status",
+        "is_current",
+        "submitted_by",
+        "submitted_at",
+    )
+    list_filter = (
+        "status",
+        "validation_status",
+        "is_current",
+        "reporting_period",
+        "submitted_at",
+    )
+    search_fields = (
+        "activity_record__activity__name",
+        "activity_record__activity__code",
+        "site__name",
+        "site__code",
+        "submitted_by__username",
+    )
+    readonly_fields = (
+        "activity_record",
+        "submission_number",
+        "site",
+        "reporting_period",
+        "validation_run",
+        "validation_status",
+        "submitted_by",
+        "submitted_at",
+        "created_at",
+        "updated_at",
+        "snapshot_data",
+    )
+    ordering = ("-submitted_at",)
 
 
 

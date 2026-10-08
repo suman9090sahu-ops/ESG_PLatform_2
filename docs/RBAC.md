@@ -297,3 +297,34 @@ The ESG Validation Engine (`/data-entry/<id>/validate/`, `/validation/runs/<id>/
    - Validation executions log `VALIDATION_EXECUTED` with record ID, run number, composite status, and error count.
    - Rule changes log `VALIDATION_RULE_CREATED` and `VALIDATION_RULE_UPDATED` capturing actor, rule code, and parameter diffs.
 
+---
+
+## 15. OCR Document Intelligence & Entity Extraction RBAC (Phase 11)
+
+The OCR Engine module (`/evidence/<id>/ocr/...`) enforces strict authorization boundaries between operational document processing, enterprise oversight, and independent auditor inspection:
+
+| Role | View OCR Findings (`/evidence/<id>/`) | Trigger OCR Run (`.../ocr/process/`) | Re-run / Retry OCR (`.../ocr/runs/<run_id>/retry/`) | View OCR Run Ledger (`.../ocr/runs/<run_id>/`) | Status Telemetry API (`.../ocr/status/`) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `SITE_MANAGER` | Scoped to assigned sites | Permitted for assigned sites | Permitted for assigned sites | Scoped to assigned sites | Scoped to assigned sites |
+| `SUBSIDIARY_MANAGER` | Scoped to child division sites | Permitted for child division sites | Permitted for child division sites | Scoped to child division sites | Scoped to child division sites |
+| `MEIL_OPERATOR` | Universal enterprise scope | Permitted across all enterprise records | Permitted across all enterprise records | Universal enterprise scope | Universal enterprise scope |
+| `ESG_MANAGER` | Universal enterprise scope | Permitted across all enterprise records | Permitted across all enterprise records | Universal enterprise scope | Universal enterprise scope |
+| `AUDITOR` | Universal enterprise scope (Read-Only) | **Prohibited (403 Forbidden)** | **Prohibited (403 Forbidden)** | Universal enterprise scope (Read-Only) | Universal enterprise scope (Read-Only) |
+
+### Anti-IDOR, Governance & Non-Destructive Principles:
+1. **Server-Side Authorization (`user_can_view_ocr` / `user_can_process_ocr`)**:
+   - `SITE_MANAGER` can only view or trigger OCR against Evidence documents attached to `ActivityRecord` instances for their assigned sites.
+   - Any attempt to access or process evidence belonging to an unassigned site or foreign company is blocked with `Http404` or `PermissionDenied` (Anti-IDOR).
+   - Inactive or suspended user accounts are strictly blocked.
+2. **Auditor Read-Only Isolation**:
+   - The `AUDITOR` role has full inspection privileges over extracted text, structured entities, telemetry comparison indicators, and historical run ledgers.
+   - However, any mutation or processing POST (`/evidence/<id>/ocr/process/` or `/ocr/runs/<run_id>/retry/`) is blocked with `403 Forbidden`.
+3. **Non-Destructive Domain Principle**:
+   - OCR output is strictly **UNVERIFIED DOCUMENT INTEL**.
+   - OCR results NEVER silently overwrite or mutate authoritative `ActivityRecord` quantities, dates, units, or status.
+   - The original uploaded evidence file and its SHA-256 hash remain completely immutable.
+4. **Historical Preservative Multi-Run Lifecycle**:
+   - Reprocessing an evidence document creates a new `OCRRun` record with an incremented `run_number` (`run_number=2, 3, ...`), maintaining the previous runs intact for audit review.
+5. **Security Audit Logging**:
+   - Every OCR execution records `OCR_REQUESTED`, `OCR_STARTED`, `OCR_COMPLETED`, or `OCR_FAILED` in the immutable `AuthAuditLog`.
+

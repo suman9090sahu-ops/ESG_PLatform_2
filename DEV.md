@@ -1,11 +1,11 @@
 # MEIL ESG CONTROL TOWER — Development Tracking
 
 ## Current Phase
-**PHASE 08 — ESG DATA ENTRY & ACTIVITY TELEMETRY**
+**PHASE 11 — OCR ENGINE**
 
 **Status:** IMPLEMENTED & VERIFIED  
-**Phase 08 Completion:** 100%  
-**Total Project Completion:** 93%
+**Phase 11 Completion:** 100%  
+**Total Project Completion:** 95%
 
 ---
 
@@ -741,9 +741,110 @@ ALL 15 LIVE VERIFICATION CHECKS PASSED PERFECTLY!
 
 ---
 
-## 6. Next Recommended Phase
+## 6. Phase 11 — OCR Engine & Document Intelligence Implementation Summary
 
-**PHASE 11 — OCR (OPTICAL CHARACTER RECOGNITION)**
-- Automated data extraction from attached Evidence documents (PDFs, utility bills, fuel invoices).
-- Pre-population and cross-verification of extracted quantities against Activity Records.
-- Feeds into Phase 10 Validation Engine for automated invoice vs. record consistency verification.
+Engineered the OCR document data extraction and operational telemetry comparison foundation for the MEIL ESG Control Tower Django monolith, integrating directly with Phase 09 Evidence Management and Phase 08 Activity Records:
+
+### Key Architectural Deliverables
+1. **Unverified Document Intelligence Principle**:
+   - OCR output is strictly **UNVERIFIED DOCUMENT INTEL**; it never silently alters or mutates authoritative `ActivityRecord` telemetry (`quantity`, `unit`, `measurement_date`, `status`).
+   - The original uploaded evidence file and its cryptographic SHA-256 hash remain completely immutable.
+2. **Multi-Run Versioning & Immutability (`OCRRun` & `OCRField`)**:
+   - `OCRRun`: Tracks individual processing runs per `Evidence` document with `run_number`, `status` (`PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`, `CANCELLED`), `engine`, `confidence`, `page_count`, `page_data` (per-page text breakdown), `execution_duration_ms`, and `is_latest` flag.
+   - `UniqueConstraint(fields=['evidence', 'run_number'])`: Enforces monotonic, collision-free run history.
+   - `OCRField`: Stores extracted domain entities (`invoice_number`, `quantity`, `unit`, `billing_date`, `billing_period`, `total_amount`, `vendor`, `meter_number`) preserving both raw document text and normalized values.
+3. **Decoupled OCR Provider Abstraction (`apps/core/ocr_services.py`)**:
+   - `BaseOCRProvider`: Abstract base interface defining `process(evidence) -> OCRResultPayload`.
+   - `PyPDFTextProvider`: Pure-Python stream text extraction using `pypdf`, zero external binary dependencies required.
+   - `TesseractOCRProvider`: Optical recognition for scanned PDFs and image files (`PNG`, `JPEG`) using `pytesseract` and `Pillow`. Gracefully reports `OCREngineUnavailableError` if system binaries are not installed, without faking data.
+   - `MockOCRProvider`: Deterministic mock provider for automated unit testing.
+4. **Structured Entity Extraction & Normalization**:
+   - Regex-based heuristic parser extracting invoice numbers, quantities, units, dates, amounts, vendors, and meter references.
+   - Preserves raw string values while producing clean normalized representations (e.g. `"1,250.00 kWh"` &rarr; `1250.00`).
+5. **Operational Telemetry Comparison Engine**:
+   - `compare_ocr_with_activity_record`: Evaluates extracted quantities, units, dates, and references against parent `ActivityRecord` fields without modifying them.
+   - Computes match status (`MATCH`, `MISMATCH`, `NO_DATA`), percentage deltas, and telemetry comparison signals.
+6. **Object-Level RBAC & Anti-IDOR Security**:
+   - `SITE_MANAGER`: Scoped strictly to Evidence files attached to assigned sites.
+   - `SUBSIDIARY_MANAGER`: Scoped to child division sites.
+   - `MEIL_OPERATOR` & `ESG_MANAGER`: Universal enterprise scope.
+   - `AUDITOR`: Full read-only visibility over extracted text, entities, comparison signals, and run ledgers; strictly blocked with `HTTP 403 Forbidden` from triggering or retrying OCR runs.
+   - Cross-site / unassigned evidence access attempts strictly blocked (`HTTP 404/403`).
+7. **Audit-Ready Security Lineage (`AuthAuditLog`)**:
+   - Added `OCR_REQUESTED`, `OCR_STARTED`, `OCR_COMPLETED`, `OCR_FAILED`, and `OCR_RETRIED` event types.
+8. **OCR User Interface & Dedicated Run Audit Ledger**:
+   - `/evidence/<id>/`: Upgraded Evidence Detail with Phase 11 OCR Intelligence card, KPI summary tiles (Status, Engine, Confidence, Pages, Fields), Operational Telemetry Comparison table, Extracted Entities table, safe escaped scrollable raw text container, and historical run switcher.
+   - `/evidence/<id>/ocr/runs/<run_id>/`: Dedicated immutable OCR Run Audit Ledger showing full execution specifications and granular entity tables.
+   - `/data-entry/<id>/`: Added `OCR Intel` column with status badges on the supporting evidence table.
+   - `/evidence/<id>/ocr/status/`: Telemetry status JSON endpoint for status polling.
+
+---
+
+## 7. Verification & Test Telemetry (Phase 11)
+
+### Django System Check
+```text
+.venv\Scripts\python.exe manage.py check
+System check identified no issues (0 silenced).
+Result: PASS
+```
+
+### Migration Check (`makemigrations --check`)
+```text
+.venv\Scripts\python.exe manage.py makemigrations --check
+No changes detected
+Result: PASS (0 pending schema migrations)
+```
+
+### Dedicated Phase 11 Automated Test Suite (`tests/test_phase11_ocr_engine.py`)
+```text
+.venv\Scripts\python.exe manage.py test tests.test_phase11_ocr_engine
+Ran 24 tests in 34.812s
+OK
+Result: 24 Passed, 0 Failed, 0 Errors (100% PASS)
+```
+**Test Coverage Matrix:**
+- `Models & Integrity`: OCRRun, OCRField, UniqueConstraint on run number, is_latest denormalization, cascading deletions.
+- `Provider Abstraction`: PyPDFTextProvider, TesseractOCRProvider missing binary handling, MockOCRProvider.
+- `Structured Extraction`: Regex entity extraction across multi-line invoices, raw vs. normalized value preservation.
+- `Comparison Engine`: Operational quantity delta calculation, unit of measure matching, date matching, invoice reference matching.
+- `Anti-IDOR & Zero Client Trust`: Site Manager blocked from processing unassigned or foreign site evidence (HTTP 404/403).
+- `Governance & RBAC`: Auditor granted read-only visibility (200 OK) but blocked from executing OCR mutations (HTTP 403 Forbidden).
+- `Multi-Run Reprocess`: Versioned re-run preserves historical runs and updates is_latest pointers.
+
+### Full Monolith Regression Suite (`manage.py test`)
+```text
+.venv\Scripts\python.exe manage.py test
+Ran 299 tests in 419.823s
+OK (Found 299 tests, 0 failures, 0 errors)
+Result: 100% PASS (Phases 01–11 fully passing, zero regressions)
+```
+
+### Live Server Workflow Verification (`tests/verify_phase11_live.py`)
+```text
+.venv\Scripts\python.exe tests/verify_phase11_live.py
+[Step 1] Authenticating Site Manager (site_manager)... -> PASS
+[Step 2] Navigating to /evidence/ repository & uploading fresh valid invoice PDF... -> PASS
+[Step 3] Inspecting Evidence #7 detail page... -> PASS (OCR Intelligence card rendered)
+[Step 4] Executing OCR processing via POST /evidence/7/ocr/process/ (AJAX)... -> PASS (COMPLETED, Run #1, 95% confidence)
+[Step 5] Inspecting updated Evidence detail page... -> PASS (Findings, Comparison table, Raw text rendered)
+[Step 6] Inspecting dedicated OCR Run #1 Audit Ledger (/evidence/7/ocr/runs/5/)... -> PASS (200 OK)
+[Step 7] Querying OCR Status API (/evidence/7/ocr/status/)... -> PASS (COMPLETED, Run #1)
+[Step 8] Testing Anti-IDOR defense against unassigned / foreign site evidence... -> PASS (Server strictly defended with HTTP 404)
+[Step 9] Authenticating Auditor (auditor / AuditorPass123!)...
+  - Auditor inspecting Evidence #7 detail -> PASS (200 OK Read-Only)
+  - Auditor inspecting OCR Run #1 audit ledger -> PASS (200 OK Read-Only)
+  - Auditor attempting to execute OCR mutation -> PASS (Enforced strict read-only protection: HTTP 403 Forbidden)
+[Step 10] Testing Retry / Reprocess workflow as Site Manager... -> PASS (Run #2 created with full historical versioning preserved)
+ALL 10 LIVE VERIFICATION CHECKS COMPLETED AND FULLY PASSED!
+```
+
+---
+
+## 8. Next Recommended Phase
+
+**PHASE 12 — SUBMISSION WORKFLOW**
+- Formal review and multi-level submission workflow for verified operational records.
+- Site Manager submission to Subsidiary Reviewer.
+- Subsidiary Manager review, approval, rejection, or request for clarification.
+- Locking of operational telemetry and supporting evidence upon formal submission.

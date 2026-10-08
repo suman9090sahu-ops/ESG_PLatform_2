@@ -438,3 +438,79 @@ Phase 10 establishes the deterministic validation engine evaluating ESG activity
   - `AuthAuditLog.EventType.VALIDATION_RULE_UPDATED`
 - **Migration**:
   - `apps/core/migrations/0008_validationresult_validationrule_validationrun_and_more.py`
+
+---
+
+## 11. Phase 11 — OCR Document Intelligence & Entity Extraction Schema
+
+### Architectural Principle
+OCR output is strictly treated as **UNVERIFIED DOCUMENT INTEL**. It never silently mutates or replaces authoritative operational telemetry (`ActivityRecord.quantity`, `unit`, etc.). An immutable multi-run model (`OCRRun`) preserves historical extraction runs and audit lineage.
+
+### Entity Relationship Diagram
+```text
++----------------------------------------------------------------------------------------------------+
+|                                               Evidence                                             |
+|  - id (BigAutoField, PK)                                                                           |
+|  - activity_record_id (FK -> ActivityRecord.id, CASCADE, INDEX)                                   |
+|  - file (FileField)                                                                                |
+|  - sha256_hash (CharField(64))                                                                    |
+|  - evidence_type (CharField(32))                                                                   |
+|  - ...                                                                                             |
++----------------------------------------------------------------------------------------------------+
+                                      ▲ 1
+                                      │ has runs
+                                      ▼ N
++----------------------------------------------------------------------------------------------------+
+|                                                OCRRun                                              |
+|  - id (BigAutoField, PK)                                                                           |
+|  - evidence_id (FK -> Evidence.id, CASCADE, INDEX, related_name="ocr_runs")                         |
+|  - run_number (POSITIVE INT)                                                                       |
+|  - status (VARCHAR(20), PENDING/PROCESSING/COMPLETED/FAILED/CANCELLED, INDEX)                      |
+|  - engine (VARCHAR(64), default="pypdf-text-extractor")                                            |
+|  - engine_version (VARCHAR(32), blank)                                                             |
+|  - language (VARCHAR(16), default="eng")                                                           |
+|  - page_count (POSITIVE INT, default=0)                                                            |
+|  - extracted_text (TEXT, blank)                                                                    |
+|  - confidence (FLOAT, NULL)                                                                        |
+|  - page_data (JSONField, default=list, blank)                                                      |
+|  - execution_duration_ms (POSITIVE INT, default=0)                                                |
+|  - is_latest (BOOLEAN, default=True, INDEX)                                                        |
+|  - error_message (TEXT, blank)                                                                     |
+|  - initiated_by (FK -> User.id, SET_NULL, NULL, related_name="ocr_runs_initiated")                  |
+|  - started_at, completed_at, created_at, updated_at (TIMESTAMPTZ)                                   |
++----------------------------------------------------------------------------------------------------+
+                                      ▲ 1
+                                      │ extracts
+                                      ▼ N
++----------------------------------------------------------------------------------------------------+
+|                                               OCRField                                             |
+|  - id (BigAutoField, PK)                                                                           |
+|  - ocr_run_id (FK -> OCRRun.id, CASCADE, INDEX, related_name="fields")                              |
+|  - field_name (VARCHAR(64), INDEX)                                                                 |
+|  - raw_value (TEXT)                                                                                |
+|  - normalized_value (VARCHAR(255), blank, INDEX)                                                   |
+|  - unit (VARCHAR(32), blank)                                                                       |
+|  - confidence (FLOAT, NULL)                                                                        |
+|  - page_number (POSITIVE INT, default=1)                                                           |
+|  - bounding_box (JSONField, default=dict, blank)                                                   |
+|  - extraction_method (VARCHAR(32), REGEX_RULE / HEURISTIC / LLM / MANUAL)                          |
+|  - created_at (TIMESTAMPTZ)                                                                        |
++----------------------------------------------------------------------------------------------------+
+```
+
+### Constraints, Integrity Rules & Field Additions (Phase 11)
+- **Multi-Run Monotonicity (`unique_evidence_run_number`)**: `UniqueConstraint(fields=['evidence', 'run_number'])` enforces collision-free run sequences per evidence document.
+- **Latest Run Pointer (`is_latest`)**: Denormalized boolean flag indexed via composite `idx_ocr_run_ev_latest` (`['evidence', 'is_latest']`) for O(1) retrieval of current OCR intel.
+- **Composite Indexes**:
+  - `idx_ocr_run_ev_status`: `['evidence', 'status']` — quick lookup of active/failed runs.
+  - `idx_ocr_run_ev_num`: `['evidence', '-run_number']` — chronological order for run history.
+  - `idx_ocr_field_run_name`: `['ocr_run', 'field_name']` — entity field lookups.
+  - `idx_ocr_field_name_val`: `['field_name', 'normalized_value']` — search across extracted entities.
+- **Audit Lineage**:
+  - `AuthAuditLog.EventType.OCR_REQUESTED`
+  - `AuthAuditLog.EventType.OCR_STARTED`
+  - `AuthAuditLog.EventType.OCR_COMPLETED`
+  - `AuthAuditLog.EventType.OCR_FAILED`
+  - `AuthAuditLog.EventType.OCR_RETRIED`
+- **Migration**:
+  - `apps/core/migrations/0009_alter_authauditlog_event_type_ocrrun_ocrfield_and_more.py`

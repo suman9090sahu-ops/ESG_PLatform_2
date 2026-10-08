@@ -654,6 +654,13 @@ class AuthAuditLog(models.Model):
         VALIDATION_EXECUTED = "VALIDATION_EXECUTED", "Validation Run Executed"
         VALIDATION_RULE_CREATED = "VALIDATION_RULE_CREATED", "Validation Rule Created"
         VALIDATION_RULE_UPDATED = "VALIDATION_RULE_UPDATED", "Validation Rule Updated"
+        OCR_REQUESTED = "OCR_REQUESTED", "OCR Processing Requested"
+        OCR_STARTED = "OCR_STARTED", "OCR Processing Started"
+        OCR_COMPLETED = "OCR_COMPLETED", "OCR Processing Completed"
+        OCR_FAILED = "OCR_FAILED", "OCR Processing Failed"
+        OCR_RETRIED = "OCR_RETRIED", "OCR Processing Retried"
+        SUBMISSION_CREATED = "SUBMISSION_CREATED", "Activity Record Submitted"
+        SUBMISSION_WITHDRAWN = "SUBMISSION_WITHDRAWN", "Activity Record Submission Withdrawn"
 
     user = models.ForeignKey(
         User,
@@ -1238,6 +1245,16 @@ class ActivityMaster(models.Model):
         }
         return scope_map.get(self.scope_classification, "badge-secondary")
 
+    @property
+    def requires_evidence(self):
+        """Returns True if this activity requires supporting audit documentation."""
+        rules = self.validation_rules or {}
+        return (
+            rules.get("evidence_required") is True
+            or rules.get("evidence_mandatory") is True
+            or self.code in ["FUEL-DIESEL-STAT", "ELEC-GRID", "WASTE-HAZARDOUS", "DIESEL_GENSET"]
+        )
+
 
 # -----------------------------------------------------------------------------
 # PHASE 08: ESG DATA ENTRY & ACTIVITY RECORDS
@@ -1534,6 +1551,21 @@ class ActivityRecord(models.Model):
         """Record can be advanced to READY/SUBMITTED only if it has been validated without blocking errors."""
         return self.validation_status in [ValidationStatus.VALID, ValidationStatus.WARNING]
 
+    @property
+    def latest_submission(self):
+        """Returns the active or most recent formal Submission for this record."""
+        return self.submissions.filter(is_current=True).first() or self.submissions.order_by("-submitted_at").first()
+
+    @property
+    def submission_count(self):
+        """Total number of submission cycles attempted for this record."""
+        return self.submissions.count()
+
+    @property
+    def is_locked_for_review(self):
+        """Returns True if record is under review or approved downstream."""
+        return self.status in [RecordStatus.SUBMITTED, RecordStatus.VERIFIED, RecordStatus.APPROVED]
+
 
 # -----------------------------------------------------------------------------
 # PHASE 09: EVIDENCE MANAGEMENT & AUDIT VERIFICATION
@@ -1761,6 +1793,40 @@ class Evidence(models.Model):
     @property
     def status_badge_class(self):
         return "badge-success" if self.status == EvidenceStatus.ACTIVE else "badge-secondary"
+
+    @property
+    def is_ocr_supported(self):
+        """Returns True if the file format is supported by the OCR / document extraction pipeline."""
+        return self.file_extension in [".pdf", ".jpg", ".jpeg", ".png"]
+
+    @property
+    def latest_ocr_run(self):
+        """Returns the most recent or active OCRRun instance associated with this evidence."""
+        return self.ocr_runs.filter(is_latest=True).first() or self.ocr_runs.order_by("-created_at").first()
+
+    @property
+    def has_ocr_run(self):
+        """Returns True if at least one OCR execution has been attempted."""
+        return self.ocr_runs.exists()
+
+    @property
+    def ocr_status(self):
+        """Returns the status string of the latest OCR run or 'NOT_PROCESSED'."""
+        latest = self.latest_ocr_run
+        return latest.status if latest else "NOT_PROCESSED"
+
+    @property
+    def ocr_badge_class(self):
+        """Bootstrap badge class corresponding to the OCR processing lifecycle state."""
+        mapping = {
+            "COMPLETED": "badge-success",
+            "PROCESSING": "badge-info",
+            "PENDING": "badge-warning",
+            "FAILED": "badge-danger",
+            "CANCELLED": "badge-secondary",
+            "NOT_PROCESSED": "badge-light text-muted border",
+        }
+        return mapping.get(self.ocr_status, "badge-secondary")
 
 
 # -----------------------------------------------------------------------------
@@ -2049,6 +2115,412 @@ class ValidationResult(models.Model):
             ValidationSeverity.WARNING: "badge-warning",
             ValidationSeverity.INFO: "badge-info",
         }.get(self.severity, "badge-secondary")
+
+
+# -----------------------------------------------------------------------------
+# PHASE 11: OCR ENGINE & DOCUMENT-DATA EXTRACTION
+# -----------------------------------------------------------------------------
+
+class OCRStatus(models.TextChoices):
+    PENDING = "PENDING", "Pending"
+    PROCESSING = "PROCESSING", "Processing"
+    COMPLETED = "COMPLETED", "Completed"
+    FAILED = "FAILED", "Failed"
+    CANCELLED = "CANCELLED", "Cancelled"
+
+
+class OCRRun(models.Model):
+    """
+    Immutable Execution Run for Evidence Optical Character Recognition & Text Extraction.
+
+    Preserves multi-run historical versioning per Evidence document.
+    Enforces that OCR output represents unverified extraction data rather than authoritative truth.
+    """
+
+    evidence = models.ForeignKey(
+        Evidence,
+        on_delete=models.CASCADE,
+        related_name="ocr_runs",
+        help_text="Supporting evidence document analyzed by this OCR execution.",
+    )
+    run_number = models.PositiveIntegerField(
+        default=1,
+        help_text="Sequential run counter for this specific evidence document.",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=OCRStatus.choices,
+        default=OCRStatus.PENDING,
+        db_index=True,
+        help_text="Current lifecycle state of the OCR execution.",
+    )
+    engine = models.CharField(
+        max_length=100,
+        default="pypdf-text-extractor",
+        help_text="Name of the underlying OCR / extraction engine (e.g. pypdf, tesseract, mock).",
+    )
+    engine_version = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Version identifier of the engine at time of execution.",
+    )
+    language = models.CharField(
+        max_length=20,
+        default="eng",
+        help_text="Target extraction language (ISO 639-2).",
+    )
+    page_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Total number of document pages processed.",
+    )
+    extracted_text = models.TextField(
+        blank=True,
+        help_text="Full aggregate raw text extracted from the document.",
+    )
+    confidence = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Overall document text extraction confidence percentage (0.00 to 100.00).",
+    )
+    error_message = models.TextField(
+        blank=True,
+        help_text="Descriptive failure summary if extraction fails.",
+    )
+    execution_duration_ms = models.PositiveIntegerField(
+        default=0,
+        help_text="Total execution time in milliseconds.",
+    )
+    page_data = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Granular page-by-page breakdown containing text and confidence.",
+    )
+    raw_metadata = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Raw provider response, comparison telemetry, and diagnostic markers.",
+    )
+    is_latest = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text="True if this is the active/latest OCR run for the parent evidence document.",
+    )
+    processed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="processed_ocr_runs",
+        help_text="User who initiated or retried this OCR execution.",
+    )
+    started_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when OCR extraction processing started.",
+    )
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp when OCR extraction processing finished.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "OCR Processing Run"
+        verbose_name_plural = "OCR Processing Runs"
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["evidence", "run_number"],
+                name="uniq_ocr_run_evidence_number",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["evidence", "status"], name="idx_ocr_run_evid_status"),
+            models.Index(fields=["evidence", "is_latest"], name="idx_ocr_run_evid_latest"),
+            models.Index(fields=["created_at"], name="idx_ocr_run_created"),
+        ]
+
+    def __str__(self):
+        return f"OCR Run #{self.run_number} for Evidence #{self.evidence_id} ({self.status})"
+
+    @property
+    def is_completed(self):
+        return self.status == OCRStatus.COMPLETED
+
+    @property
+    def is_failed(self):
+        return self.status == OCRStatus.FAILED
+
+    @property
+    def is_processing(self):
+        return self.status == OCRStatus.PROCESSING
+
+    @property
+    def badge_class(self):
+        mapping = {
+            OCRStatus.COMPLETED: "badge-success",
+            OCRStatus.PROCESSING: "badge-info",
+            OCRStatus.PENDING: "badge-warning",
+            OCRStatus.FAILED: "badge-danger",
+            OCRStatus.CANCELLED: "badge-secondary",
+        }
+        return mapping.get(self.status, "badge-secondary")
+
+    @property
+    def fields_count(self):
+        return self.fields.count()
+
+    @property
+    def comparison_summary(self):
+        """Returns structured comparison between this OCR run and the parent Activity Record."""
+        return self.raw_metadata.get("comparison", {})
+
+
+class OCRField(models.Model):
+    """
+    Structured Field Entity extracted from OCR document text.
+
+    Distinguishes between raw extracted text and normalized operational values
+    without mutating the underlying ActivityRecord operational data.
+    """
+
+    ocr_run = models.ForeignKey(
+        OCRRun,
+        on_delete=models.CASCADE,
+        related_name="fields",
+        help_text="Parent OCR execution run that yielded this extracted field.",
+    )
+    field_name = models.CharField(
+        max_length=100,
+        db_index=True,
+        help_text="Standardized field key (e.g. invoice_number, quantity, billing_period, total_amount).",
+    )
+    raw_value = models.CharField(
+        max_length=255,
+        help_text="Exact un-normalized text sequence extracted from the document.",
+    )
+    normalized_value = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Cleaned, standardized, or machine-usable representation (e.g. 1250.50, 2026-03-31).",
+    )
+    unit = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Unit of measure associated with the value (e.g. kWh, Liters, MT, INR).",
+    )
+    confidence = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Extraction confidence score percentage (0.00 to 100.00).",
+    )
+    page_number = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Page number where this entity was located (1-indexed).",
+    )
+    bounding_box = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Spatial layout coordinates if provided by the OCR engine.",
+    )
+    extraction_method = models.CharField(
+        max_length=50,
+        default="PATTERN_MATCH",
+        help_text="Heuristic or model used to extract this field (e.g. REGEX, KEY_VALUE, LLM).",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "OCR Extracted Field"
+        verbose_name_plural = "OCR Extracted Fields"
+        ordering = ["field_name", "page_number"]
+        indexes = [
+            models.Index(fields=["ocr_run", "field_name"], name="idx_ocr_field_run_name"),
+        ]
+
+    def __str__(self):
+        return f"{self.field_name}: '{self.raw_value}' (Run #{self.ocr_run_id})"
+
+
+# -----------------------------------------------------------------------------
+# PHASE 12: ACTIVITY SUBMISSION & GOVERNANCE WORKFLOW
+# -----------------------------------------------------------------------------
+
+class SubmissionStatus(models.TextChoices):
+    SUBMITTED = "SUBMITTED", "Submitted for Review"
+    UNDER_REVIEW = "UNDER_REVIEW", "Under Review"
+    WITHDRAWN = "WITHDRAWN", "Withdrawn"
+    APPROVED = "APPROVED", "Approved"
+    REJECTED = "REJECTED", "Revision Requested"
+
+
+class Submission(models.Model):
+    """
+    Authoritative ESG Activity Submission Entity for MEIL ESG CONTROL TOWER.
+
+    Represents the formal handover of validated operational activity data from the
+    Site Manager operational layer into the downstream Subsidiary Manager review workflow.
+    Preserves:
+    - Relational link to parent ActivityRecord and sequential submission counter.
+    - Submitter user identity and authoritative submission timestamp.
+    - Organizational boundary (Site, Project, Subsidiary, Company) and Reporting Period.
+    - Snapshot of authoritative ValidationRun executed prior to submission.
+    - Submitter operational commentary and structured telemetry snapshot.
+    - Controlled lifecycle state (SUBMITTED -> UNDER_REVIEW -> APPROVED / REJECTED / WITHDRAWN).
+    """
+
+    activity_record = models.ForeignKey(
+        ActivityRecord,
+        on_delete=models.PROTECT,
+        related_name="submissions",
+        help_text="Operational activity record submitted for downstream review.",
+    )
+    submission_number = models.PositiveIntegerField(
+        default=1,
+        help_text="Sequential submission iteration counter for this specific activity record.",
+    )
+    site = models.ForeignKey(
+        Site,
+        on_delete=models.PROTECT,
+        related_name="submissions",
+        help_text="Operational site where the submitted activity took place.",
+    )
+    reporting_period = models.ForeignKey(
+        ReportingPeriod,
+        on_delete=models.PROTECT,
+        related_name="submissions",
+        help_text="Governing reporting period temporal boundary.",
+    )
+    submitted_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="submitted_activities",
+        help_text="Site Manager or authorized operator who executed this submission.",
+    )
+    submitted_at = models.DateTimeField(
+        auto_now_add=True,
+        db_index=True,
+        help_text="Timestamp when formal submission occurred.",
+    )
+    status = models.CharField(
+        max_length=30,
+        choices=SubmissionStatus.choices,
+        default=SubmissionStatus.SUBMITTED,
+        db_index=True,
+        help_text="Controlled lifecycle state of this submission.",
+    )
+    validation_run = models.ForeignKey(
+        ValidationRun,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="submissions",
+        help_text="Authoritative validation execution run evaluated at time of submission.",
+    )
+    validation_status = models.CharField(
+        max_length=30,
+        choices=ValidationStatus.choices,
+        default=ValidationStatus.VALID,
+        db_index=True,
+        help_text="Validation status outcome captured at the time of submission.",
+    )
+    comments = models.TextField(
+        blank=True,
+        help_text="Submitter commentary, handover remarks, or operational context.",
+    )
+    snapshot_data = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Immutable operational telemetry snapshot at time of submission for audit lineage.",
+    )
+    is_current = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text="True if this is the active/latest submission for the activity record.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Activity Submission"
+        verbose_name_plural = "Activity Submissions"
+        ordering = ["-submitted_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["activity_record", "submission_number"],
+                name="uniq_sub_record_number",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["activity_record", "status"], name="idx_sub_rec_status"),
+            models.Index(fields=["site", "status"], name="idx_sub_site_status"),
+            models.Index(fields=["reporting_period", "status"], name="idx_sub_period_status"),
+            models.Index(fields=["submitted_at"], name="idx_sub_submitted_at"),
+            models.Index(fields=["is_current"], name="idx_sub_is_current"),
+        ]
+
+    def __str__(self):
+        return f"Submission #{self.submission_number} for Record #{self.activity_record_id} ({self.status})"
+
+    @property
+    def is_submitted(self):
+        return self.status == SubmissionStatus.SUBMITTED
+
+    @property
+    def is_withdrawn(self):
+        return self.status == SubmissionStatus.WITHDRAWN
+
+    @property
+    def badge_class(self):
+        mapping = {
+            SubmissionStatus.SUBMITTED: "badge-primary",
+            SubmissionStatus.UNDER_REVIEW: "badge-info",
+            SubmissionStatus.WITHDRAWN: "badge-secondary",
+            SubmissionStatus.APPROVED: "badge-success",
+            SubmissionStatus.REJECTED: "badge-danger",
+        }
+        return mapping.get(self.status, "badge-secondary")
+
+    @property
+    def project(self):
+        return self.site.project
+
+    @property
+    def subsidiary(self):
+        return self.site.project.subsidiary
+
+    @property
+    def company(self):
+        return self.site.project.subsidiary.company
+
+    @property
+    def activity(self):
+        return self.activity_record.activity
+
+    @property
+    def quantity(self):
+        return self.activity_record.quantity
+
+    @property
+    def unit(self):
+        return self.activity_record.unit
+
+    @property
+    def measurement_date(self):
+        return self.activity_record.measurement_date
+
+    @property
+    def evidence_files_count(self):
+        return self.activity_record.evidence_count
 
 
 

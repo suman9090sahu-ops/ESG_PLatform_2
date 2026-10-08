@@ -42,6 +42,10 @@ from apps.core.data_entry_services import (
     user_can_modify_activity_record,
 )
 from apps.core.evidence_services import user_can_upload_evidence
+from apps.core.submission_services import (
+    check_submission_eligibility,
+    user_can_submit_activity_record,
+)
 from apps.core.validation_services import user_can_validate_record
 from apps.core.models import (
     ActivityMaster,
@@ -315,6 +319,18 @@ def activity_record_detail_view(request, record_id):
     can_delete = user_can_delete_activity_record(user, record)
     can_upload_evidence = user_can_upload_evidence(user, record)
     can_validate = user_can_validate_record(user, record)
+
+    # Phase 12 Submission Eligibility
+    user_submittable = user_can_submit_activity_record(user, record)
+    can_submit = user_submittable and (record.status in [RecordStatus.DRAFT, RecordStatus.READY, RecordStatus.REJECTED])
+    is_eligible_for_submission = False
+    submission_errors = []
+    submission_warnings = []
+    if can_submit:
+        is_eligible_for_submission, submission_errors, submission_warnings = check_submission_eligibility(user, record)
+
+    latest_submission = record.latest_submission
+    submissions = record.submissions.select_related("submitted_by", "validation_run").order_by("-submitted_at")
     evidence_files = record.evidence_files.select_related("uploaded_by").order_by("-created_at")
 
     validation_runs = record.validation_runs.select_related("executed_by").prefetch_related("results__rule").order_by("-executed_at", "-run_number")
@@ -330,6 +346,12 @@ def activity_record_detail_view(request, record_id):
         "can_delete": can_delete,
         "can_upload_evidence": can_upload_evidence,
         "can_validate": can_validate,
+        "can_submit": can_submit,
+        "is_eligible_for_submission": is_eligible_for_submission,
+        "submission_errors": submission_errors,
+        "submission_warnings": submission_warnings,
+        "latest_submission": latest_submission,
+        "submissions": submissions,
         "evidence_files": evidence_files,
         "latest_validation_run": latest_run,
         "validation_runs": validation_runs,

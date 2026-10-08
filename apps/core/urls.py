@@ -9,8 +9,10 @@ from apps.core import (
     auth_views,
     data_entry_views,
     evidence_views,
+    ocr_views,
     org_views,
     period_views,
+    submission_views,
     validation_views,
     views,
 )
@@ -143,6 +145,24 @@ urlpatterns = [
     path("validation/rules/<int:rule_id>/", validation_views.validation_rule_detail_view, name="validation_rule_detail"),
     path("validation/rules/<int:rule_id>/toggle/", validation_views.validation_rule_toggle_view, name="validation_rule_toggle"),
     path("validation/rules/<int:rule_id>/edit/", validation_views.validation_rule_edit_view, name="validation_rule_edit"),
+
+    # -------------------------------------------------------------------------
+    # Phase 11 OCR Engine & Document Extraction Routes (/evidence/<id>/ocr/...)
+    # -------------------------------------------------------------------------
+    path("evidence/<int:evidence_id>/ocr/process/", ocr_views.evidence_ocr_process_view, name="evidence_ocr_process"),
+    path("evidence/<int:evidence_id>/ocr/status/", ocr_views.evidence_ocr_status_api, name="evidence_ocr_status"),
+    path("evidence/<int:evidence_id>/ocr/runs/<int:run_id>/", ocr_views.ocr_run_detail_view, name="ocr_run_detail"),
+    path("evidence/<int:evidence_id>/ocr/runs/<int:run_id>/retry/", ocr_views.ocr_run_retry_view, name="ocr_run_retry"),
+
+    # -------------------------------------------------------------------------
+    # Phase 12 Activity Submission Workflow Routes (/submissions/... & /data-entry/<id>/submit/)
+    # -------------------------------------------------------------------------
+    path("data-entry/<int:record_id>/submit/", submission_views.activity_record_submit_view, name="activity_record_submit"),
+    path("submissions/", submission_views.submission_list_view, name="submission_list"),
+    path("submissions/<int:submission_id>/", submission_views.submission_detail_view, name="submission_detail"),
+    path("submissions/<int:submission_id>/withdraw/", submission_views.submission_withdraw_view, name="submission_withdraw"),
+    path("site-manager/submissions/", submission_views.submission_list_view, name="site_manager_submission_list"),
+    path("site-manager/submissions/<int:submission_id>/", submission_views.submission_detail_view, name="site_manager_submission_detail"),
 ]
 
 
