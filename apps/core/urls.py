@@ -18,6 +18,7 @@ from apps.core import (
     procurement_views,
     reporting_views,
     review_views,
+    scope3_views,
     submission_views,
     transport_views,
     validation_views,
@@ -297,6 +298,15 @@ urlpatterns = [
     path("emission-factors/create/", calculation_views.emission_factor_create_view, name="emission_factor_create"),
     path("emission-factors/<int:factor_id>/", calculation_views.emission_factor_detail_view, name="emission_factor_detail"),
     path("emission-factors/<int:factor_id>/edit/", calculation_views.emission_factor_edit_view, name="emission_factor_edit"),
+
+    # -------------------------------------------------------------------------
+    # Phase 23 Scope 3 Value Chain Emissions Engine Routes (/scope3/...)
+    # -------------------------------------------------------------------------
+    path("scope3/", scope3_views.scope3_inventory_view, name="scope3_inventory"),
+    path("scope3/inventory/", scope3_views.scope3_inventory_view, name="scope3_inventory_alias"),
+    path("scope3/category/<int:category_number>/", scope3_views.scope3_category_detail_view, name="scope3_category_detail"),
+    path("calculations/scope3/", scope3_views.scope3_inventory_view, name="scope3_calculations_alias"),
+    path("auditor/scope3/", scope3_views.scope3_inventory_view, name="auditor_scope3"),
 ]
 
 

@@ -15,6 +15,7 @@ from apps.core.models import (
     EmissionFactor,
     EmissionFactorStatus,
     ReportingPeriod,
+    Scope3Category,
     ScopeClassification,
     UnitOfMeasure,
 )
@@ -33,6 +34,8 @@ class EmissionFactorForm(forms.ModelForm):
             "code",
             "activity",
             "scope",
+            "scope3_category",
+            "calculation_method",
             "factor_value",
             "factor_unit",
             "input_unit",
@@ -50,6 +53,8 @@ class EmissionFactorForm(forms.ModelForm):
             "code": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g. EF-DIESEL-STAT-2024"}),
             "activity": forms.Select(attrs={"class": "form-select"}),
             "scope": forms.Select(attrs={"class": "form-select"}),
+            "scope3_category": forms.Select(attrs={"class": "form-select"}),
+            "calculation_method": forms.Select(attrs={"class": "form-select"}),
             "factor_value": forms.NumberInput(attrs={"class": "form-control", "step": "0.000001", "placeholder": "2.680000"}),
             "factor_unit": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g. kg CO₂e / L"}),
             "input_unit": forms.Select(attrs={"class": "form-select"}),
@@ -68,6 +73,10 @@ class EmissionFactorForm(forms.ModelForm):
         self.fields["activity"].queryset = ActivityMaster.objects.filter(is_active=True).order_by("name")
         self.fields["input_unit"].queryset = UnitOfMeasure.objects.filter(is_active=True).order_by("name")
         self.fields["reporting_period"].queryset = ReportingPeriod.objects.all().order_by("-start_date")
+        self.fields["scope3_category"].queryset = Scope3Category.objects.filter(is_active=True).order_by("category_number")
+        self.fields["scope3_category"].empty_label = "— Select Scope 3 Category (Optional) —"
+        self.fields["scope3_category"].required = False
+        self.fields["calculation_method"].required = False
         self.fields["reporting_period"].required = False
         self.fields["activity"].required = False
 

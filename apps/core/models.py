@@ -716,6 +716,9 @@ class AuthAuditLog(models.Model):
         EMISSION_FACTOR_ARCHIVED = "EMISSION_FACTOR_ARCHIVED", "Emission Factor Archived"
         CALCULATION_EXECUTED = "CALCULATION_EXECUTED", "ESG Calculation Executed"
         RECALCULATION_EXECUTED = "RECALCULATION_EXECUTED", "ESG Recalculation Executed"
+        # Phase 23: Scope 3 Emissions Engine
+        SCOPE3_INVENTORY_VIEWED = "SCOPE3_INVENTORY_VIEWED", "Scope 3 Inventory Viewed"
+        SCOPE3_CATEGORY_UPDATED = "SCOPE3_CATEGORY_UPDATED", "Scope 3 Category Updated"
 
     user = models.ForeignKey(
         User,
@@ -980,6 +983,78 @@ class ScopeClassification(models.TextChoices):
     CONTEXT_DEPENDENT = "CONTEXT_DEPENDENT", "Context Dependent"
 
 
+class Scope3Direction(models.TextChoices):
+    UPSTREAM = "UPSTREAM", "Upstream Value Chain"
+    DOWNSTREAM = "DOWNSTREAM", "Downstream Value Chain"
+
+
+class Scope3CalculationMethod(models.TextChoices):
+    SUPPLIER_SPECIFIC = "SUPPLIER_SPECIFIC", "Supplier-Specific Method"
+    HYBRID = "HYBRID", "Hybrid Method"
+    AVERAGE_DATA = "AVERAGE_DATA", "Average-Data Method"
+    SPEND_BASED = "SPEND_BASED", "Spend-Based Method"
+    DISTANCE_BASED = "DISTANCE_BASED", "Distance-Based Method"
+    FUEL_BASED = "FUEL_BASED", "Fuel-Based Method"
+    WASTE_TYPE_SPECIFIC = "WASTE_TYPE_SPECIFIC", "Waste-Type-Specific Method"
+    NOT_APPLICABLE = "NOT_APPLICABLE", "Not Applicable"
+
+
+class Scope3Category(models.Model):
+    """
+    Standardized GHG Protocol Corporate Value Chain (Scope 3) Category Definition.
+    Encompasses the authoritative 15 Scope 3 categories (Upstream 1-8, Downstream 9-15).
+    """
+    category_number = models.PositiveSmallIntegerField(
+        unique=True,
+        db_index=True,
+        help_text="Standard GHG Protocol category index (1 to 15).",
+    )
+    code = models.CharField(
+        max_length=50,
+        unique=True,
+        db_index=True,
+        help_text="Machine-readable category code (e.g. SCOPE3_CAT_01, SCOPE3_CAT_04).",
+    )
+    name = models.CharField(
+        max_length=200,
+        help_text="Official GHG Protocol category title (e.g. Purchased Goods and Services).",
+    )
+    direction = models.CharField(
+        max_length=20,
+        choices=Scope3Direction.choices,
+        default=Scope3Direction.UPSTREAM,
+        db_index=True,
+        help_text="Upstream or Downstream value chain boundary.",
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="Detailed GHG Protocol boundary description and accounting guidance.",
+    )
+    applicable_methods = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Supported calculation methods for this category.",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Status flag enabling or disabling the category.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Scope 3 Category"
+        verbose_name_plural = "Scope 3 Categories"
+        ordering = ["category_number"]
+
+    def __str__(self):
+        return f"Cat {self.category_number}: {self.name} ({self.get_direction_display()})"
+
+    @property
+    def direction_badge_class(self):
+        return "badge-info" if self.direction == Scope3Direction.UPSTREAM else "badge-primary"
+
+
 class CollectionFrequency(models.TextChoices):
     DAILY = "DAILY", "Daily"
     WEEKLY = "WEEKLY", "Weekly"
@@ -1205,6 +1280,21 @@ class ActivityMaster(models.Model):
         db_index=True,
         help_text="Regulatory GHG Scope classification metadata.",
     )
+    scope3_category = models.ForeignKey(
+        Scope3Category,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="activities",
+        help_text="Governing GHG Protocol Scope 3 category (Categories 1-15) if Scope 3.",
+    )
+    calculation_method = models.CharField(
+        max_length=50,
+        choices=Scope3CalculationMethod.choices,
+        default=Scope3CalculationMethod.AVERAGE_DATA,
+        blank=True,
+        help_text="Prescribed or default calculation method for Scope 3 emissions.",
+    )
     collection_frequency = models.CharField(
         max_length=30,
         choices=CollectionFrequency.choices,
@@ -1299,6 +1389,13 @@ class ActivityMaster(models.Model):
             ScopeClassification.CONTEXT_DEPENDENT: "badge-secondary",
         }
         return scope_map.get(self.scope_classification, "badge-secondary")
+
+    @property
+    def scope3_direction(self):
+        """Returns UPSTREAM or DOWNSTREAM if this is a Scope 3 activity."""
+        if self.scope3_category:
+            return self.scope3_category.direction
+        return ""
 
     @property
     def requires_evidence(self):
@@ -4898,6 +4995,21 @@ class EmissionFactor(models.Model):
         default=ScopeClassification.SCOPE_1,
         help_text="GHG Protocol Scope (Scope 1, Scope 2, Scope 3, or Non-GHG).",
     )
+    scope3_category = models.ForeignKey(
+        Scope3Category,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="emission_factors",
+        help_text="Optional Scope 3 category binding.",
+    )
+    calculation_method = models.CharField(
+        max_length=50,
+        choices=Scope3CalculationMethod.choices,
+        default=Scope3CalculationMethod.AVERAGE_DATA,
+        blank=True,
+        help_text="Calculation method this factor applies to.",
+    )
     factor_value = models.DecimalField(
         max_digits=16,
         decimal_places=6,
@@ -5100,6 +5212,19 @@ class CalculationResult(models.Model):
         help_text="Reported output metric unit.",
     )
     scope = models.CharField(max_length=30, blank=True)
+    scope3_category = models.ForeignKey(
+        Scope3Category,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="calculation_results",
+        help_text="Applied Scope 3 category for value chain disclosures.",
+    )
+    calculation_method = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Applied calculation methodology snapshot.",
+    )
     formula_repr = models.TextField(
         blank=True,
         help_text="Deterministic formula representation string.",

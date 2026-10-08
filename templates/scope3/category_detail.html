@@ -1,0 +1,293 @@
+{% extends "base/base.html" %}
+{% load static %}
+
+{% block title %}Category {{ category.category_number }}: {{ category.name }} — Scope 3 — MEIL ESG CONTROL TOWER{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+  <!-- Page Header & Breadcrumb -->
+  <div class="page-header d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+    <div class="esg-page-title-group">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-1 small">
+          <li class="breadcrumb-item"><a href="{% url 'core:scope3_inventory' %}" class="text-decoration-none">Scope 3 Inventory</a></li>
+          <li class="breadcrumb-item active" aria-current="page">Category {{ category.category_number }}</li>
+        </ol>
+      </nav>
+      <div class="d-flex align-items-center gap-2">
+        <h1 class="h3 font-weight-bold mb-0 text-dark">Category {{ category.category_number }}: {{ category.name }}</h1>
+        <span class="badge {{ category.direction_badge_class }} py-1 px-2 font-weight-normal fs-6">
+          {{ category.get_direction_display }}
+        </span>
+      </div>
+      <p class="text-muted small mt-1 mb-0">
+        {{ category.description }}
+      </p>
+    </div>
+    <div class="esg-page-actions mt-2 mt-sm-0 d-flex flex-wrap align-items-center gap-2">
+      <a href="{% url 'core:scope3_inventory' %}{% if current_period %}?period={{ current_period.id }}{% endif %}" class="btn btn-outline-secondary btn-sm">
+        <i class="icon-arrow-left me-1"></i> Back to Inventory
+      </a>
+      <a href="{% url 'core:emission_factor_list' %}?scope=SCOPE_3" class="btn btn-outline-info btn-sm">
+        <i class="icon-chemistry me-1"></i> Factor Directory
+      </a>
+    </div>
+  </div>
+
+  <!-- Auditor Notice -->
+  {% if is_auditor %}
+  <div class="alert alert-warning border-start border-warning border-4 shadow-sm mb-4" role="alert">
+    <div class="d-flex align-items-center">
+      <i class="icon-shield fs-4 text-warning me-3"></i>
+      <div>
+        <h6 class="alert-heading font-weight-bold mb-1">Auditor Independent Assurance Workspace (Read-Only Mode)</h6>
+        <p class="mb-0 small text-muted">
+          Reviewing deterministic calculation traces for Scope 3 Category {{ category.category_number }}. All records link directly to 6-tier cryptographic lineage.
+        </p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- KPI Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm bg-gradient-primary text-white h-100">
+        <div class="card-body py-3">
+          <p class="text-uppercase small font-weight-bold mb-1 opacity-75">Category Emissions Total</p>
+          <h2 class="font-weight-bold mb-0">
+            {% if cat_summary %}{{ cat_summary.emissions_tco2e|floatformat:4 }}{% else %}0.0000{% endif %}
+            <small class="fs-6 font-weight-normal">tCO₂e</small>
+          </h2>
+          <p class="small mb-0 mt-2 text-white-50">
+            Reporting cycle: {{ current_period.code|default:"All Cycles" }}
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm bg-white border h-100">
+        <div class="card-body py-3">
+          <p class="text-uppercase small font-weight-bold text-muted mb-1">Verified Telemetry Records</p>
+          <h2 class="font-weight-bold mb-0 text-dark">
+            {% if cat_summary %}{{ cat_summary.record_count }}{% else %}0{% endif %}
+            <small class="fs-6 font-weight-normal text-muted">entries</small>
+          </h2>
+          <p class="small mb-0 mt-2 text-muted">
+            Status: <span class="badge {% if cat_summary %}{{ cat_summary.status_badge }}{% else %}badge-secondary{% endif %}" data-status="{% if cat_summary %}{{ cat_summary.status }}{% else %}DATA_REQUIRED{% endif %}">{% if cat_summary %}{{ cat_summary.status_display }}{% else %}Data Required{% endif %}</span>
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card border-0 shadow-sm bg-white border h-100">
+        <div class="card-body py-3">
+          <p class="text-uppercase small font-weight-bold text-muted mb-1">Applicable Regulatory Factors</p>
+          <h2 class="font-weight-bold mb-0 text-dark">
+            {{ factors.count }}
+            <small class="fs-6 font-weight-normal text-muted">active baseline factors</small>
+          </h2>
+          <p class="small mb-0 mt-2 text-muted">
+            {{ activities.count }} registered Activity Master taxonomies
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 1: Accounting Boundary & Methodology -->
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white py-3 border-bottom">
+      <h5 class="card-title font-weight-bold mb-0">1. Regulatory Accounting Boundary & Calculation Standards</h5>
+    </div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-8">
+          <h6 class="font-weight-bold text-dark small text-uppercase">GHG Protocol Scope 3 Definition:</h6>
+          <p class="text-muted small mb-3">{{ category.description }}</p>
+          <h6 class="font-weight-bold text-dark small text-uppercase">Approved GHG Accounting Methodologies:</h6>
+          <div class="d-flex flex-wrap gap-2">
+            {% for m in category.applicable_methods %}
+              <span class="badge badge-light border text-dark px-2 py-1"><i class="icon-check me-1 text-success"></i>{{ m }}</span>
+            {% empty %}
+              <span class="text-muted small">Standard average-data methodology.</span>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="col-md-4 border-start ps-4">
+          <h6 class="font-weight-bold text-dark small text-uppercase">Value Chain Direction:</h6>
+          <p class="mb-2"><span class="badge {{ category.direction_badge_class }} fs-6">{{ category.get_direction_display }}</span></p>
+          <h6 class="font-weight-bold text-dark small text-uppercase mt-3">Governance Code:</h6>
+          <code>{{ category.code }}</code>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Section 2: Registered Activity Master Items -->
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+      <h5 class="card-title font-weight-bold mb-0">2. Registered Activity Master Definitions</h5>
+      <span class="badge badge-light border text-dark">{{ activities.count }} Items</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light text-muted small">
+          <tr>
+            <th>Activity Code</th>
+            <th>Activity Name</th>
+            <th>Category</th>
+            <th>Base Unit</th>
+            <th>Prescribed Calculation Method</th>
+            <th>Audit Evidence Required</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for act in activities %}
+          <tr>
+            <td><code>{{ act.code }}</code></td>
+            <td class="font-weight-bold text-dark">{{ act.name }}</td>
+            <td><span class="badge badge-light border text-muted">{{ act.category.name|default:"General" }}</span></td>
+            <td><span class="badge badge-info">{{ act.base_unit.symbol }}</span></td>
+            <td><span class="badge badge-light border text-dark">{{ act.get_calculation_method_display|default:"Average-Data Method" }}</span></td>
+            <td>
+              {% if act.requires_evidence %}
+                <span class="badge badge-warning text-dark"><i class="icon-docs me-1"></i>Mandatory Evidence</span>
+              {% else %}
+                <span class="badge badge-light border text-muted">Optional</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="text-center py-4 text-muted small">
+              No specific Activity Master item bound to this category yet. Activities can be assigned to Category {{ category.category_number }} in the Activity Master catalog.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Section 3: Configured Regulatory Emission Factors -->
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+      <h5 class="card-title font-weight-bold mb-0">3. Configured Regulatory Emission Factors</h5>
+      <span class="badge badge-light border text-dark">{{ factors.count }} Factors</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light text-muted small">
+          <tr>
+            <th>Factor Code</th>
+            <th>Factor Title & Authority</th>
+            <th>Factor Coefficient</th>
+            <th>Input Unit</th>
+            <th>Vintage / Geography</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in factors %}
+          <tr>
+            <td><code>{{ f.code }}</code></td>
+            <td>
+              <div class="font-weight-bold text-dark">{{ f.name }}</div>
+              <div class="text-muted small">{{ f.source }}</div>
+            </td>
+            <td class="font-weight-bold text-success">{{ f.factor_value }} <span class="text-muted small">{{ f.factor_unit }}</span></td>
+            <td><span class="badge badge-info">{{ f.input_unit.symbol }}</span></td>
+            <td><span class="badge badge-light border text-dark">{{ f.effective_year }} | {{ f.geography }}</span></td>
+            <td><span class="badge {{ f.status_badge_class }}">{{ f.get_status_display }}</span></td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="text-center py-4 text-muted small">
+              No active regulatory emission factors directly bound to this category. Standard baseline factors will be auto-selected from the regulatory catalog when available.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Section 4: Verified Operational Telemetry & Calculation Ledger -->
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+      <div>
+        <h5 class="card-title font-weight-bold mb-0">4. Verified Operational Telemetry & Deterministic Calculation Ledger</h5>
+        <p class="text-muted small mb-0">Source activity data submitted by operating sites and verified by Subsidiary Managers.</p>
+      </div>
+      <span class="badge badge-light border text-dark">
+        {% if records %}{{ records|length }} Records{% else %}0 Records{% endif %}
+      </span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light text-muted small">
+          <tr>
+            <th>Date</th>
+            <th>Site & Project</th>
+            <th>Activity Name</th>
+            <th class="text-end">Raw Quantity</th>
+            <th class="text-end">Calculated GHG (tCO₂e)</th>
+            <th>Calculation Formula</th>
+            <th class="text-center">Status</th>
+            <th class="text-center" style="width: 130px;">Audit Trace</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for rec in records %}
+          <tr>
+            <td class="small text-muted">{{ rec.measurement_date|date:"Y-m-d" }}</td>
+            <td>
+              <div class="font-weight-bold text-dark small">{{ rec.site.name }}</div>
+              <div class="text-muted small">{{ rec.site.project.name }}</div>
+            </td>
+            <td class="font-weight-bold text-dark small">
+              {{ rec.activity_name }}
+              <div><code>{{ rec.activity_code }}</code></div>
+            </td>
+            <td class="text-end font-weight-bold small">
+              {{ rec.quantity|floatformat:4 }} <span class="text-muted">{{ rec.unit }}</span>
+            </td>
+            <td class="text-end font-weight-bold text-success fs-6">
+              {{ rec.calculated_tco2e|floatformat:4 }} tCO₂e
+            </td>
+            <td class="small text-muted" style="max-width: 300px;">
+              <code>{{ rec.methodology|default:"Calculated" }}</code>
+            </td>
+            <td class="text-center">
+              {% if rec.calculation_status == "CALCULATED" %}
+                <span class="badge badge-success">CALCULATED</span>
+              {% elif rec.calculation_status == "REQUIRES_CONFIGURATION" %}
+                <span class="badge badge-warning">REQUIRES_CONFIG</span>
+              {% else %}
+                <span class="badge badge-secondary">{{ rec.calculation_status }}</span>
+              {% endif %}
+            </td>
+            <td class="text-center">
+              <a href="{% url 'core:trace_number_detail' record_id=rec.id %}" class="btn btn-sm btn-outline-primary py-1 px-2" title="Trace 6-tier audit lineage">
+                <i class="icon-magnifier me-1"></i> Trace
+              </a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="8" class="text-center py-5 text-muted">
+              <i class="icon-folder fs-1 text-muted opacity-50 d-block mb-2"></i>
+              <div class="font-weight-bold">No Verified Operational Data for Category {{ category.category_number }}</div>
+              <div class="small">Operational telemetry for this category has not yet been submitted or verified in reporting cycle {{ current_period.code }}.</div>
+              <span class="badge badge-secondary mt-2">DATA_REQUIRED</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

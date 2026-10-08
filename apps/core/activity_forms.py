@@ -15,6 +15,8 @@ from apps.core.models import (
     ActivityMaster,
     CollectionFrequency,
     MasterStatus,
+    Scope3CalculationMethod,
+    Scope3Category,
     ScopeClassification,
     UnitDimension,
     UnitOfMeasure,
@@ -36,6 +38,8 @@ class ActivityMasterForm(forms.ModelForm):
             "base_unit",
             "allowed_units",
             "scope_classification",
+            "scope3_category",
+            "calculation_method",
             "collection_frequency",
             "evidence_requirement_hint",
             "description",
@@ -72,6 +76,8 @@ class ActivityMasterForm(forms.ModelForm):
                 }
             ),
             "scope_classification": forms.Select(attrs={"class": "form-select"}),
+            "scope3_category": forms.Select(attrs={"class": "form-select"}),
+            "calculation_method": forms.Select(attrs={"class": "form-select"}),
             "collection_frequency": forms.Select(attrs={"class": "form-select"}),
             "evidence_requirement_hint": forms.TextInput(
                 attrs={
@@ -99,6 +105,11 @@ class ActivityMasterForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Filter choices to active categories and units if creating
+        self.fields["scope3_category"].queryset = Scope3Category.objects.filter(is_active=True).order_by("category_number")
+        self.fields["scope3_category"].empty_label = "— Select Scope 3 Category (Optional) —"
+        self.fields["scope3_category"].required = False
+        self.fields["calculation_method"].required = False
+
         if not self.instance.pk:
             self.fields["category"].queryset = ActivityCategory.objects.filter(status=MasterStatus.ACTIVE)
             self.fields["base_unit"].queryset = UnitOfMeasure.objects.filter(status=MasterStatus.ACTIVE)

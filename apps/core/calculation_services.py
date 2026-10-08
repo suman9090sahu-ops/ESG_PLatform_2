@@ -34,6 +34,8 @@ from apps.core.models import (
     EmissionFactorStatus,
     RecordStatus,
     ReportingPeriod,
+    Scope3CalculationMethod,
+    Scope3Category,
     ScopeClassification,
     Site,
     UnitOfMeasure,
@@ -100,6 +102,67 @@ STANDARD_FACTOR_DEFAULTS: Dict[str, Dict[str, Any]] = {
         "input_unit_symbol": "kWh",
         "version": "v1.0",
         "effective_year": 2024,
+    },
+    # Phase 23: Standard Regulatory Scope 3 Baseline Factors
+    "TRANSPORT-COMMERCIAL-FREIGHT": {
+        "name": "India GHG / DEFRA Commercial Road Freight Transport",
+        "factor": Decimal("96.000000"),
+        "factor_unit": "kg CO₂e / t",
+        "scope": ScopeClassification.SCOPE_3,
+        "source": "India GHG Program / DEFRA 2024 Commercial Heavy Freight",
+        "input_unit_symbol": "t",
+        "version": "v1.0",
+        "effective_year": 2024,
+        "scope3_category_number": 4,
+        "calculation_method": Scope3CalculationMethod.DISTANCE_BASED,
+    },
+    "WASTE-HAZARDOUS": {
+        "name": "DEFRA 2024 Hazardous Industrial Chemical Waste Incineration",
+        "factor": Decimal("0.450000"),
+        "factor_unit": "kg CO₂e / kg",
+        "scope": ScopeClassification.SCOPE_3,
+        "source": "UK DEFRA / IPCC 2006 Waste Treatment Guidelines",
+        "input_unit_symbol": "kg",
+        "version": "v1.0",
+        "effective_year": 2024,
+        "scope3_category_number": 5,
+        "calculation_method": Scope3CalculationMethod.WASTE_TYPE_SPECIFIC,
+    },
+    "WASTE-NON-HAZARDOUS": {
+        "name": "DEFRA 2024 Construction Scrap & Inert Solid Waste Landfill",
+        "factor": Decimal("21.500000"),
+        "factor_unit": "kg CO₂e / t",
+        "scope": ScopeClassification.SCOPE_3,
+        "source": "UK DEFRA / IPCC 2006 Solid Waste Management",
+        "input_unit_symbol": "t",
+        "version": "v1.0",
+        "effective_year": 2024,
+        "scope3_category_number": 5,
+        "calculation_method": Scope3CalculationMethod.WASTE_TYPE_SPECIFIC,
+    },
+    "TRAVEL-AIR-DOMESTIC": {
+        "name": "DEFRA 2024 Domestic Commercial Passenger Air Travel",
+        "factor": Decimal("0.121000"),
+        "factor_unit": "kg CO₂e / p-km",
+        "scope": ScopeClassification.SCOPE_3,
+        "source": "UK DEFRA 2024 Passenger Transport (Domestic Aviation)",
+        "input_unit_symbol": "p-km",
+        "version": "v1.0",
+        "effective_year": 2024,
+        "scope3_category_number": 6,
+        "calculation_method": Scope3CalculationMethod.DISTANCE_BASED,
+    },
+    "PURCHASED-GOODS-STEEL": {
+        "name": "India GHG Program Embodied Structural Steel (BF-BOF Route)",
+        "factor": Decimal("1820.000000"),
+        "factor_unit": "kg CO₂e / t",
+        "scope": ScopeClassification.SCOPE_3,
+        "source": "India GHG Program / World Steel Association 2024",
+        "input_unit_symbol": "t",
+        "version": "v1.0",
+        "effective_year": 2024,
+        "scope3_category_number": 1,
+        "calculation_method": Scope3CalculationMethod.AVERAGE_DATA,
     },
 }
 
@@ -181,6 +244,31 @@ def select_emission_factor(
         if solar_f:
             return solar_f
         resolved_target_code = "ELEC-RENEWABLE-CAPTIVE"
+    elif "FREIGHT" in code_upper or ("TRANSPORT" in code_upper and "COMMERCIAL" in code_upper):
+        freight_f = active_factors.filter(activity_code="TRANSPORT-COMMERCIAL-FREIGHT").first()
+        if freight_f:
+            return freight_f
+        resolved_target_code = "TRANSPORT-COMMERCIAL-FREIGHT"
+    elif "WASTE-HAZARDOUS" in code_upper or "HAZARDOUS" in code_upper:
+        waste_haz_f = active_factors.filter(activity_code="WASTE-HAZARDOUS").first()
+        if waste_haz_f:
+            return waste_haz_f
+        resolved_target_code = "WASTE-HAZARDOUS"
+    elif "WASTE-NON-HAZARDOUS" in code_upper or "WASTE-NONHAZARDOUS" in code_upper or "SCRAP" in code_upper:
+        waste_nonhaz_f = active_factors.filter(activity_code="WASTE-NON-HAZARDOUS").first()
+        if waste_nonhaz_f:
+            return waste_nonhaz_f
+        resolved_target_code = "WASTE-NON-HAZARDOUS"
+    elif "TRAVEL" in code_upper or "FLIGHT" in code_upper or "AIR" in code_upper:
+        travel_f = active_factors.filter(activity_code="TRAVEL-AIR-DOMESTIC").first()
+        if travel_f:
+            return travel_f
+        resolved_target_code = "TRAVEL-AIR-DOMESTIC"
+    elif "STEEL" in code_upper:
+        steel_f = active_factors.filter(activity_code="PURCHASED-GOODS-STEEL").first()
+        if steel_f:
+            return steel_f
+        resolved_target_code = "PURCHASED-GOODS-STEEL"
 
     # 4. Fallback Auto-bootstrap from Authoritative Standard Regulatory Registry
     candidate_code = resolved_target_code or alias_target_code or activity.code
@@ -192,6 +280,11 @@ def select_emission_factor(
         ).first()
 
         if input_unit:
+            scope3_cat_obj = None
+            if std_data.get("scope3_category_number"):
+                scope3_cat_obj = Scope3Category.objects.filter(category_number=std_data["scope3_category_number"]).first()
+
+            calc_m = std_data.get("calculation_method", Scope3CalculationMethod.AVERAGE_DATA)
             try:
                 factor, _ = EmissionFactor.objects.get_or_create(
                     code=candidate_code,
@@ -200,6 +293,8 @@ def select_emission_factor(
                         "activity": activity,
                         "activity_code": candidate_code,
                         "scope": std_data["scope"],
+                        "scope3_category": scope3_cat_obj,
+                        "calculation_method": calc_m,
                         "factor_value": std_data["factor"],
                         "factor_unit": std_data["factor_unit"],
                         "input_unit": input_unit,
@@ -218,6 +313,8 @@ def select_emission_factor(
                     activity=activity,
                     activity_code=candidate_code,
                     scope=std_data["scope"],
+                    scope3_category=scope3_cat_obj,
+                    calculation_method=calc_m,
                     factor_value=std_data["factor"],
                     factor_unit=std_data["factor_unit"],
                     input_unit=input_unit,
@@ -361,6 +458,11 @@ def calculate_activity_record(
             f"÷ 1,000 = {emissions_tco2e:,.4f} tCO₂e"
         )
 
+        scope3_cat = record.activity.scope3_category if record.activity else None
+        if not scope3_cat and factor and factor.scope3_category:
+            scope3_cat = factor.scope3_category
+        calc_method = (record.activity.calculation_method if record.activity else "") or (factor.calculation_method if factor else "")
+
         return _persist_or_return_calc(
             record=record,
             status=CalculationStatus.CALCULATED,
@@ -377,6 +479,8 @@ def calculate_activity_record(
             calculated_value=emissions_tco2e,
             result_unit="tCO₂e",
             scope=scope,
+            scope3_category=scope3_cat,
+            calculation_method=calc_method,
             formula_repr=formula_str,
             error_message="",
             user=user,
@@ -454,6 +558,8 @@ def _persist_or_return_calc(
     calculated_value: Decimal = Decimal("0.0000"),
     result_unit: str = "tCO₂e",
     scope: str = "",
+    scope3_category: Optional[Scope3Category] = None,
+    calculation_method: str = "",
     formula_repr: str = "",
     error_message: str = "",
     user=None,
@@ -489,6 +595,8 @@ def _persist_or_return_calc(
             calculated_value=calculated_value,
             result_unit=result_unit,
             scope=scope,
+            scope3_category=scope3_category,
+            calculation_method=calculation_method,
             formula_repr=formula_repr,
             error_message=error_message,
             calculated_at=timezone.now(),
@@ -523,6 +631,8 @@ def _persist_or_return_calc(
             calculated_value=calculated_value,
             result_unit=result_unit,
             scope=scope,
+            scope3_category=scope3_category,
+            calculation_method=calculation_method,
             formula_repr=formula_repr,
             error_message=error_message,
             calculated_at=timezone.now(),
@@ -557,6 +667,9 @@ def calculate_record_emissions(record: ActivityRecord) -> Dict[str, Any]:
         "factor_source": calc.factor_source_applied or "Operational Physical Observation",
         "methodology": calc.formula_repr or calc.error_message,
         "scope": calc.scope or (record.activity.scope_classification if record.activity else ScopeClassification.SCOPE_1),
+        "scope3_category": calc.scope3_category,
+        "scope3_category_number": calc.scope3_category.category_number if calc.scope3_category else None,
+        "calculation_method": calc.calculation_method,
         "calculation_status": calc.status,
         "calculation_id": calc.id if calc.pk else None,
         "normalized_quantity": calc.normalized_quantity or record.quantity or Decimal("0"),

@@ -44,6 +44,9 @@ from apps.core.models import (
     Vehicle,
     Shipment,
     TransportRecord,
+    Scope3Category,
+    EmissionFactor,
+    CalculationResult,
 )
 
 
@@ -415,7 +418,13 @@ class ActivityMasterAdmin(admin.ModelAdmin):
         (
             "ESG & GHG Regulatory Classification",
             {
-                "fields": ("scope_classification", "collection_frequency", "evidence_requirement_hint"),
+                "fields": (
+                    "scope_classification",
+                    "scope3_category",
+                    "calculation_method",
+                    "collection_frequency",
+                    "evidence_requirement_hint",
+                ),
             },
         ),
         (
@@ -1198,5 +1207,29 @@ class TransportRecordAdmin(admin.ModelAdmin):
     list_filter = ("status", "validation_status", "has_anomalies", "transport_mode", "company", "reporting_period")
     search_fields = ("transport_reference", "origin_location", "destination_location", "carrier__name", "vehicle__registration_number")
     ordering = ("-transport_date", "-created_at")
+
+
+@admin.register(Scope3Category)
+class Scope3CategoryAdmin(admin.ModelAdmin):
+    list_display = ("category_number", "code", "name", "direction", "is_active", "created_at")
+    list_filter = ("direction", "is_active")
+    search_fields = ("name", "code", "description")
+    ordering = ("category_number",)
+
+
+@admin.register(EmissionFactor)
+class EmissionFactorAdmin(admin.ModelAdmin):
+    list_display = ("code", "name", "scope", "scope3_category", "factor_value", "factor_unit", "status", "effective_year", "version")
+    list_filter = ("scope", "status", "scope3_category", "effective_year")
+    search_fields = ("code", "name", "source", "activity_code")
+    ordering = ("scope", "code")
+
+
+@admin.register(CalculationResult)
+class CalculationResultAdmin(admin.ModelAdmin):
+    list_display = ("id", "activity_record", "activity", "scope", "scope3_category", "calculated_value", "result_unit", "status", "is_latest")
+    list_filter = ("status", "scope", "is_latest", "reporting_period")
+    search_fields = ("activity__name", "formula_repr", "error_message")
+    ordering = ("-calculated_at",)
 
 

@@ -1,11 +1,11 @@
 # MEIL ESG CONTROL TOWER — Development Tracking
 
 ## Current Phase
-**PHASE 11 — OCR ENGINE**
+**PHASE 23 — SCOPE 3 EMISSIONS ENGINE**
 
 **Status:** IMPLEMENTED & VERIFIED  
-**Phase 11 Completion:** 100%  
-**Total Project Completion:** 95%
+**Phase 23 Completion:** 100%  
+**Total Project Completion:** 96%
 
 ---
 
@@ -1706,3 +1706,112 @@ Built, integrated, and hardened the authoritative ESG calculation layer under th
 | RBAC: Auditor Recalculation Blocked | **PASS** | HTTP 403 Forbidden returned on mutation attempt |
 | RBAC: Site Manager Recalculation Blocked | **PASS** | HTTP 403 Forbidden returned on Site Manager mutation attempt |
 | RBAC: Factor Administration Boundaries | **PASS** | HTTP 403 Forbidden on create (403) and edit (403) |
+
+---
+
+## 23. Phase 23 — Scope 3 Value Chain Emissions Engine
+
+Engineered, verified, and integrated the authoritative **Phase 23: Scope 3 Value Chain Emissions Engine** for the MEIL ESG Control Tower platform according to the authoritative project roadmap:
+> **Phase 23 = Scope 3 Emissions Engine**
+
+Ensures the platform can identify, calculate, store, validate, review, aggregate, and trace corporate value chain Scope 3 emissions across all 15 official GHG Protocol categories without breaking existing Scope 1 and Scope 2 workflows or generating synthetic numbers.
+
+### Core Architecture & Deliverables
+
+1. **GHG Protocol 15-Category Domain Models (`apps/core/models.py`)**:
+   - `Scope3Direction`: TextChoices (`UPSTREAM = "UPSTREAM"`, `DOWNSTREAM = "DOWNSTREAM"`).
+   - `Scope3CalculationMethod`: TextChoices (`SUPPLIER_SPECIFIC`, `HYBRID`, `AVERAGE_DATA`, `SPEND_BASED`, `DISTANCE_BASED`, `FUEL_BASED`, `WASTE_TYPE_SPECIFIC`, `NOT_APPLICABLE`).
+   - `Scope3Category`: Master domain model for official 15 categories:
+     * Upstream Categories 1–8: Purchased Goods & Services (1), Capital Goods (2), Fuel- & Energy-Related Activities (3), Upstream Transportation & Distribution (4), Waste Generated in Operations (5), Business Travel (6), Employee Commuting (7), Upstream Leased Assets (8).
+     * Downstream Categories 9–15: Downstream Transportation & Distribution (9), Processing of Sold Products (10), Use of Sold Products (11), End-of-Life Treatment of Sold Products (12), Downstream Leased Assets (13), Franchises (14), Investments (15).
+   - `ActivityMaster`: Extended with `scope3_category` (ForeignKey to `Scope3Category`, SET_NULL, null=True, blank=True), `calculation_method` (CharField choices), and `scope3_direction` property.
+   - `EmissionFactor`: Extended with `scope3_category` and `calculation_method`.
+   - `CalculationResult`: Extended with `scope3_category` and `calculation_method` snapshots preserving historical audit repeatability.
+   - `AuthAuditLog.EventType`: Extended with `SCOPE3_INVENTORY_VIEWED` and `SCOPE3_CATEGORY_UPDATED`.
+   - Database Migration: `0019_scope3category_activitymaster_calculation_method_and_more.py` applied cleanly.
+
+2. **Deterministic Automatic Scope Classification (`apps/core/scope3_services.py`)**:
+   - `classify_activity_scope()`: Contextual classifier resolving Scope (Scope 1, Scope 2, Scope 3, Non-GHG) and Scope 3 Category without forcing Site Managers to guess:
+     * Company-owned diesel/petrol combustion -> Scope 1
+     * Purchased grid electricity & captive renewable -> Scope 2
+     * Water extraction & volumetric consumption -> Non-GHG physical resource
+     * Purchased goods, steel, cement, materials -> Scope 3, Category 1 (`AVERAGE_DATA`)
+     * Capital equipment, machinery procurement -> Scope 3, Category 2 (`SPEND_BASED`)
+     * Upstream road/rail freight & logistics -> Scope 3, Category 4 (`DISTANCE_BASED`)
+     * Hazardous / non-hazardous operational waste -> Scope 3, Category 5 (`WASTE_TYPE_SPECIFIC`)
+     * Commercial air & business travel -> Scope 3, Category 6 (`DISTANCE_BASED`)
+     * Employee shuttle & commuting -> Scope 3, Category 7 (`AVERAGE_DATA`)
+     * Downstream dispatch & distribution -> Scope 3, Category 9 (`DISTANCE_BASED`)
+     * Equity investments & financing -> Scope 3, Category 15
+
+3. **Scope 3 Calculation Integration & Missing Factor Safety (`apps/core/calculation_services.py`)**:
+   - Integrated regulatory default Scope 3 emission factors (`TRANSPORT-COMMERCIAL-FREIGHT` 0.12 kg CO₂e/t-km, `WASTE-HAZARDOUS` 1.85 kg CO₂e/kg, `WASTE-NON-HAZARDOUS` 45.0 kg CO₂e/t, `TRAVEL-AIR-DOMESTIC` 0.15 kg CO₂e/p-km, `PURCHASED-GOODS-STEEL` 1,800.0 kg CO₂e/t).
+   - Deterministic calculations:
+     * Category 4 Freight: 12,500 t-km @ 0.12 kg CO₂e/t-km = 1.5000 tCO₂e
+     * Category 5 Hazardous Waste: 1,800 kg @ 1.85 kg CO₂e/kg = 3.3300 tCO₂e
+     * Category 5 Solid Scrap: 40 tonnes @ 45.0 kg CO₂e/t = 1.8000 tCO₂e
+     * Category 6 Business Air Travel: 8,000 p-km @ 0.15 kg CO₂e/p-km = 1.2000 tCO₂e
+     * Category 1 Purchased Steel: 25 tonnes @ 1,800 kg CO₂e/t = 45.0000 tCO₂e
+   - Missing Factor Safety: Unconfigured Scope 3 records safely transition to `REQUIRES_CONFIGURATION` with `0.0000 tCO₂e` and diagnostic notice. Zero synthetic or dummy numbers are ever generated.
+
+4. **Scope 3 Value Chain Inventory Center (`apps/core/scope3_views.py` & `templates/scope3/`)**:
+   - `/scope3/` & `/scope3/inventory/`: Corporate Scope 3 Inventory Dashboard with 4 Executive KPI Cards:
+     * Total Scope 3 GHG (tCO₂e)
+     * Upstream Emissions (Categories 1–8)
+     * Downstream Emissions (Categories 9–15)
+     * Category Coverage (Active Recorded / Requires Factor / Data Required)
+   - `/scope3/category/<int:category_number>/`: Granular Category Detail page with GHG Protocol boundary guide, supported calculation methods, registered Activity Masters, active regulatory Emission Factors, and verified telemetry record ledger.
+   - Explicit Accounting States:
+     * `DATA_RECORDED`: Categories with verified calculations.
+     * `REQUIRES_CONFIGURATION`: Categories with telemetry records awaiting emission factor configuration.
+     * `DATA_REQUIRED`: Unrecorded value chain categories where business data is not yet present.
+
+5. **Consolidation Integration & 6-Tier Auditor Traceability (`apps/core/reporting_services.py`)**:
+   - `get_consolidated_report()`: Extracted Scope 3 Upstream and Downstream totals alongside Scope 1 and Scope 2 with double-counting protection.
+   - `get_trace_lineage_context()`: Layer 1 (Report) displays Scope 3 category name, category number, value chain direction, calculation method, applied factor, and complete mathematical equation.
+
+6. **RBAC & Auditor Governance Protection (`apps/core/auth_services.py`)**:
+   - ESG Manager: Full governance across Scope 3 activities, factors, and inventory.
+   - Auditor Assurance Persona: Read-only access to `/auditor/scope3/` with persistent `Auditor Independent Assurance Workspace (Read-Only Mode)` banner. Mutation actions (recalculation POST, factor creation/edit) are strictly denied with `HTTP 403 Forbidden`.
+   - Site Manager: Telemetry entry only; prohibited from recalculating or modifying emission factors.
+
+### Manual Reconciliation Results
+| Category | Activity / Source | Telemetry Input | Factor / Rule | Expected tCO₂e | Actual tCO₂e | Result |
+|---|---|---|---|---:|---:|:---:|
+| **Cat 1: Purchased Goods** | Structural Steel Rebar | 25 tonnes | 1,800.0 kg CO₂e / t | 45.0000 | 45.0000 | **PASS** |
+| **Cat 2: Capital Goods** | Heavy Machinery | 1 unit | No factor configured | 0.0000 | 0.0000 (Requires Config) | **PASS** |
+| **Cat 4: Upstream Freight** | Commercial Road Freight | 12,500 t-km | 0.12 kg CO₂e / t-km | 1.5000 | 1.5000 | **PASS** |
+| **Cat 5: Operational Waste** | Hazardous Incineration | 1,800 kg | 1.85 kg CO₂e / kg | 3.3300 | 3.3300 | **PASS** |
+| **Cat 5: Operational Waste** | Construction Scrap Landfill | 40 tonnes | 45.0 kg CO₂e / t | 1.8000 | 1.8000 | **PASS** |
+| **Cat 6: Business Travel** | Domestic Commercial Air | 8,000 p-km | 0.15 kg CO₂e / p-km | 1.2000 | 1.2000 | **PASS** |
+| **Cat 3, 7–15: Value Chain** | Unrecorded Categories | 0 records | Data Required Rule | 0.0000 | 0.0000 (Data Required) | **PASS** |
+
+### Automated Test Suite Matrix
+- `tests.test_phase23_scope3_engine`: **14/14 PASSED** (100% OK)
+  * `test_ghg_protocol_15_categories_structure`: PASS
+  * `test_seed_scope3_categories_idempotency`: PASS
+  * `test_automatic_scope_classification_rules`: PASS
+  * `test_scope3_activity_master_properties`: PASS
+  * `test_scope3_upstream_freight_calculation`: PASS
+  * `test_scope3_hazardous_waste_calculation`: PASS
+  * `test_scope3_business_air_travel_calculation`: PASS
+  * `test_scope3_purchased_steel_calculation`: PASS
+  * `test_scope3_missing_factor_safety`: PASS
+  * `test_scope3_inventory_summary_aggregation`: PASS
+  * `test_multi_site_reconciled_consolidation_with_scope3`: PASS
+  * `test_six_tier_auditor_traceability_scope3`: PASS
+  * `test_scope3_rbac_views`: PASS
+  * `test_site_manager_and_auditor_mutation_blocked`: PASS
+- `tests.test_phase24_calculation_engine`: **19/19 PASSED** (100% OK, zero regressions)
+
+### Live Acceptance & Lineage Verification (`scripts/verify_phase23_scope3_live.py`)
+| Test Check | Result | Verification Notes |
+|---|:---:|---|
+| **ESG Manager Inventory Dashboard** | **PASS** | HTTP 200, 4 KPI cards, Upstream/Downstream tables, and status badges rendered |
+| **Category 4 Detail (Upstream Freight)** | **PASS** | HTTP 200, Freight activity, GLEC factor, and verified telemetry ledger rendered |
+| **Category 2 Diagnostic Safety View** | **PASS** | HTTP 200, `REQUIRES_CONFIGURATION` safety badge and 0.0000 tCO₂e displayed |
+| **Auditor Read-Only Assurance Mode** | **PASS** | HTTP 200, `Auditor Independent Assurance Workspace (Read-Only Mode)` banner active |
+| **RBAC: Auditor Recalculation Blocked** | **PASS** | HTTP 403 Forbidden returned on Auditor mutation attempt |
+| **RBAC: Site Manager Recalculation Blocked** | **PASS** | HTTP 403 Forbidden returned on Site Manager mutation attempt |
+| **6-Tier Auditor Traceability Lineage** | **PASS** | Layer 1 displays Cat 4, Upstream, Distance-Based method, 1.5000 tCO₂e and formula string |
+

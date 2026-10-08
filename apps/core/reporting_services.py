@@ -336,7 +336,7 @@ def get_consolidated_report(
             "waste_tonnes": round(sub_waste, 2),
         })
 
-    return {
+    result = {
         "current_period": current_period,
         "accessible_periods": accessible_periods,
         "accessible_subsidiaries": accessible_subs,
@@ -352,7 +352,25 @@ def get_consolidated_report(
         "total_waste_tonnes": round(total_waste_tonnes, 2),
         "disclosures": disclosures_list,
         "subsidiary_breakdowns": subsidiary_breakdowns,
+        # Scope 3 Value Chain Disclosures
+        "total_upstream_tco2e": Decimal("0.0000"),
+        "total_downstream_tco2e": Decimal("0.0000"),
+        "scope3_summary": None,
     }
+
+    # Lazy-load Scope 3 Inventory summary
+    try:
+        from apps.core.scope3_services import get_scope3_inventory_summary
+        p_id = current_period.id if current_period else None
+        s3_sum = get_scope3_inventory_summary(user, period_id=p_id, subsidiary_id=subsidiary_id)
+        result["scope3_summary"] = s3_sum
+        result["total_upstream_tco2e"] = s3_sum["total_upstream_tco2e"]
+        result["total_downstream_tco2e"] = s3_sum["total_downstream_tco2e"]
+        result["scope3_categories"] = s3_sum["all_categories"]
+    except Exception as exc:
+        logger.warning("Could not derive Scope 3 inventory summary: %s", exc)
+
+    return result
 
 
 # -----------------------------------------------------------------------------
@@ -663,6 +681,10 @@ def get_trace_lineage_context(record_id: Any, user=None) -> Dict[str, Any]:
             "factor_unit": calc["factor_unit"],
             "factor_source": calc["factor_source"],
             "methodology": calc["methodology"],
+            "scope3_category": record.activity.scope3_category if record.activity else None,
+            "scope3_category_number": record.activity.scope3_category.category_number if (record.activity and record.activity.scope3_category) else None,
+            "scope3_direction": record.activity.scope3_direction if record.activity else "",
+            "calculation_method": calc.get("calculation_method") or (record.activity.calculation_method if record.activity else ""),
             "calculation_id": calc.get("calculation_id"),
             "calculation_status": calc.get("calculation_status", "CALCULATED"),
             "calculation_url": reverse("core:calculation_detail", kwargs={"calculation_id": calc.get("calculation_id")}) if calc.get("calculation_id") else None,

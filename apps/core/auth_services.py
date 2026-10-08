@@ -146,13 +146,21 @@ def role_required(*allowed_roles):
             if request.user.is_superuser:
                 return view_func(request, *args, **kwargs)
 
+            # Flatten allowed roles if passed as a single iterable (list/tuple/set)
+            roles_set = set()
+            for r in allowed_roles:
+                if isinstance(r, (list, tuple, set)):
+                    roles_set.update(r)
+                else:
+                    roles_set.add(r)
+
             user_roles = set(request.user.get_assigned_roles().values_list("code", flat=True))
-            if not any(role in user_roles for role in allowed_roles):
+            if not any(role in user_roles for role in roles_set):
                 log_auth_event(
                     AuthAuditLog.EventType.UNAUTHORIZED_ACCESS_ATTEMPT,
                     request=request,
                     user=request.user,
-                    details=f"Required roles {allowed_roles}, but user holds {list(user_roles)}.",
+                    details=f"Required roles {list(roles_set)}, but user holds {list(user_roles)}.",
                     success=False,
                 )
                 raise PermissionDenied("You do not have the required role to access this resource.")
@@ -443,6 +451,12 @@ def get_role_sidebar_menu(user):
                         "icon": "icon-cursor text-warning",
                     },
                     {
+                        "nav_id": "scope3_inventory",
+                        "label": "Scope 3 Inventory",
+                        "url": reverse("core:scope3_inventory"),
+                        "icon": "icon-pie-chart text-success",
+                    },
+                    {
                         "nav_id": "suppliers",
                         "label": "Supplier Directory",
                         "url": reverse("core:supplier_list"),
@@ -541,6 +555,12 @@ def get_role_sidebar_menu(user):
                         "icon": "icon-energy text-info",
                     },
                     {
+                        "nav_id": "scope3_inventory",
+                        "label": "Scope 3 Inventory",
+                        "url": reverse("core:scope3_inventory"),
+                        "icon": "icon-pie-chart text-success",
+                    },
+                    {
                         "nav_id": "verified_submissions",
                         "label": "Verified Submissions",
                         "url": reverse("core:submission_list") + "?status=VERIFIED",
@@ -625,6 +645,12 @@ def get_role_sidebar_menu(user):
                         "label": "Calculation Lineage",
                         "url": reverse("core:trace_selector"),
                         "icon": "icon-directions text-info",
+                    },
+                    {
+                        "nav_id": "scope3_inventory",
+                        "label": "Scope 3 Inventory",
+                        "url": reverse("core:scope3_inventory"),
+                        "icon": "icon-pie-chart text-warning",
                     },
                     {
                         "nav_id": "verified_submissions",
@@ -759,6 +785,12 @@ def get_role_sidebar_menu(user):
                         "label": "Activity Master",
                         "url": reverse("core:activity_list"),
                         "icon": "icon-list text-success",
+                    },
+                    {
+                        "nav_id": "scope3_inventory",
+                        "label": "Scope 3 Inventory",
+                        "url": reverse("core:scope3_inventory"),
+                        "icon": "icon-pie-chart text-success",
                     },
                     {
                         "nav_id": "evidence",

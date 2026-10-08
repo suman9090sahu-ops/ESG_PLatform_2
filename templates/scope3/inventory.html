@@ -1,0 +1,324 @@
+{% extends "base/base.html" %}
+{% load static %}
+
+{% block title %}Scope 3 Value Chain Emissions Inventory — MEIL ESG CONTROL TOWER{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+  <!-- Page Header & Governance Boundary -->
+  <div class="page-header d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+    <div class="esg-page-title-group">
+      <div class="d-flex align-items-center gap-2">
+        <h1 class="h3 font-weight-bold mb-0 text-dark">Scope 3 Value Chain Emissions Inventory</h1>
+        <span class="badge badge-success badge-pill py-1 px-2 font-weight-normal fs-6">
+          <span class="status-indicator-dot bg-success me-1"></span> GHG Protocol Standard
+        </span>
+      </div>
+      <p class="text-muted small mt-1 mb-0">
+        Authoritative 15-Category Value Chain Accounting across Upstream (Cat 1–8) and Downstream (Cat 9–15) Operations.
+      </p>
+    </div>
+    <div class="esg-page-actions mt-2 mt-sm-0 d-flex flex-wrap align-items-center gap-2">
+      <a href="{% url 'core:emission_factor_list' %}?scope=SCOPE_3" class="btn btn-outline-info btn-sm">
+        <i class="icon-chemistry me-1"></i> Scope 3 Factors
+      </a>
+      <a href="{% url 'core:activity_list' %}?scope=SCOPE_3" class="btn btn-outline-success btn-sm">
+        <i class="icon-list me-1"></i> Scope 3 Activities
+      </a>
+      <a href="{% url 'core:reports_overview' %}?scope=SCOPE_3" class="btn btn-outline-primary btn-sm">
+        <i class="icon-chart me-1"></i> BRSR Disclosure
+      </a>
+    </div>
+  </div>
+
+  <!-- Auditor Read-Only Assurance Mode Notice -->
+  {% if is_auditor %}
+  <div class="alert alert-warning border-start border-warning border-4 shadow-sm mb-4" role="alert">
+    <div class="d-flex align-items-center">
+      <i class="icon-shield fs-4 text-warning me-3"></i>
+      <div>
+        <h6 class="alert-heading font-weight-bold mb-1">Auditor Independent Assurance Workspace (Read-Only Mode)</h6>
+        <p class="mb-0 small text-muted">
+          All Scope 3 values are reproducible from immutable verified activity data and regulatory emission factor snapshots. Mutation actions are strictly restricted.
+        </p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Filter & Boundary Selector -->
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-body py-3">
+      <form method="get" class="row g-3 align-items-center">
+        <div class="col-md-5">
+          <label class="form-label small font-weight-bold text-muted mb-1">Reporting Period</label>
+          <select name="period" class="form-select form-select-sm" onchange="this.form.submit()">
+            {% for p in accessible_periods %}
+              <option value="{{ p.id }}" {% if current_period and current_period.id == p.id %}selected{% endif %}>
+                {{ p.code }} — {{ p.name }} ({{ p.get_status_display }})
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-5">
+          <label class="form-label small font-weight-bold text-muted mb-1">Subsidiary Scope</label>
+          <select name="subsidiary" class="form-select form-select-sm" onchange="this.form.submit()">
+            <option value="">All Accessible Subsidiaries (Enterprise-wide)</option>
+            {% for sub in accessible_subsidiaries %}
+              <option value="{{ sub.id }}" {% if selected_subsidiary_id == sub.id %}selected{% endif %}>
+                {{ sub.name }} ({{ sub.code }})
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <button type="submit" class="btn btn-primary btn-sm w-100">
+            <i class="icon-refresh me-1"></i> Apply Filter
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Top 4 Executive KPI Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-xl-3 col-md-6">
+      <div class="card border-0 shadow-sm bg-gradient-primary text-white h-100">
+        <div class="card-body py-3">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <p class="text-uppercase small font-weight-bold mb-1 opacity-75">Total Scope 3 GHG</p>
+              <h2 class="font-weight-bold mb-0">{{ total_scope3_tco2e|floatformat:4 }} <small class="fs-6 font-weight-normal">tCO₂e</small></h2>
+            </div>
+            <div class="p-2 bg-white bg-opacity-25 rounded-circle">
+              <i class="icon-pie-chart fs-3"></i>
+            </div>
+          </div>
+          <p class="small mb-0 mt-2 text-white-50">
+            <i class="icon-info me-1"></i> Across all 15 value chain categories
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+      <div class="card border-0 shadow-sm bg-info text-white h-100">
+        <div class="card-body py-3">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <p class="text-uppercase small font-weight-bold mb-1 opacity-75">Upstream Emissions</p>
+              <h2 class="font-weight-bold mb-0">{{ total_upstream_tco2e|floatformat:4 }} <small class="fs-6 font-weight-normal">tCO₂e</small></h2>
+            </div>
+            <div class="p-2 bg-white bg-opacity-25 rounded-circle">
+              <i class="icon-arrow-up-circle fs-3"></i>
+            </div>
+          </div>
+          <p class="small mb-0 mt-2 text-white-50">
+            <i class="icon-check me-1"></i> Categories 1 — 8 (Purchased goods, logistics, waste, travel)
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+      <div class="card border-0 shadow-sm bg-secondary text-white h-100">
+        <div class="card-body py-3">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <p class="text-uppercase small font-weight-bold mb-1 opacity-75">Downstream Emissions</p>
+              <h2 class="font-weight-bold mb-0">{{ total_downstream_tco2e|floatformat:4 }} <small class="fs-6 font-weight-normal">tCO₂e</small></h2>
+            </div>
+            <div class="p-2 bg-white bg-opacity-25 rounded-circle">
+              <i class="icon-arrow-down-circle fs-3"></i>
+            </div>
+          </div>
+          <p class="small mb-0 mt-2 text-white-50">
+            <i class="icon-check me-1"></i> Categories 9 — 15 (Distribution, product use, investments)
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+      <div class="card border-0 shadow-sm bg-dark text-white h-100">
+        <div class="card-body py-3">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <p class="text-uppercase small font-weight-bold mb-1 opacity-75">Category Coverage</p>
+              <h2 class="font-weight-bold mb-0">{{ active_categories_count }} <small class="fs-6 font-weight-normal">/ 15 Categories</small></h2>
+            </div>
+            <div class="p-2 bg-white bg-opacity-25 rounded-circle">
+              <i class="icon-layers fs-3"></i>
+            </div>
+          </div>
+          <p class="small mb-0 mt-2 text-white-50">
+            {{ data_required_count }} Data Required | {{ requires_config_count }} Requires Factor
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- UPSTREAM VALUE CHAIN CATEGORIES (1 - 8) -->
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge badge-info px-2 py-1">UPSTREAM</span>
+        <h5 class="card-title font-weight-bold mb-0">Upstream Value Chain Activities (Categories 1 — 8)</h5>
+      </div>
+      <span class="badge badge-light border text-dark font-weight-normal">
+        Total: {{ total_upstream_tco2e|floatformat:4 }} tCO₂e
+      </span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light text-muted small">
+          <tr>
+            <th style="width: 50px;">Cat #</th>
+            <th>Category Name & Description</th>
+            <th>Methods Supported</th>
+            <th class="text-center">Activities</th>
+            <th class="text-center">Verified Records</th>
+            <th class="text-end">Calculated GHG (tCO₂e)</th>
+            <th class="text-center">Share (%)</th>
+            <th class="text-center">Accounting State</th>
+            <th class="text-center" style="width: 120px;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cat in upstream_categories %}
+          <tr>
+            <td class="font-weight-bold text-center text-primary">{{ cat.category_number }}</td>
+            <td>
+              <div class="font-weight-bold text-dark">{{ cat.name }}</div>
+              <div class="text-muted small text-truncate" style="max-width: 380px;" title="{{ cat.description }}">
+                {{ cat.description }}
+              </div>
+            </td>
+            <td>
+              {% for m in cat.applicable_methods %}
+                <span class="badge badge-light border text-muted small mb-1">{{ m }}</span>
+              {% empty %}
+                <span class="text-muted small">—</span>
+              {% endfor %}
+            </td>
+            <td class="text-center">
+              <span class="badge badge-light border text-dark">{{ cat.activities_count }}</span>
+            </td>
+            <td class="text-center font-weight-bold">
+              {{ cat.record_count }}
+            </td>
+            <td class="text-end font-weight-bold">
+              {% if cat.emissions_tco2e > 0 %}
+                <span class="text-success fs-6">{{ cat.emissions_tco2e|floatformat:4 }}</span>
+              {% else %}
+                <span class="text-muted">0.0000</span>
+              {% endif %}
+            </td>
+            <td class="text-center small">
+              {{ cat.pct_of_scope3 }}%
+            </td>
+            <td class="text-center">
+              <span class="badge {{ cat.status_badge }}" data-status="{{ cat.status }}">{{ cat.status_display }}</span>
+            </td>
+            <td class="text-center">
+              <a href="{% url 'core:scope3_category_detail' category_number=cat.category_number %}{% if current_period %}?period={{ current_period.id }}{% endif %}" class="btn btn-sm btn-outline-primary py-1 px-2">
+                <i class="icon-magnifier me-1"></i> Inspect
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- DOWNSTREAM VALUE CHAIN CATEGORIES (9 - 15) -->
+  <div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge badge-primary px-2 py-1">DOWNSTREAM</span>
+        <h5 class="card-title font-weight-bold mb-0">Downstream Value Chain Activities (Categories 9 — 15)</h5>
+      </div>
+      <span class="badge badge-light border text-dark font-weight-normal">
+        Total: {{ total_downstream_tco2e|floatformat:4 }} tCO₂e
+      </span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light text-muted small">
+          <tr>
+            <th style="width: 50px;">Cat #</th>
+            <th>Category Name & Description</th>
+            <th>Methods Supported</th>
+            <th class="text-center">Activities</th>
+            <th class="text-center">Verified Records</th>
+            <th class="text-end">Calculated GHG (tCO₂e)</th>
+            <th class="text-center">Share (%)</th>
+            <th class="text-center">Accounting State</th>
+            <th class="text-center" style="width: 120px;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cat in downstream_categories %}
+          <tr>
+            <td class="font-weight-bold text-center text-primary">{{ cat.category_number }}</td>
+            <td>
+              <div class="font-weight-bold text-dark">{{ cat.name }}</div>
+              <div class="text-muted small text-truncate" style="max-width: 380px;" title="{{ cat.description }}">
+                {{ cat.description }}
+              </div>
+            </td>
+            <td>
+              {% for m in cat.applicable_methods %}
+                <span class="badge badge-light border text-muted small mb-1">{{ m }}</span>
+              {% empty %}
+                <span class="text-muted small">—</span>
+              {% endfor %}
+            </td>
+            <td class="text-center">
+              <span class="badge badge-light border text-dark">{{ cat.activities_count }}</span>
+            </td>
+            <td class="text-center font-weight-bold">
+              {{ cat.record_count }}
+            </td>
+            <td class="text-end font-weight-bold">
+              {% if cat.emissions_tco2e > 0 %}
+                <span class="text-success fs-6">{{ cat.emissions_tco2e|floatformat:4 }}</span>
+              {% else %}
+                <span class="text-muted">0.0000</span>
+              {% endif %}
+            </td>
+            <td class="text-center small">
+              {{ cat.pct_of_scope3 }}%
+            </td>
+            <td class="text-center">
+              <span class="badge {{ cat.status_badge }}" data-status="{{ cat.status }}">{{ cat.status_display }}</span>
+            </td>
+            <td class="text-center">
+              <a href="{% url 'core:scope3_category_detail' category_number=cat.category_number %}{% if current_period %}?period={{ current_period.id }}{% endif %}" class="btn btn-sm btn-outline-primary py-1 px-2">
+                <i class="icon-magnifier me-1"></i> Inspect
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Regulatory Notes & Governance Guidance -->
+  <div class="card shadow-sm border-0 bg-light">
+    <div class="card-body">
+      <h6 class="font-weight-bold text-dark mb-2"><i class="icon-info me-2 text-primary"></i>Scope 3 GHG Protocol Governance Principles</h6>
+      <ul class="text-muted small mb-0 ps-3">
+        <li><strong>Automatic Scope Classification:</strong> Activities entered by Site Managers inherit Scope 3 taxonomy without requiring manual scope selection.</li>
+        <li><strong>Explicit Configuration Safety:</strong> Categories with source operational data but unconfigured regulatory emission factors enter <code>REQUIRES_CONFIGURATION</code> state with 0.0000 tCO₂e and informative diagnostics. Zero synthetic guessing.</li>
+        <li><strong>Data Required State:</strong> Value chain categories for which the business workflow has not yet recorded source data are transparently labeled <code>DATA_REQUIRED</code> to maintain audit readiness.</li>
+        <li><strong>6-Tier Audit Traceability:</strong> Click <em>Inspect</em> on any active category to review underlying verified activity records, applied emission factor snapshots, and full 6-tier cryptographic trace lineage.</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
