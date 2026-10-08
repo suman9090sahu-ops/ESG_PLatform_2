@@ -319,6 +319,18 @@ def get_role_sidebar_menu(user):
                         "url": reverse("core:correction_inbox"),
                         "icon": "icon-action-undo text-danger",
                     },
+                    {
+                        "nav_id": "procurement",
+                        "label": "Procurement Ledger",
+                        "url": reverse("core:procurement_list"),
+                        "icon": "icon-basket text-warning",
+                    },
+                    {
+                        "nav_id": "suppliers",
+                        "label": "Supplier Directory",
+                        "url": reverse("core:supplier_list"),
+                        "icon": "icon-people text-info",
+                    },
                 ],
             },
             {
@@ -406,6 +418,18 @@ def get_role_sidebar_menu(user):
                         "url": reverse("core:subsidiary_submission_inbox") + "?status=ESCALATED",
                         "icon": "icon-energy text-danger",
                     },
+                    {
+                        "nav_id": "procurement_inbox",
+                        "label": "Procurement Review",
+                        "url": reverse("core:procurement_review_inbox"),
+                        "icon": "icon-basket-loaded text-warning",
+                    },
+                    {
+                        "nav_id": "suppliers",
+                        "label": "Supplier Directory",
+                        "url": reverse("core:supplier_list"),
+                        "icon": "icon-people text-info",
+                    },
                 ],
             },
             {
@@ -491,6 +515,18 @@ def get_role_sidebar_menu(user):
                         "label": "BRSR Finalization",
                         "url": "#",
                         "icon": "icon-badge text-success",
+                    },
+                    {
+                        "nav_id": "procurement",
+                        "label": "Procurement Ledger",
+                        "url": reverse("core:procurement_list"),
+                        "icon": "icon-basket text-warning",
+                    },
+                    {
+                        "nav_id": "suppliers",
+                        "label": "Supplier Directory",
+                        "url": reverse("core:supplier_list"),
+                        "icon": "icon-people text-info",
                     },
                 ],
             },
@@ -584,6 +620,18 @@ def get_role_sidebar_menu(user):
                         "url": "#",
                         "icon": "icon-notebook text-danger",
                     },
+                    {
+                        "nav_id": "procurement",
+                        "label": "Procurement Ledger",
+                        "url": reverse("core:procurement_list"),
+                        "icon": "icon-basket text-warning",
+                    },
+                    {
+                        "nav_id": "suppliers",
+                        "label": "Supplier Directory",
+                        "url": reverse("core:supplier_list"),
+                        "icon": "icon-people text-info",
+                    },
                 ],
             },
             {
@@ -657,6 +705,18 @@ def get_role_sidebar_menu(user):
                         "label": "Telemetry Pipelines",
                         "url": "#",
                         "icon": "icon-feed text-warning",
+                    },
+                    {
+                        "nav_id": "procurement",
+                        "label": "Procurement Ledger",
+                        "url": reverse("core:procurement_list"),
+                        "icon": "icon-basket text-warning",
+                    },
+                    {
+                        "nav_id": "suppliers",
+                        "label": "Supplier Directory",
+                        "url": reverse("core:supplier_list"),
+                        "icon": "icon-people text-info",
                     },
                     {
                         "nav_id": "audit_events",

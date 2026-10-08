@@ -1,0 +1,222 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}Supplier &amp; Vendor Directory{% endblock %}
+{% block page_subtitle %}Enterprise vendor master catalog, compliance declarations, and statutory ESG profiles.{% endblock %}
+
+{% block page_actions %}
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'core:procurement_list' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="icon-basket me-1"></i> Procurement Ledger
+    </a>
+    {% if can_create %}
+      <a href="{% url 'core:supplier_create' %}" class="btn btn-sm btn-primary">
+        <i class="icon-plus me-1"></i> Register Supplier
+      </a>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <!-- Metric KPI Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body p-3">
+          <div class="text-muted small text-uppercase fw-semibold">Total Suppliers</div>
+          <div class="h3 fw-bold mb-0 text-dark mt-1">{{ total_suppliers }}</div>
+          <small class="text-muted">Master Vendor Records</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+      <div class="card border-0 shadow-sm h-100 border-start border-4 border-success">
+        <div class="card-body p-3">
+          <div class="text-muted small text-uppercase fw-semibold">Active Vendors</div>
+          <div class="h3 fw-bold mb-0 text-success mt-1">{{ active_suppliers }}</div>
+          <small class="text-success"><i class="icon-check me-1"></i>Eligible for Procurement</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+      <div class="card border-0 shadow-sm h-100 border-start border-4 border-info">
+        <div class="card-body p-3">
+          <div class="text-muted small text-uppercase fw-semibold">ESG Code Declared</div>
+          <div class="h3 fw-bold mb-0 text-info mt-1">{{ esg_declared }}</div>
+          <small class="text-info"><i class="icon-badge me-1"></i>Sustainability Code Signed</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+      <div class="card border-0 shadow-sm h-100 border-start border-4 border-primary">
+        <div class="card-body p-3">
+          <div class="text-muted small text-uppercase fw-semibold">Goods Suppliers</div>
+          <div class="h3 fw-bold mb-0 text-primary mt-1">{{ goods_suppliers }}</div>
+          <small class="text-muted">Materials &amp; Capital Goods</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter & Search Toolbar Card -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+      <h6 class="mb-0 fw-bold text-dark">
+        <i class="icon-filter me-2 text-primary"></i> Filter Supplier Catalog
+      </h6>
+      <span class="badge bg-light text-muted border">
+        Server-Enforced Scope
+      </span>
+    </div>
+    <div class="card-body p-3">
+      <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-4">
+          <label class="form-label small text-muted mb-1">Search Keywords</label>
+          {{ filter_form.search }}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small text-muted mb-1">Supplier Type</label>
+          {{ filter_form.supplier_type }}
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small text-muted mb-1">Status</label>
+          {{ filter_form.status }}
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small text-muted mb-1">Operating Company</label>
+          {{ filter_form.company }}
+        </div>
+        <div class="col-md-1 d-flex gap-1">
+          <button type="submit" class="btn btn-primary w-100" title="Apply Filters">
+            <i class="icon-magnifier"></i>
+          </button>
+          <a href="{% url 'core:supplier_list' %}" class="btn btn-outline-secondary" title="Reset Filters">
+            <i class="icon-reload"></i>
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Suppliers Data Table Card -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+      <h6 class="mb-0 fw-bold text-dark">
+        <i class="icon-people me-2 text-success"></i> Registered Suppliers &amp; Vendors
+      </h6>
+      <span class="text-muted small">Showing {{ page_obj.start_index|default:0 }}–{{ page_obj.end_index|default:0 }} of {{ page_obj.paginator.count }}</span>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th scope="col" style="width: 120px;">Code</th>
+            <th scope="col">Supplier Name</th>
+            <th scope="col">Type</th>
+            <th scope="col">Scope / Company</th>
+            <th scope="col">Tax / GST Identifier</th>
+            <th scope="col">ESG Declaration</th>
+            <th scope="col">Status</th>
+            <th scope="col" class="text-end" style="width: 120px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for supplier in page_obj %}
+            <tr>
+              <td>
+                <span class="badge bg-light text-dark font-monospace border">{{ supplier.supplier_code }}</span>
+              </td>
+              <td>
+                <a href="{% url 'core:supplier_detail' supplier.id %}" class="fw-semibold text-decoration-none text-dark">
+                  {{ supplier.name }}
+                </a>
+                {% if supplier.legal_name and supplier.legal_name != supplier.name %}
+                  <div class="text-muted small">{{ supplier.legal_name }}</div>
+                {% endif %}
+              </td>
+              <td>
+                <span class="badge bg-light text-secondary border">{{ supplier.get_supplier_type_display }}</span>
+              </td>
+              <td>
+                {% if supplier.company %}
+                  <span class="badge bg-light text-primary border">{{ supplier.company.code }}</span>
+                {% else %}
+                  <span class="badge bg-info text-white">Enterprise-Wide</span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="font-monospace small text-muted">{{ supplier.tax_identifier|default:"—" }}</span>
+              </td>
+              <td>
+                {% if supplier.has_esg_declaration %}
+                  <span class="badge bg-success text-white"><i class="icon-check me-1"></i>Declared</span>
+                {% else %}
+                  <span class="badge bg-light text-muted border">Pending</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if supplier.status == 'ACTIVE' %}
+                  <span class="badge bg-success text-white">Active</span>
+                {% elif supplier.status == 'ARCHIVED' %}
+                  <span class="badge bg-secondary text-white">Archived</span>
+                {% elif supplier.status == 'BLOCKED' %}
+                  <span class="badge bg-danger text-white">Blocked</span>
+                {% else %}
+                  <span class="badge bg-warning text-dark">{{ supplier.status }}</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <a href="{% url 'core:supplier_detail' supplier.id %}" class="btn btn-sm btn-outline-primary" title="View Profile">
+                  <i class="icon-eye"></i>
+                </a>
+                {% if can_create %}
+                  <a href="{% url 'core:supplier_edit' supplier.id %}" class="btn btn-sm btn-outline-secondary" title="Edit Supplier">
+                    <i class="icon-pencil"></i>
+                  </a>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="8" class="text-center py-5 text-muted">
+                <div class="mb-2"><i class="icon-people text-muted display-6"></i></div>
+                <div class="fw-semibold">No suppliers found in this organizational scope.</div>
+                <small>Try clearing your search filters or register a new vendor.</small>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination Footer -->
+    {% if page_obj.has_other_pages %}
+      <div class="card-footer bg-white border-top py-3 d-flex justify-content-between align-items-center">
+        <span class="small text-muted">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        <ul class="pagination pagination-sm mb-0">
+          {% if page_obj.has_previous %}
+            <li class="page-item">
+              <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+            </li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link">Previous</span></li>
+          {% endif %}
+          {% for p in page_obj.paginator.page_range %}
+            {% if p == page_obj.number %}
+              <li class="page-item active"><span class="page-link">{{ p }}</span></li>
+            {% elif p > page_obj.number|add:"-3" and p < page_obj.number|add:"3" %}
+              <li class="page-item"><a class="page-link" href="?page={{ p }}">{{ p }}</a></li>
+            {% endif %}
+          {% endfor %}
+          {% if page_obj.has_next %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link">Next</span></li>
+          {% endif %}
+        </ul>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

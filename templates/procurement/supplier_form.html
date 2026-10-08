@@ -1,0 +1,192 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}
+  {% if is_create %}Register New Supplier{% else %}Edit Supplier: {{ supplier.name }}{% endif %}
+{% endblock %}
+
+{% block page_subtitle %}
+  {% if is_create %}
+    Create a new supplier master record with corporate details and ESG compliance profile.
+  {% else %}
+    Update supplier profile, contact coordinates, or sustainability declarations.
+  {% endif %}
+{% endblock %}
+
+{% block page_actions %}
+  <div class="d-flex align-items-center gap-2">
+    {% if is_create %}
+      <a href="{% url 'core:supplier_list' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="icon-arrow-left me-1"></i> Cancel
+      </a>
+    {% else %}
+      <a href="{% url 'core:supplier_detail' supplier.id %}" class="btn btn-sm btn-outline-secondary">
+        <i class="icon-arrow-left me-1"></i> Cancel
+      </a>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+      <form method="post" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger shadow-sm">
+            {% for error in form.non_field_errors %}
+              <p class="mb-0"><i class="icon-exclamation me-1"></i>{{ error }}</p>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <!-- Basic Identification -->
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-white border-bottom py-3">
+            <h6 class="card-title fw-bold mb-0">Identification &amp; Organization Scope</h6>
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Supplier Name <span class="text-danger">*</span></label>
+                {{ form.name }}
+                {% if form.name.errors %}<div class="text-danger small mt-1">{{ form.name.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Legal Entity Name</label>
+                {{ form.legal_name }}
+                {% if form.legal_name.errors %}<div class="text-danger small mt-1">{{ form.legal_name.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Supplier Code <span class="text-danger">*</span></label>
+                {{ form.supplier_code }}
+                <small class="text-muted">Unique internal identification code</small>
+                {% if form.supplier_code.errors %}<div class="text-danger small mt-1">{{ form.supplier_code.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Supplier Type <span class="text-danger">*</span></label>
+                {{ form.supplier_type }}
+                {% if form.supplier_type.errors %}<div class="text-danger small mt-1">{{ form.supplier_type.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Status <span class="text-danger">*</span></label>
+                {{ form.status }}
+                {% if form.status.errors %}<div class="text-danger small mt-1">{{ form.status.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Tax / GST Identifier</label>
+                {{ form.tax_identifier }}
+                {% if form.tax_identifier.errors %}<div class="text-danger small mt-1">{{ form.tax_identifier.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Operating Company Scope</label>
+                {{ form.company }}
+                <small class="text-muted">Leave empty for enterprise-wide supplier</small>
+                {% if form.company.errors %}<div class="text-danger small mt-1">{{ form.company.errors.0 }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Contact & Location Coordinates -->
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-white border-bottom py-3">
+            <h6 class="card-title fw-bold mb-0">Contact &amp; Location Details</h6>
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Contact Person</label>
+                {{ form.contact_person }}
+                {% if form.contact_person.errors %}<div class="text-danger small mt-1">{{ form.contact_person.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Contact Email</label>
+                {{ form.contact_email }}
+                {% if form.contact_email.errors %}<div class="text-danger small mt-1">{{ form.contact_email.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Contact Phone</label>
+                {{ form.contact_phone }}
+                {% if form.contact_phone.errors %}<div class="text-danger small mt-1">{{ form.contact_phone.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-12">
+                <label class="form-label fw-semibold">Address Line</label>
+                {{ form.address_line }}
+                {% if form.address_line.errors %}<div class="text-danger small mt-1">{{ form.address_line.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-semibold">City</label>
+                {{ form.city }}
+                {% if form.city.errors %}<div class="text-danger small mt-1">{{ form.city.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-semibold">State / Province</label>
+                {{ form.state }}
+                {% if form.state.errors %}<div class="text-danger small mt-1">{{ form.state.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-semibold">Postal Code</label>
+                {{ form.postal_code }}
+                {% if form.postal_code.errors %}<div class="text-danger small mt-1">{{ form.postal_code.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-semibold">Country</label>
+                {{ form.country }}
+                {% if form.country.errors %}<div class="text-danger small mt-1">{{ form.country.errors.0 }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ESG & Sustainability Accreditations -->
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-white border-bottom py-3">
+            <h6 class="card-title fw-bold mb-0 text-success">
+              <i class="icon-shield me-2"></i>ESG &amp; Sustainability Declaration
+            </h6>
+          </div>
+          <div class="card-body">
+            <div class="form-check form-switch mb-3">
+              {{ form.has_esg_declaration }}
+              <label class="form-check-label fw-semibold" for="{{ form.has_esg_declaration.id_for_label }}">
+                Executed Supplier Sustainability Code of Conduct
+              </label>
+            </div>
+            <div class="row g-3">
+              <div class="col-md-12">
+                <label class="form-label fw-semibold">Environmental &amp; Energy Certifications</label>
+                {{ form.environmental_certifications }}
+                <small class="text-muted">e.g., ISO 14001, ISO 50001, OHSAS 18001</small>
+                {% if form.environmental_certifications.errors %}<div class="text-danger small mt-1">{{ form.environmental_certifications.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-12">
+                <label class="form-label fw-semibold">Compliance / Sustainability Notes</label>
+                {{ form.esg_notes }}
+                {% if form.esg_notes.errors %}<div class="text-danger small mt-1">{{ form.esg_notes.errors.0 }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Submission Actions -->
+        <div class="d-flex justify-content-end gap-2 mb-5">
+          {% if is_create %}
+            <a href="{% url 'core:supplier_list' %}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary px-4">
+              <i class="icon-check me-1"></i> Register Supplier
+            </button>
+          {% else %}
+            <a href="{% url 'core:supplier_detail' supplier.id %}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary px-4">
+              <i class="icon-check me-1"></i> Save Changes
+            </button>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

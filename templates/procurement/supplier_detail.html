@@ -1,0 +1,202 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}{{ supplier.name }}{% endblock %}
+{% block page_subtitle %}Supplier Code: <span class="badge bg-light text-dark font-monospace">{{ supplier.supplier_code }}</span> &bull; Scope: {{ supplier.company.name|default:"Enterprise-Wide Master" }}{% endblock %}
+
+{% block page_actions %}
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'core:supplier_list' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="icon-arrow-left me-1"></i> Back to Directory
+    </a>
+    {% if can_edit %}
+      <a href="{% url 'core:supplier_edit' supplier.id %}" class="btn btn-sm btn-primary">
+        <i class="icon-pencil me-1"></i> Edit Supplier
+      </a>
+    {% endif %}
+    {% if can_archive %}
+      <form method="post" action="{% url 'core:supplier_archive' supplier.id %}" class="d-inline" onsubmit="return confirm('Archive supplier {{ supplier.name }}? Supplier will no longer be available for new transactions.');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm btn-outline-danger">
+          <i class="icon-lock me-1"></i> Archive
+        </button>
+      </form>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="row g-4">
+    <!-- Left Column: Master Details & ESG Profile -->
+    <div class="col-lg-5">
+      <!-- General Info Card -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+          <h6 class="card-title fw-bold mb-0">Supplier Profile</h6>
+          {% if supplier.status == 'ACTIVE' %}
+            <span class="badge bg-success-subtle text-success border border-success px-2 py-1">Active</span>
+          {% elif supplier.status == 'INACTIVE' %}
+            <span class="badge bg-secondary-subtle text-secondary border border-secondary px-2 py-1">Inactive</span>
+          {% elif supplier.status == 'BLOCKED' %}
+            <span class="badge bg-danger-subtle text-danger border border-danger px-2 py-1">Blocked</span>
+          {% elif supplier.status == 'ARCHIVED' %}
+            <span class="badge bg-dark-subtle text-dark border border-dark px-2 py-1">Archived</span>
+          {% endif %}
+        </div>
+        <div class="card-body">
+          <dl class="row mb-0">
+            <dt class="col-sm-5 text-muted small text-uppercase">Legal Entity Name</dt>
+            <dd class="col-sm-7 fw-semibold">{{ supplier.legal_name|default:supplier.name }}</dd>
+
+            <dt class="col-sm-5 text-muted small text-uppercase">Supplier Type</dt>
+            <dd class="col-sm-7">
+              <span class="badge bg-light text-dark">{{ supplier.get_supplier_type_display }}</span>
+            </dd>
+
+            <dt class="col-sm-5 text-muted small text-uppercase">Tax / GST Number</dt>
+            <dd class="col-sm-7 font-monospace">{{ supplier.tax_identifier|default:"Not Provided" }}</dd>
+
+            <dt class="col-sm-5 text-muted small text-uppercase">Operating Company</dt>
+            <dd class="col-sm-7">{{ supplier.company.name|default:"Enterprise-Wide" }}</dd>
+
+            <dt class="col-sm-5 text-muted small text-uppercase">Contact Person</dt>
+            <dd class="col-sm-7">{{ supplier.contact_person|default:"-" }}</dd>
+
+            <dt class="col-sm-5 text-muted small text-uppercase">Email</dt>
+            <dd class="col-sm-7">
+              {% if supplier.contact_email %}
+                <a href="mailto:{{ supplier.contact_email }}">{{ supplier.contact_email }}</a>
+              {% else %}
+                -
+              {% endif %}
+            </dd>
+
+            <dt class="col-sm-5 text-muted small text-uppercase">Phone</dt>
+            <dd class="col-sm-7">{{ supplier.contact_phone|default:"-" }}</dd>
+
+            <dt class="col-sm-5 text-muted small text-uppercase">Address</dt>
+            <dd class="col-sm-7">
+              {{ supplier.address_line|default:"" }}
+              {% if supplier.city or supplier.state %}
+                <br>{{ supplier.city }}{% if supplier.state %}, {{ supplier.state }}{% endif %}
+              {% endif %}
+              {% if supplier.country or supplier.postal_code %}
+                <br>{{ supplier.country }} {{ supplier.postal_code }}
+              {% endif %}
+              {% if not supplier.address_line and not supplier.city %}-{% endif %}
+            </dd>
+
+            <dt class="col-sm-5 text-muted small text-uppercase">Created At</dt>
+            <dd class="col-sm-7 text-muted">{{ supplier.created_at|date:"d M Y, H:i" }}</dd>
+          </dl>
+        </div>
+      </div>
+
+      <!-- ESG Profile & Certifications Card -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="card-title fw-bold mb-0 text-success">
+            <i class="icon-shield me-2"></i>ESG &amp; Sustainability Declaration
+          </h6>
+        </div>
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-3">
+            <div class="me-3">
+              {% if supplier.has_esg_declaration %}
+                <span class="badge bg-success p-2 rounded-circle"><i class="icon-check text-white"></i></span>
+              {% else %}
+                <span class="badge bg-secondary p-2 rounded-circle"><i class="icon-close text-white"></i></span>
+              {% endif %}
+            </div>
+            <div>
+              <div class="fw-bold">
+                {% if supplier.has_esg_declaration %}
+                  ESG Code of Conduct Executed
+                {% else %}
+                  Pending ESG Declaration
+                {% endif %}
+              </div>
+              <small class="text-muted">Supplier commitment to environmental, human rights, and governance standards.</small>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="text-muted small text-uppercase fw-semibold">Environmental &amp; ISO Certifications</label>
+            <div class="p-2 bg-light rounded font-monospace small">
+              {{ supplier.environmental_certifications|default:"No certifications recorded (e.g. ISO 14001, ISO 50001)." }}
+            </div>
+          </div>
+
+          <div>
+            <label class="text-muted small text-uppercase fw-semibold">Compliance Notes</label>
+            <div class="text-secondary small">
+              {{ supplier.esg_notes|default:"No compliance notes registered." }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Recent Procurement Transactions -->
+    <div class="col-lg-7">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+          <h6 class="card-title fw-bold mb-0">Procurement History</h6>
+          <a href="{% url 'core:procurement_list' %}?supplier={{ supplier.id }}" class="btn btn-sm btn-outline-primary">
+            View All
+          </a>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light small text-uppercase">
+              <tr>
+                <th>Procurement Ref</th>
+                <th>Purchase Date</th>
+                <th>Site</th>
+                <th>Category</th>
+                <th class="text-end">Total Amount</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in procurements %}
+                <tr>
+                  <td>
+                    <a href="{% url 'core:procurement_detail' p.id %}" class="fw-bold text-decoration-none">
+                      {{ p.procurement_number }}
+                    </a>
+                  </td>
+                  <td>{{ p.purchase_date|date:"d M Y" }}</td>
+                  <td>{{ p.site.name }}</td>
+                  <td><span class="badge bg-light text-dark">{{ p.get_category_display }}</span></td>
+                  <td class="text-end fw-semibold font-monospace">{{ p.currency }} {{ p.total_amount|floatformat:2 }}</td>
+                  <td>
+                    {% if p.status == 'DRAFT' %}
+                      <span class="badge bg-secondary">Draft</span>
+                    {% elif p.status == 'SUBMITTED' %}
+                      <span class="badge bg-info text-dark">Submitted</span>
+                    {% elif p.status == 'VERIFIED' %}
+                      <span class="badge bg-success">Verified</span>
+                    {% elif p.status == 'CORRECTION_REQUESTED' %}
+                      <span class="badge bg-warning text-dark">Correction</span>
+                    {% elif p.status == 'REJECTED' %}
+                      <span class="badge bg-danger">Rejected</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="6" class="text-center py-4 text-muted">
+                    No procurement transactions recorded for this supplier.
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -9,6 +9,7 @@ Establishes:
 5. Audit-Ready Authentication and Authorization Event Logging (AuthAuditLog)
 """
 
+from decimal import Decimal
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
@@ -678,6 +679,19 @@ class AuthAuditLog(models.Model):
         ANOMALY_RULE_CREATED = "ANOMALY_RULE_CREATED", "Anomaly Rule Created"
         ANOMALY_RULE_UPDATED = "ANOMALY_RULE_UPDATED", "Anomaly Rule Updated"
         ANOMALY_DETECTION_RUN = "ANOMALY_DETECTION_RUN", "Anomaly Detection Run Executed"
+        SUPPLIER_CREATED = "SUPPLIER_CREATED", "Supplier Created"
+        SUPPLIER_UPDATED = "SUPPLIER_UPDATED", "Supplier Updated"
+        SUPPLIER_ARCHIVED = "SUPPLIER_ARCHIVED", "Supplier Archived"
+        PROCUREMENT_CREATED = "PROCUREMENT_CREATED", "Procurement Created"
+        PROCUREMENT_UPDATED = "PROCUREMENT_UPDATED", "Procurement Updated"
+        PROCUREMENT_DELETED = "PROCUREMENT_DELETED", "Procurement Deleted"
+        PROCUREMENT_SUBMITTED = "PROCUREMENT_SUBMITTED", "Procurement Submitted"
+        PROCUREMENT_REVIEWED = "PROCUREMENT_REVIEWED", "Procurement Reviewed"
+        PROCUREMENT_VERIFIED = "PROCUREMENT_VERIFIED", "Procurement Verified"
+        PROCUREMENT_REJECTED = "PROCUREMENT_REJECTED", "Procurement Rejected"
+        PROCUREMENT_CORRECTED = "PROCUREMENT_CORRECTED", "Procurement Corrected"
+        PROCUREMENT_RESUBMITTED = "PROCUREMENT_RESUBMITTED", "Procurement Resubmitted"
+        PROCUREMENT_ANOMALY_DETECTED = "PROCUREMENT_ANOMALY_DETECTED", "Procurement Anomaly Detected"
 
     user = models.ForeignKey(
         User,
@@ -1612,6 +1626,11 @@ def evidence_file_upload_path(instance, filename):
         site_code = re.sub(r"[^a-zA-Z0-9_\-]", "_", record.site.code.lower())
         period_code = re.sub(r"[^a-zA-Z0-9_\-]", "_", record.reporting_period.code.lower())
         record_id = str(record.id)
+    elif instance and getattr(instance, "procurement_record_id", None):
+        proc = instance.procurement_record
+        site_code = re.sub(r"[^a-zA-Z0-9_\-]", "_", proc.site.code.lower()) if proc.site else "proc_corp"
+        period_code = re.sub(r"[^a-zA-Z0-9_\-]", "_", proc.reporting_period.code.lower()) if proc.reporting_period else "period_gen"
+        record_id = f"proc_{proc.id}"
 
     return f"evidence/{site_code}/{period_code}/rec_{record_id}/{safe_filename}"
 
@@ -1642,16 +1661,25 @@ class Evidence(models.Model):
     Authoritative ESG Supporting Evidence Document.
 
     Links operational physical documentation (fuel invoices, utility bills, weighbridge slips,
-    meter logs, lab certifications) directly to ActivityRecord operational telemetry.
-    Establishes the evidence foundation for future Phase 10 Validation, Phase 11 OCR,
-    and Phase 14 Auditor Trace-This-Number lineage.
+    meter logs, lab certifications, procurement POs) directly to ActivityRecord operational telemetry
+    or ProcurementRecord commercial purchasing transactions.
     """
 
     activity_record = models.ForeignKey(
         ActivityRecord,
         on_delete=models.PROTECT,
+        null=True,
+        blank=True,
         related_name="evidence_files",
         help_text="Operational activity record supported by this evidence document.",
+    )
+    procurement_record = models.ForeignKey(
+        "ProcurementRecord",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="evidence_files",
+        help_text="Procurement record supported by this evidence document.",
     )
     file = models.FileField(
         upload_to=evidence_file_upload_path,
@@ -1744,13 +1772,21 @@ class Evidence(models.Model):
         ]
         indexes = [
             models.Index(fields=["activity_record", "status"], name="idx_evid_rec_status"),
+            models.Index(fields=["procurement_record", "status"], name="idx_evid_proc_status"),
             models.Index(fields=["evidence_type"], name="idx_evid_type"),
             models.Index(fields=["created_at"], name="idx_evid_created"),
             models.Index(fields=["file_hash"], name="idx_evid_hash"),
         ]
 
     def __str__(self):
-        return f"{self.get_evidence_type_display()}: {self.original_filename} (Record #{self.activity_record_id})"
+        ref = f"Record #{self.activity_record_id}" if self.activity_record_id else f"Procurement #{self.procurement_record_id}"
+        return f"{self.get_evidence_type_display()}: {self.original_filename} ({ref})"
+
+    def clean(self):
+        super().clean()
+        if not self.activity_record_id and not self.procurement_record_id:
+            from django.core.exceptions import ValidationError
+            raise ValidationError("Evidence document must be linked to either an ActivityRecord or a ProcurementRecord.")
 
     @property
     def is_active(self):
@@ -1762,23 +1798,43 @@ class Evidence(models.Model):
 
     @property
     def site(self):
-        return self.activity_record.site
+        if self.activity_record:
+            return self.activity_record.site
+        if self.procurement_record:
+            return self.procurement_record.site
+        return None
 
     @property
     def project(self):
-        return self.activity_record.site.project
+        if self.activity_record:
+            return self.activity_record.site.project
+        if self.procurement_record:
+            return self.procurement_record.project
+        return None
 
     @property
     def subsidiary(self):
-        return self.activity_record.site.project.subsidiary
+        if self.activity_record:
+            return self.activity_record.site.project.subsidiary
+        if self.procurement_record and self.procurement_record.project:
+            return self.procurement_record.project.subsidiary
+        return None
 
     @property
     def company(self):
-        return self.activity_record.site.project.subsidiary.company
+        if self.activity_record:
+            return self.activity_record.site.project.subsidiary.company
+        if self.procurement_record:
+            return self.procurement_record.company
+        return None
 
     @property
     def reporting_period(self):
-        return self.activity_record.reporting_period
+        if self.activity_record:
+            return self.activity_record.reporting_period
+        if self.procurement_record:
+            return self.procurement_record.reporting_period
+        return None
 
     @property
     def file_extension(self):
@@ -3333,6 +3389,501 @@ class AnomalyRecord(models.Model):
     @property
     def reporting_period(self):
         return self.activity_record.reporting_period
+
+
+# -----------------------------------------------------------------------------
+# PHASE 16: SUPPLIER & PROCUREMENT MANAGEMENT
+# -----------------------------------------------------------------------------
+
+class SupplierType(models.TextChoices):
+    GOODS = "GOODS", "Goods & Materials Supplier"
+    SERVICES = "SERVICES", "Services & Contractor"
+    MANUFACTURER = "MANUFACTURER", "Manufacturer / OEM"
+    DISTRIBUTOR = "DISTRIBUTOR", "Distributor / Dealer"
+    FUEL_SUPPLIER = "FUEL_SUPPLIER", "Fuel & Energy Supplier"
+    UTILITY_PROVIDER = "UTILITY_PROVIDER", "Utility Provider (Power / Water / Gas)"
+    TRANSPORTER = "TRANSPORTER", "Transporter / Logistics Provider"
+    WASTE_OPERATOR = "WASTE_OPERATOR", "Waste Management Operator"
+    CONSULTANT = "CONSULTANT", "Technical / Professional Consultant"
+    OTHER = "OTHER", "Other Vendor / Supplier"
+
+
+class SupplierStatus(models.TextChoices):
+    ACTIVE = "ACTIVE", "Active"
+    INACTIVE = "INACTIVE", "Inactive"
+    BLOCKED = "BLOCKED", "Blocked"
+    ARCHIVED = "ARCHIVED", "Archived"
+
+
+class Supplier(models.Model):
+    """
+    Centralized Supplier / Vendor Master for MEIL ESG CONTROL TOWER.
+    Maintains authoritative master records of all commercial vendors, contractors,
+    and service providers contributing to procurement transactions and Scope 3 footprint.
+    """
+    supplier_code = models.CharField(
+        max_length=50,
+        unique=True,
+        db_index=True,
+        help_text="Unique stable internal identifier for the supplier (e.g. SUP-001).",
+    )
+    name = models.CharField(
+        max_length=255,
+        db_index=True,
+        help_text="Primary trade name or common business name of supplier.",
+    )
+    legal_name = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Registered legal corporate entity name.",
+    )
+    supplier_type = models.CharField(
+        max_length=50,
+        choices=SupplierType.choices,
+        default=SupplierType.GOODS,
+        db_index=True,
+        help_text="Primary classification of goods or services provided.",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=SupplierStatus.choices,
+        default=SupplierStatus.ACTIVE,
+        db_index=True,
+        help_text="Lifecycle state of this supplier master record.",
+    )
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="suppliers",
+        help_text="Parent Enterprise or Company entity. If null, supplier is Enterprise-wide.",
+    )
+    contact_person = models.CharField(
+        max_length=150,
+        blank=True,
+        help_text="Primary representative or account manager.",
+    )
+    contact_email = models.EmailField(
+        blank=True,
+        help_text="Official business correspondence email.",
+    )
+    contact_phone = models.CharField(
+        max_length=32,
+        blank=True,
+        help_text="Official business contact phone.",
+    )
+    tax_identifier = models.CharField(
+        max_length=50,
+        blank=True,
+        db_index=True,
+        help_text="Tax identification number (e.g. GSTIN, PAN, VAT, TIN).",
+    )
+    address = models.TextField(
+        blank=True,
+        help_text="Registered office address or facility location.",
+    )
+    city = models.CharField(max_length=100, blank=True)
+    state = models.CharField(max_length=100, blank=True)
+    country = models.CharField(max_length=100, default="India", blank=True)
+    postal_code = models.CharField(max_length=20, blank=True)
+
+    environmental_certifications = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Environmental/sustainability accreditations (e.g. ISO 14001, ISO 50001, LEED, GreenPro).",
+    )
+    has_esg_declaration = models.BooleanField(
+        default=False,
+        help_text="Whether supplier has signed an ESG / Supplier Code of Conduct declaration.",
+    )
+    esg_notes = models.TextField(
+        blank=True,
+        help_text="Sustainability notes, renewable power share, or Scope 3 decarbonization commitments.",
+    )
+
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_suppliers",
+        help_text="User who registered this supplier master record.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Supplier"
+        verbose_name_plural = "Suppliers"
+        ordering = ["name"]
+        indexes = [
+            models.Index(fields=["status", "name"], name="idx_supp_status_name"),
+            models.Index(fields=["company", "status"], name="idx_supp_co_status"),
+        ]
+
+    def __str__(self):
+        return f"{self.name} ({self.supplier_code})"
+
+    @property
+    def is_active(self):
+        return self.status == SupplierStatus.ACTIVE
+
+    @property
+    def procurements_count(self):
+        return self.procurements.count()
+
+    @property
+    def active_procurements_count(self):
+        return self.procurements.exclude(status="CANCELLED").count()
+
+    def archive(self, actor=None):
+        """Soft-archives supplier to protect historical procurement integrity."""
+        self.status = SupplierStatus.ARCHIVED
+        self.save(update_fields=["status", "updated_at"])
+
+
+class ProcurementCategory(models.TextChoices):
+    RAW_MATERIAL = "RAW_MATERIAL", "Raw Material"
+    CONSTRUCTION_MATERIAL = "CONSTRUCTION_MATERIAL", "Construction Material (Cement, Steel, Aggregate, Sand)"
+    FUEL = "FUEL", "Fuel (Diesel, Petrol, Biofuel, Natural Gas)"
+    ELECTRICITY = "ELECTRICITY", "Purchased Electricity / Grid Energy"
+    EQUIPMENT = "EQUIPMENT", "Capital Equipment & Machinery"
+    CONSUMABLE = "CONSUMABLE", "Operating Consumables & Spares"
+    SERVICES = "SERVICES", "Contracted Services & Civil Works"
+    TRANSPORT_SERVICE = "TRANSPORT_SERVICE", "Transport & Freight Logistics"
+    WASTE_SERVICE = "WASTE_SERVICE", "Waste Collection & Disposal Services"
+    TRAVEL = "TRAVEL", "Business Travel & Lodging"
+    OTHER = "OTHER", "Other Purchased Goods & Services"
+
+
+class ProcurementStatus(models.TextChoices):
+    DRAFT = "DRAFT", "Draft"
+    SUBMITTED = "SUBMITTED", "Submitted"
+    UNDER_REVIEW = "UNDER_REVIEW", "Under Review"
+    VERIFIED = "VERIFIED", "Verified / Approved"
+    CORRECTION_REQUESTED = "CORRECTION_REQUESTED", "Correction Requested"
+    REJECTED = "REJECTED", "Rejected"
+    CANCELLED = "CANCELLED", "Cancelled"
+
+
+class ProcurementRecord(models.Model):
+    """
+    Commercial Procurement & Purchasing Transaction Record.
+    Captures commercial purchasing transactions distinct from operational ESG Activity Records.
+    """
+    procurement_number = models.CharField(
+        max_length=64,
+        unique=True,
+        db_index=True,
+        help_text="Unique institutional transaction reference (e.g. PROC-2026-POL-0001).",
+    )
+    supplier = models.ForeignKey(
+        Supplier,
+        on_delete=models.PROTECT,
+        related_name="procurements",
+        help_text="Vendor or commercial provider.",
+    )
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.PROTECT,
+        related_name="procurements",
+        help_text="Operating company or enterprise division executing the purchase.",
+    )
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="procurements",
+        help_text="Infrastructure project boundary. Optional for enterprise purchases.",
+    )
+    site = models.ForeignKey(
+        Site,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="procurements",
+        help_text="Operational site boundary receiving the goods/services.",
+    )
+    reporting_period = models.ForeignKey(
+        ReportingPeriod,
+        on_delete=models.PROTECT,
+        related_name="procurements",
+        help_text="Governing reporting period temporal boundary.",
+    )
+    purchase_date = models.DateField(
+        db_index=True,
+        help_text="Official transaction or delivery date.",
+    )
+    category = models.CharField(
+        max_length=50,
+        choices=ProcurementCategory.choices,
+        default=ProcurementCategory.RAW_MATERIAL,
+        db_index=True,
+        help_text="Procurement classification category.",
+    )
+    purchase_order_reference = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Purchase Order (PO) number or commercial agreement code.",
+    )
+    invoice_reference = models.CharField(
+        max_length=100,
+        blank=True,
+        db_index=True,
+        help_text="Commercial / Tax Invoice Number provided by supplier.",
+    )
+    invoice_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Date printed on the supplier invoice.",
+    )
+    total_amount = models.DecimalField(
+        max_digits=16,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        help_text="Gross commercial transaction value.",
+    )
+    currency = models.CharField(
+        max_length=10,
+        default="INR",
+        choices=[
+            ("INR", "INR - Indian Rupee"),
+            ("USD", "USD - US Dollar"),
+            ("EUR", "EUR - Euro"),
+            ("GBP", "GBP - British Pound"),
+        ],
+        help_text="Monetary currency code.",
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="Procurement scope, commercial terms, or transaction remarks.",
+    )
+    status = models.CharField(
+        max_length=30,
+        choices=ProcurementStatus.choices,
+        default=ProcurementStatus.DRAFT,
+        db_index=True,
+        help_text="Controlled workflow lifecycle state.",
+    )
+    is_locked = models.BooleanField(
+        default=False,
+        help_text="Locks record from Site Manager modification once submitted or verified.",
+    )
+    validation_status = models.CharField(
+        max_length=30,
+        choices=ValidationStatus.choices,
+        default=ValidationStatus.UNVALIDATED,
+        db_index=True,
+        help_text="Automated deterministic validation evaluation status.",
+    )
+    has_anomalies = models.BooleanField(
+        default=False,
+        help_text="Whether anomaly detection flagged potential duplicates, spikes, or variances.",
+    )
+    activity_record = models.ForeignKey(
+        ActivityRecord,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="procurement_sources",
+        help_text="Linked ESG operational activity record, if derived.",
+    )
+    review_comments = models.TextField(
+        blank=True,
+        help_text="Review comments or rejection reasoning.",
+    )
+    correction_notes = models.TextField(
+        blank=True,
+        help_text="Correction explanations upon resubmission.",
+    )
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_procurements",
+        help_text="User who initiated this procurement record.",
+    )
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="updated_procurements",
+        help_text="User who last updated this procurement record.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Procurement Record"
+        verbose_name_plural = "Procurement Records"
+        ordering = ["-purchase_date", "-created_at"]
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(total_amount__gte=0),
+                name="check_procurement_amt_non_negative",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["company", "status"], name="idx_proc_co_status"),
+            models.Index(fields=["site", "status"], name="idx_proc_site_status"),
+            models.Index(fields=["supplier", "status"], name="idx_proc_supp_status"),
+            models.Index(fields=["reporting_period", "status"], name="idx_proc_period_status"),
+            models.Index(fields=["invoice_reference"], name="idx_proc_inv_ref"),
+        ]
+
+    def __str__(self):
+        return f"{self.procurement_number} - {self.supplier.name} ({self.total_amount} {self.currency})"
+
+    @property
+    def items_count(self):
+        return self.items.count()
+
+    @property
+    def items_total_amount(self):
+        return sum(item.total_amount for item in self.items.all())
+
+    @property
+    def evidence_count(self):
+        return self.evidence_files.filter(status=EvidenceStatus.ACTIVE).count()
+
+    @property
+    def has_evidence(self):
+        return self.evidence_count > 0
+
+    @property
+    def is_editable(self):
+        return self.status in [ProcurementStatus.DRAFT, ProcurementStatus.CORRECTION_REQUESTED] and not self.is_locked
+
+    @property
+    def status_badge_class(self):
+        return {
+            ProcurementStatus.DRAFT: "badge-secondary",
+            ProcurementStatus.SUBMITTED: "badge-primary",
+            ProcurementStatus.UNDER_REVIEW: "badge-info",
+            ProcurementStatus.VERIFIED: "badge-success",
+            ProcurementStatus.CORRECTION_REQUESTED: "badge-warning",
+            ProcurementStatus.REJECTED: "badge-danger",
+            ProcurementStatus.CANCELLED: "badge-dark",
+        }.get(self.status, "badge-secondary")
+
+    @property
+    def validation_badge_class(self):
+        return {
+            ValidationStatus.VALID: "badge-success",
+            ValidationStatus.WARNING: "badge-warning",
+            ValidationStatus.INVALID: "badge-danger",
+            ValidationStatus.UNVALIDATED: "badge-secondary",
+        }.get(self.validation_status, "badge-secondary")
+
+
+class ProcurementItem(models.Model):
+    """
+    Individual line item in a procurement transaction.
+    """
+    procurement = models.ForeignKey(
+        ProcurementRecord,
+        on_delete=models.CASCADE,
+        related_name="items",
+        help_text="Parent procurement transaction.",
+    )
+    line_number = models.PositiveIntegerField(
+        default=1,
+        help_text="Sequential line number within the procurement transaction.",
+    )
+    item_name = models.CharField(
+        max_length=255,
+        help_text="Material, goods, or service line description (e.g. TMT Steel Bars 16mm).",
+    )
+    category = models.CharField(
+        max_length=50,
+        choices=ProcurementCategory.choices,
+        default=ProcurementCategory.RAW_MATERIAL,
+        help_text="Category for this specific item.",
+    )
+    quantity = models.DecimalField(
+        max_digits=14,
+        decimal_places=4,
+        help_text="Purchased physical quantity (must be > 0).",
+    )
+    unit = models.ForeignKey(
+        UnitOfMeasure,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        help_text="Standardized unit of measure from Activity Master taxonomy.",
+    )
+    unit_custom = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Custom or commercial unit string if not in UnitOfMeasure master.",
+    )
+    unit_price = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Unit price / commercial rate.",
+    )
+    total_amount = models.DecimalField(
+        max_digits=16,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        help_text="Line item commercial value.",
+    )
+    activity_master = models.ForeignKey(
+        ActivityMaster,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="procurement_items",
+        help_text="Linked ActivityMaster catalog entity for ESG relevance.",
+    )
+    scope3_category = models.CharField(
+        max_length=50,
+        blank=True,
+        choices=[
+            ("CAT_01", "Scope 3.1: Purchased Goods and Services"),
+            ("CAT_02", "Scope 3.2: Capital Goods"),
+            ("CAT_03", "Scope 3.3: Fuel- and Energy-Related Activities"),
+            ("CAT_04", "Scope 3.4: Upstream Transportation and Distribution"),
+            ("CAT_05", "Scope 3.5: Waste Generated in Operations"),
+            ("CAT_06", "Scope 3.6: Business Travel"),
+            ("CAT_07", "Scope 3.7: Employee Commuting"),
+            ("CAT_08", "Scope 3.8: Upstream Leased Assets"),
+            ("OTHER", "Other / Not Classified"),
+        ],
+        help_text="Future Scope 3 GHG Protocol integration category.",
+    )
+    notes = models.TextField(blank=True, help_text="Item technical notes or specifications.")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Procurement Line Item"
+        verbose_name_plural = "Procurement Line Items"
+        ordering = ["procurement", "line_number"]
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(quantity__gt=0),
+                name="check_proc_item_qty_positive",
+            ),
+            models.CheckConstraint(
+                check=models.Q(total_amount__gte=0),
+                name="check_proc_item_amt_non_neg",
+            ),
+            models.UniqueConstraint(
+                fields=["procurement", "line_number"],
+                name="unique_proc_item_line_no",
+            ),
+        ]
+
+    def __str__(self):
+        unit_str = self.unit.symbol if self.unit else self.unit_custom
+        return f"Line {self.line_number}: {self.item_name} ({self.quantity} {unit_str}) - {self.total_amount}"
 
 
 

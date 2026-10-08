@@ -259,6 +259,30 @@ This document tracks all active URL endpoints in **Phase 01 & Phase 02** as well
 | `/anomalies/<id>/action/` | `apps.core.anomaly_views.anomaly_review_action_view` | `core:anomaly_review_action` | `SUBSIDIARY_MANAGER`, `ESG_MANAGER`, `MEIL_OPERATOR` (POST only) | Execute controlled review lifecycle action (ACKNOWLEDGE, EXPLAIN, RESOLVE, DISMISS) with mandatory explanation | Phase 15 |
 | `/data-entry/<id>/run-anomaly-detection/` | `apps.core.anomaly_views.anomaly_run_detection_view` | `core:record_run_anomaly_detection` | Scoped Roles (POST only) | On-demand manual anomaly evaluation trigger for an ActivityRecord | Phase 15 |
 
+### 15. Supplier & Procurement Management Routes (`/procurement/...` & `/suppliers/...`)
+
+| URL Pattern | View Function | Route Name | Authorized Roles | Purpose | Phase |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `/procurement/suppliers/` | `apps.core.procurement_views.supplier_list_view` | `core:supplier_list` | Scoped Roles | Central Supplier / Vendor Master Directory | Phase 16 |
+| `/suppliers/` | `apps.core.procurement_views.supplier_list_view` | `core:supplier_list_alias` | Scoped Roles | Canonical alias for Supplier Directory | Phase 16 |
+| `/procurement/suppliers/create/` | `apps.core.procurement_views.supplier_create_view` | `core:supplier_create` | `MEIL_OPERATOR`, `ESG_MANAGER` | Register New Supplier / Vendor Entity | Phase 16 |
+| `/procurement/suppliers/<id>/` | `apps.core.procurement_views.supplier_detail_view` | `core:supplier_detail` | Scoped Roles (IDOR Protected) | Vendor Specification, Procurement History & ESG Info | Phase 16 |
+| `/procurement/suppliers/<id>/edit/` | `apps.core.procurement_views.supplier_edit_view` | `core:supplier_edit` | `MEIL_OPERATOR`, `ESG_MANAGER` | Edit Supplier Details & ESG Declaration | Phase 16 |
+| `/procurement/suppliers/<id>/archive/` | `apps.core.procurement_views.supplier_archive_view` | `core:supplier_archive` | `MEIL_OPERATOR`, `ESG_MANAGER` (POST only) | Soft-Archive Supplier (Preserves historical purchases) | Phase 16 |
+| `/procurement/` | `apps.core.procurement_views.procurement_list_view` | `core:procurement_list` | Scoped Roles | Commercial Procurement Transaction Ledger | Phase 16 |
+| `/procurement/create/` | `apps.core.procurement_views.procurement_create_view` | `core:procurement_create` | `SITE_MANAGER`, `MEIL_OPERATOR`, `ESG_MANAGER` | Create New Commercial Procurement Record | Phase 16 |
+| `/procurement/<id>/` | `apps.core.procurement_views.procurement_detail_view` | `core:procurement_detail` | Scoped Roles (IDOR Protected) | Comprehensive Procurement Audit Workspace | Phase 16 |
+| `/procurement/<id>/edit/` | `apps.core.procurement_views.procurement_edit_view` | `core:procurement_edit` | Scoped Roles (IDOR Protected) | Edit Procurement Record (DRAFT / CORRECTION) | Phase 16 |
+| `/procurement/<id>/delete/` | `apps.core.procurement_views.procurement_delete_view` | `core:procurement_delete` | Scoped Roles (IDOR Protected; Draft Only) | Safe Deletion of Draft Commercial Records | Phase 16 |
+| `/procurement/<id>/items/add/` | `apps.core.procurement_views.procurement_item_create_view` | `core:procurement_item_create` | Scoped Roles (IDOR Protected) | Add Line Item with Scope 3 Category & Units | Phase 16 |
+| `/procurement/<id>/items/<item_id>/delete/` | `apps.core.procurement_views.procurement_item_delete_view` | `core:procurement_item_delete` | Scoped Roles (IDOR Protected; Draft Only) | Delete Line Item and Recalculate Total | Phase 16 |
+| `/procurement/<id>/evidence/upload/` | `apps.core.procurement_views.procurement_evidence_upload_view` | `core:procurement_evidence_upload` | Scoped Roles (IDOR Protected) | Upload Supporting Invoice / PO Evidence | Phase 16 |
+| `/procurement/<id>/submit/` | `apps.core.procurement_views.procurement_submit_view` | `core:procurement_submit` | Scoped Roles (IDOR Protected; POST only) | Formal Submission of Procurement Record | Phase 16 |
+| `/procurement/inbox/` | `apps.core.procurement_views.procurement_review_inbox_view` | `core:procurement_inbox` | `SUBSIDIARY_MANAGER`, `MEIL_OPERATOR`, `ESG_MANAGER` | Division Procurement Review Inbox | Phase 16 |
+| `/procurement/<id>/review/` | `apps.core.procurement_views.procurement_review_view` | `core:procurement_review` | `SUBSIDIARY_MANAGER`, `MEIL_OPERATOR`, `ESG_MANAGER` (POST only) | Review Action (VERIFY / REQUEST_CORRECTION / REJECT) | Phase 16 |
+| `/procurement/<id>/correct/` | `apps.core.procurement_views.procurement_correction_view` | `core:procurement_correction` | `SITE_MANAGER`, `MEIL_OPERATOR` | Site Manager Correction & Resubmission Workspace | Phase 16 |
+| `/procurement/<id>/ocr-compare/<evidence_id>/` | `apps.core.procurement_views.procurement_ocr_compare_view` | `core:procurement_ocr_compare` | Scoped Roles (IDOR Protected) | OCR Side-by-Side Reconciliation Analysis | Phase 16 |
+
 ---
 
 ### Custom HTTP Error Handlers
@@ -378,7 +402,27 @@ This document tracks all active URL endpoints in **Phase 01 & Phase 02** as well
 │   ├── /<id>/                         Detailed Anomaly Investigation & Telemetry Delta View
 │   └── /<id>/action/                  Review Lifecycle Mutations (ACKNOWLEDGE, EXPLAIN, RESOLVE, DISMISS)
 │
-└── /reports/                          [Planned - Phase 16+ Calculations & BRSR]
+├── /procurement/                      [Active - Phase 16 Supplier & Procurement Management]
+│   ├── /suppliers/                    Supplier & Vendor Directory
+│   ├── /suppliers/create/             Register Supplier (MEIL_OPERATOR, ESG_MANAGER)
+│   ├── /suppliers/<id>/               Supplier Specification, Purchases & ESG Notes
+│   ├── /suppliers/<id>/edit/          Edit Supplier Details
+│   ├── /suppliers/<id>/archive/       Soft-Archive Supplier (POST)
+│   ├── /                              Commercial Procurement Transaction Ledger
+│   ├── /create/                       Create Procurement Record (Scoped)
+│   ├── /<id>/                         Procurement Workspace, Line Items, Evidence, OCR
+│   ├── /<id>/edit/                    Edit Procurement Header
+│   ├── /<id>/delete/                  Safe Deletion of Draft Records
+│   ├── /<id>/items/add/               Add Procurement Line Item
+│   ├── /<id>/items/<item_id>/delete/  Delete Procurement Line Item
+│   ├── /<id>/evidence/upload/         Attach Supporting Invoices / POs
+│   ├── /<id>/submit/                  Formal Commercial Submission (POST)
+│   ├── /inbox/                        Subsidiary Review Inbox for Procurements
+│   ├── /<id>/review/                  Review Action (VERIFY / REQUEST_CORRECTION / REJECT)
+│   ├── /<id>/correct/                 Site Manager Remediation & Resubmission
+│   └── /<id>/ocr-compare/<ev_id>/     OCR Side-by-Side Reconciliation Analysis
+│
+└── /reports/                          [Planned - Scope 3 & BRSR Calculation Phase]
     ├── /brsr/                         SEBI BRSR Core format generator
     └── /gri/                          Global Reporting Initiative export
 ```

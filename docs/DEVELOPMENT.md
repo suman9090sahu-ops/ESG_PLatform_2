@@ -132,6 +132,12 @@ The platform includes seed users with defined operational scopes:
 # Phase 15 Live End-to-End Verification
 .\python.bat tests\verify_phase15_live.py
 
+# Phase 16 Supplier & Procurement Management tests
+.\python.bat manage.py test tests.test_phase16_supplier_procurement
+
+# Phase 16 Live End-to-End Verification
+.\python.bat tests\verify_phase16_live.py
+
 # Live End-to-End HTTP Verification against running server
 .\python.bat tests\test_live_e2e.py
 ```
@@ -190,4 +196,71 @@ updated_record = execute_anomaly_review_action(
     ip_address=request.META.get("REMOTE_ADDR")
 )
 ```
+
+---
+
+## Phase 16 — Supplier & Procurement Management Developer Guide
+
+### Service Layer Operations (`apps/core/procurement_services.py`)
+
+```python
+from apps.core.procurement_services import (
+    create_supplier,
+    create_procurement_record,
+    add_procurement_item,
+    validate_procurement,
+    detect_procurement_anomalies,
+    compare_ocr_with_procurement,
+    submit_procurement,
+    review_procurement,
+)
+
+# 1. Register a Supplier / Vendor
+supplier = create_supplier(
+    name="UltraTech Cement Limited",
+    supplier_code="VEND-001",
+    supplier_type="VENDOR",
+    company=company,
+    tax_identifier="29AABCU9603R1ZM",
+    actor=user,
+)
+
+# 2. Create a Procurement Header Record
+procurement = create_procurement_record(
+    supplier=supplier,
+    site=site,
+    reporting_period=period,
+    purchase_date=date(2026, 10, 1),
+    invoice_number="INV-2026-8819",
+    purchase_order_number="PO-HYDRO-4401",
+    category="CONSTRUCTION_MATERIAL",
+    currency="INR",
+    actor=user,
+)
+
+# 3. Add Line Items (Total Amount automatically synced)
+item = add_procurement_item(
+    procurement=procurement,
+    item_name="Ordinary Portland Cement (OPC 53)",
+    quantity=Decimal("100.00"),
+    unit="Tonne",
+    unit_price=Decimal("5000.00"),
+    scope3_category="CAT_01",
+    actor=user,
+)
+
+# 4. Deterministic Validation & Anomaly Evaluation
+val_results = validate_procurement(procurement)
+anomalies = detect_procurement_anomalies(procurement)
+
+# 5. Workflow Submission & Verification
+submitted_proc = submit_procurement(procurement, actor=site_mgr)
+verified_proc = review_procurement(
+    procurement=submitted_proc,
+    action="VERIFY",
+    reviewer=sub_mgr,
+    comments="Invoices and physical delivery receipts verified.",
+)
+```
+
 

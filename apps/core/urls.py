@@ -14,6 +14,7 @@ from apps.core import (
     ocr_views,
     org_views,
     period_views,
+    procurement_views,
     review_views,
     submission_views,
     validation_views,
@@ -197,6 +198,39 @@ urlpatterns = [
     path("anomalies/<int:anomaly_id>/", anomaly_views.anomaly_detail_view, name="anomaly_detail"),
     path("anomalies/<int:anomaly_id>/action/", anomaly_views.anomaly_review_action_view, name="anomaly_review_action"),
     path("data-entry/<int:record_id>/run-anomaly-detection/", anomaly_views.anomaly_run_detection_view, name="record_run_anomaly_detection"),
+
+    # -------------------------------------------------------------------------
+    # Phase 16 Supplier & Procurement Routes (/suppliers/... & /procurement/...)
+    # -------------------------------------------------------------------------
+    path("suppliers/", procurement_views.supplier_list_view, name="supplier_list"),
+    path("suppliers/create/", procurement_views.supplier_create_view, name="supplier_create"),
+    path("suppliers/<int:supplier_id>/", procurement_views.supplier_detail_view, name="supplier_detail"),
+    path("suppliers/<int:supplier_id>/edit/", procurement_views.supplier_edit_view, name="supplier_edit"),
+    path("suppliers/<int:supplier_id>/archive/", procurement_views.supplier_archive_view, name="supplier_archive"),
+
+    # Aliases under /procurement/suppliers/
+    path("procurement/suppliers/", procurement_views.supplier_list_view, name="procurement_supplier_list"),
+    path("procurement/suppliers/create/", procurement_views.supplier_create_view, name="procurement_supplier_create"),
+    path("procurement/suppliers/<int:supplier_id>/", procurement_views.supplier_detail_view, name="procurement_supplier_detail"),
+    path("procurement/suppliers/<int:supplier_id>/edit/", procurement_views.supplier_edit_view, name="procurement_supplier_edit"),
+    path("procurement/suppliers/<int:supplier_id>/archive/", procurement_views.supplier_archive_view, name="procurement_supplier_archive"),
+
+    path("procurement/", procurement_views.procurement_list_view, name="procurement_list"),
+    path("procurement/create/", procurement_views.procurement_create_view, name="procurement_create"),
+    path("procurement/inbox/", procurement_views.procurement_review_inbox_view, name="procurement_review_inbox"),
+    path("procurement/<int:procurement_id>/", procurement_views.procurement_detail_view, name="procurement_detail"),
+    path("procurement/<int:procurement_id>/edit/", procurement_views.procurement_edit_view, name="procurement_edit"),
+    path("procurement/<int:procurement_id>/delete/", procurement_views.procurement_delete_view, name="procurement_delete"),
+    path("procurement/<int:procurement_id>/items/create/", procurement_views.procurement_item_create_view, name="procurement_item_create"),
+    path("procurement/<int:procurement_id>/items/add/", procurement_views.procurement_item_create_view, name="procurement_item_add"),
+    path("procurement/<int:procurement_id>/items/<int:item_id>/delete/", procurement_views.procurement_item_delete_view, name="procurement_item_delete"),
+    path("procurement/<int:procurement_id>/evidence/upload/", procurement_views.procurement_evidence_upload_view, name="procurement_evidence_upload"),
+    path("procurement/<int:procurement_id>/validate/", procurement_views.procurement_validate_view, name="procurement_validate"),
+    path("procurement/<int:procurement_id>/anomalies/detect/", procurement_views.procurement_anomaly_detect_view, name="procurement_anomaly_detect"),
+    path("procurement/<int:procurement_id>/submit/", procurement_views.procurement_submit_view, name="procurement_submit"),
+    path("procurement/<int:procurement_id>/review/", procurement_views.procurement_review_view, name="procurement_review"),
+    path("procurement/<int:procurement_id>/correction/", procurement_views.procurement_correction_view, name="procurement_correction"),
+    path("procurement/<int:procurement_id>/ocr-compare/<int:evidence_id>/", procurement_views.procurement_ocr_compare_view, name="procurement_ocr_compare"),
 ]
 
 

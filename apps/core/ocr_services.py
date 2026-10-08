@@ -874,8 +874,14 @@ def execute_ocr_run(
         if auto_extract:
             extract_structured_fields(ocr_run, result.extracted_text)
 
-        # 8. Compute telemetry comparison with Activity Record
-        comparison = compare_ocr_with_activity_record(ocr_run)
+        # 8. Compute telemetry comparison with Activity Record or Procurement Record
+        if evidence.activity_record:
+            comparison = compare_ocr_with_activity_record(ocr_run)
+        elif evidence.procurement_record:
+            from apps.core.procurement_services import compare_ocr_with_procurement
+            comparison = compare_ocr_with_procurement(ocr_run, evidence.procurement_record)
+        else:
+            comparison = {}
         result.raw_metadata["comparison"] = comparison
         ocr_run.raw_metadata = result.raw_metadata
         ocr_run.save()

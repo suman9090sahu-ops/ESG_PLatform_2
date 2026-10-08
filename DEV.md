@@ -1140,10 +1140,82 @@ Playwright automated browser download remains blocked on this environment due to
 
 ## 12. Next Recommended Phase
 
-**PHASE 16 — EMISSION FACTOR ENGINE & SCOPE 1/2 GHG ACCOUNTING**
-- Centralized, versioned Emission Factor Library (IPCC AR5/AR6, CEA CO2 baseline database, Defra/EPA).
-- Scope 1 Direct Stationary & Mobile Combustion GHG calculation formulas ($Quantity \times EF = tCO_2e$).
-- Scope 2 Purchased Electricity Location-Based and Market-Based GHG calculations.
-- Traceability links connecting raw telemetry, evidence, validation, anomalies, and emission calculations.
+**PHASE 16 — SUPPLIER & PROCUREMENT MANAGEMENT** (COMPLETED)
+
+---
+
+# Phase 16 — Supplier & Procurement Management
+
+## 1. Implementation Status
+**COMPLETE**
+
+## 2. Supplier Management
+- **Master Entity (`Supplier`)**: Centralized supplier and vendor master with stable internal identifier (`supplier_code`, indexed & unique), `legal_name`, `supplier_type` (`GOODS`, `SERVICES`, `MANUFACTURER`, `DISTRIBUTOR`, etc.), `status` (`ACTIVE`, `INACTIVE`, `BLOCKED`, `ARCHIVED`), and organizational scoping (`company`, nullable for enterprise-wide suppliers).
+- **ESG Profile**: Built-in tracking for `tax_identifier` (GST/PAN), `environmental_certifications` (ISO 14001, etc.), `has_esg_declaration` boolean, and `esg_notes` (carbon footprint, renewable share).
+- **Lifecycle & Historical Integrity**: Soft-archival via `.archive(user)` prevents destructive deletion of suppliers referenced by historical procurement records.
+- **Duplicate Protection**: `find_supplier_duplicates()` detects potential duplicate vendors by matching normalized name, supplier code, or tax identifier.
+
+## 3. Procurement Management
+- **Transaction Entity (`ProcurementRecord`)**: Commercial purchasing transaction with unique `procurement_number` (format: `PROC-<YEAR><MONTH>-<SITE_CODE>-<SEQ>`), relationships to `Supplier`, `Company`, `Project`, `Site`, and open `ReportingPeriod`. Captures `purchase_date`, `purchase_order_reference`, `invoice_reference`, `invoice_date`, `category` (11 controlled choices), `total_amount`, and `currency` (default `"INR"`).
+- **Line Items (`ProcurementItem`)**: Multi-item commercial breakdown with `quantity` (database `CheckConstraint > 0`), `unit` (`UnitOfMeasure` FK with custom unit fallback), `unit_price`, and `total_amount`. Pre-integrated for future calculations with `activity_master` and `scope3_category` (`CAT_01` Purchased Goods and Services).
+- **Auto-Syncing Totals**: Adding or deleting items automatically recalculates and synchronizes header `total_amount`.
+- **Deletion Safety**: Only `DRAFT` records can be deleted; submitted or verified records are locked (`is_locked=True`).
+
+## 4. Evidence Integration
+- **Dual-Parent Audit Documents (`Evidence`)**: Reused Phase 09 `Evidence` architecture with SHA-256 tamper-evident checksums, magic byte MIME validation, and secure storage partitioning.
+- **Relational Lineage**: Dual FK support (`activity_record` or `procurement_record`, `on_delete=models.PROTECT`).
+
+## 5. OCR Integration
+- **Document Intel Reuse**: Integrated with Phase 11 `OCRRun` / `OCRField`.
+- **Reconciliation Engine (`compare_ocr_with_procurement`)**: Compares stored commercial records with OCR-extracted fields (Invoice Number, Invoice Date, Total Amount, Supplier Name) and provides match/mismatch status, discrepancy deltas, and confidence scores.
+- **Zero Silent Overwrite**: OCR extraction serves strictly as human review assistance and never silently mutates commercial or operational values.
+
+## 6. Validation Integration
+- **Deterministic Rules (`validate_procurement`)**: Evaluates active supplier state, open reporting period boundaries, site/project hierarchical alignment, non-negative totals, presence of line items, and supporting evidence attachment.
+- **Audit Logging**: Emits `AuthAuditLog.EventType.PROCUREMENT_VALIDATED`.
+
+## 7. Anomaly Integration
+- **Review Signals (`detect_procurement_anomalies`)**: Flags commercial anomalies without blocking execution:
+  - `DUPLICATE_INVOICE`: Detects identical invoice reference for the same supplier across records.
+  - `AMOUNT_SPIKE`: Identifies procurement transactions exceeding rolling average by > 200%.
+  - `PRICE_VARIANCE`: Identifies unit prices deviating by > 100% from historical supplier purchases for the same material.
+- **Audit Logging**: Emits `AuthAuditLog.EventType.PROCUREMENT_ANOMALY_DETECTED`.
+
+## 8. Workflow & Governance Integration
+- **State Machine**: `DRAFT` -> `SUBMITTED` -> `UNDER_REVIEW` -> `VERIFIED` (or `CORRECTION_REQUESTED` -> `SUBMITTED`).
+- **Site Manager Flow**: Creates draft procurement, adds line items, attaches invoice evidence, runs validation/anomaly detection, and formally submits (locking record).
+- **Subsidiary Review Desk**: Division manager review inbox (`/procurement/inbox/`) provides workspace to inspect vendor details, line items, evidence, OCR comparisons, and anomalies, with decisions to `VERIFY`, `REQUEST_CORRECTION`, or `REJECT`.
+- **Correction & Resubmission**: Site Manager remediates flagged records at `/procurement/<id>/correct/`, updates data or items, re-validates, and resubmits.
+
+## 9. RBAC & IDOR Protection
+- **Queryset Scoping**: Site Managers see only assigned sites' procurements; Subsidiary Managers see division jurisdictions; Operators and ESG Managers see enterprise scope.
+- **Object Access Guards**: `user_can_access_procurement`, `user_can_modify_procurement`, `user_can_submit_procurement`, `user_can_review_procurement`.
+- **Anti-IDOR Defense**: All routes enforce server-side ownership. Tampered parameters yield `403 Forbidden` and log `UNAUTHORIZED_ACCESS_ATTEMPT`.
+
+## 10. Verification & Test Metrics
+- **Django System Check (`manage.py check`)**: PASS (0 issues)
+- **Migration Check (`makemigrations --check`)**: PASS (0 pending migrations, migrations `0014` & `0015` applied)
+- **Phase 16 Test Suite (`tests/test_phase16_supplier_procurement.py`)**: 26/26 PASSED (4.144s)
+- **Phase 12 Regression Suite**: 27/27 PASSED (21.478s)
+- **Phase 13 Regression Suite**: 16/16 PASSED (16.940s)
+- **Phase 14 Regression Suite**: 21/21 PASSED (16.043s)
+- **Phase 15 Regression Suite**: 32/32 PASSED (22.184s)
+- **Phase 09 Evidence Regression Suite**: 17/17 PASSED (45.909s)
+- **Full Monolith Regression Suite (`manage.py test`)**: 421/421 PASSED
+- **Live Empirical Script (`tests/verify_phase16_live.py`)**: 8/8 Steps PASSED (100%)
+- **Live HTTP Test Suite (`tests/test_live_procurement_http.py`)**: 15/15 Checks PASSED (100%)
+
+## 11. Browser Verification
+- **Status**: Documented environment dependency limitation.
+- **Details**: Direct automated browser context creation encountered an upstream Playwright Windows binary download failure (`HTTP 404 from playwright.azureedge.net for playwright-1.57.0-win32_x64.zip`).
+- **Alternative Verification**: Full end-to-end operational workflows, dark-theme HTML template rendering, form submissions, workflow state transitions, and IDOR denials were empirically verified across all 18 routes via Django Client live HTTP suite (`15/15 PASSED`) and automated test suites (`26/26 PASSED`).
+
+## 12. Known Limitations
+- Complete Scope 3 emission calculation engine and emission factor library matching are deferred to Scope 3 / Calculation phases as specified by project scope rules.
+- Currency conversions are not auto-converted across foreign currencies (stored explicitly as provided).
+
+## 13. Next Phase
+**PHASE 17 — TRANSPORT / LOGISTICS**
+
 
 

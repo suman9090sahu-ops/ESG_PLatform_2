@@ -37,6 +37,9 @@ from apps.core.models import (
     AnomalyRule,
     AnomalyDetectionRun,
     AnomalyRecord,
+    Supplier,
+    ProcurementRecord,
+    ProcurementItem,
 )
 
 
@@ -1051,3 +1054,69 @@ class AnomalyRecordAdmin(admin.ModelAdmin):
     list_filter = ("severity", "status", "rule_code", "created_at")
     search_fields = ("rule_code", "explanation", "review_comment")
     ordering = ("-created_at",)
+
+
+# -----------------------------------------------------------------------------
+# PHASE 16: SUPPLIER & PROCUREMENT ADMIN
+# -----------------------------------------------------------------------------
+
+@admin.register(Supplier)
+class SupplierAdmin(admin.ModelAdmin):
+    list_display = (
+        "supplier_code",
+        "name",
+        "supplier_type",
+        "status",
+        "company",
+        "tax_identifier",
+        "has_esg_declaration",
+        "created_at",
+    )
+    list_filter = ("status", "supplier_type", "has_esg_declaration", "company")
+    search_fields = ("supplier_code", "name", "legal_name", "tax_identifier", "contact_email")
+    ordering = ("name",)
+
+
+class ProcurementItemInline(admin.TabularInline):
+    model = ProcurementItem
+    extra = 1
+    fields = ("line_number", "item_name", "category", "quantity", "unit", "unit_price", "total_amount", "activity_master", "scope3_category")
+
+
+@admin.register(ProcurementRecord)
+class ProcurementRecordAdmin(admin.ModelAdmin):
+    list_display = (
+        "procurement_number",
+        "supplier",
+        "site",
+        "reporting_period",
+        "purchase_date",
+        "category",
+        "total_amount",
+        "currency",
+        "status",
+        "validation_status",
+        "has_anomalies",
+    )
+    list_filter = ("status", "validation_status", "has_anomalies", "category", "company", "reporting_period")
+    search_fields = ("procurement_number", "invoice_reference", "purchase_order_reference", "supplier__name")
+    ordering = ("-purchase_date", "-created_at")
+    inlines = [ProcurementItemInline]
+
+
+@admin.register(ProcurementItem)
+class ProcurementItemAdmin(admin.ModelAdmin):
+    list_display = (
+        "procurement",
+        "line_number",
+        "item_name",
+        "category",
+        "quantity",
+        "unit",
+        "total_amount",
+        "activity_master",
+        "scope3_category",
+    )
+    list_filter = ("category", "scope3_category")
+    search_fields = ("item_name", "procurement__procurement_number")
+    ordering = ("procurement", "line_number")

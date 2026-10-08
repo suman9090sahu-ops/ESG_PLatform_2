@@ -15,7 +15,8 @@ import mimetypes
 import os
 from django.conf import settings
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db import transaction
+from django.db import models, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from apps.core.auth_services import log_auth_event
@@ -196,14 +197,21 @@ def _verify_file_signature(ext_lower, header, filename):
 def get_accessible_evidence(user, include_retired=True):
     """
     Returns QuerySet of Evidence documents accessible to the user based on
-    their authorized organizational scope (sites, subsidiaries, companies).
+    their authorized organizational scope (sites, subsidiaries, companies),
+    encompassing both ActivityRecord evidence and ProcurementRecord evidence.
     """
     if not user or not user.is_authenticated or not user.is_active:
         return Evidence.objects.none()
 
     accessible_records = get_accessible_activity_records(user)
+    from apps.core.procurement_services import get_accessible_procurements
+    accessible_procurements = get_accessible_procurements(user)
+
     qs = (
-        Evidence.objects.filter(activity_record__in=accessible_records)
+        Evidence.objects.filter(
+            models.Q(activity_record__in=accessible_records)
+            | models.Q(procurement_record__in=accessible_procurements)
+        )
         .select_related(
             "activity_record",
             "activity_record__site",
@@ -214,6 +222,11 @@ def get_accessible_evidence(user, include_retired=True):
             "activity_record__activity",
             "activity_record__activity__category",
             "activity_record__unit",
+            "procurement_record",
+            "procurement_record__supplier",
+            "procurement_record__site",
+            "procurement_record__company",
+            "procurement_record__reporting_period",
             "uploaded_by",
             "retired_by",
         )
@@ -237,24 +250,37 @@ def user_can_access_evidence(user, evidence):
     if not user or not user.is_authenticated or not user.is_active or not evidence:
         return False
 
-    return user_can_access_activity_record(user, evidence.activity_record)
+    if evidence.activity_record_id:
+        return user_can_access_activity_record(user, evidence.activity_record)
+    if evidence.procurement_record_id:
+        from apps.core.procurement_services import user_can_access_procurement
+        return user_can_access_procurement(user, evidence.procurement_record)
+
+    return False
 
 
-def user_can_upload_evidence(user, activity_record):
+def user_can_upload_evidence(user, activity_record=None, procurement_record=None):
     """
-    Evaluates whether a user has authority to upload evidence against an ActivityRecord.
+    Evaluates whether a user has authority to upload evidence against an ActivityRecord or ProcurementRecord.
     - Site Managers can upload evidence for records in their assigned sites while record is editable.
     - MEIL Operator and ESG Manager can upload evidence for editable records.
     - Auditor is strictly read-only.
     - Subsidiary Manager is review-only.
-    - Record must be in editable state (DRAFT, READY, REJECTED) and reporting period must be OPEN.
+    - Record must be in editable state and reporting period must be OPEN.
     """
-    if not user or not user.is_authenticated or not user.is_active or not activity_record:
+    if not user or not user.is_authenticated or not user.is_active:
         return False
 
     if user.has_role(Role.Code.AUDITOR) and not (
         user.is_superuser or user.has_role(Role.Code.MEIL_OPERATOR)
     ):
+        return False
+
+    if procurement_record:
+        from apps.core.procurement_services import user_can_upload_procurement_evidence
+        return user_can_upload_procurement_evidence(user, procurement_record)
+
+    if not activity_record:
         return False
 
     if user.has_role(Role.Code.SUBSIDIARY_MANAGER) and not (
@@ -268,7 +294,7 @@ def user_can_upload_evidence(user, activity_record):
 def user_can_download_evidence(user, evidence):
     """
     Evaluates whether a user is authorized to download or view the file content.
-    Authorized for any user with access to the parent activity record (including Auditor).
+    Authorized for any user with access to the parent activity or procurement record (including Auditor).
     """
     return user_can_access_evidence(user, evidence)
 
@@ -276,7 +302,7 @@ def user_can_download_evidence(user, evidence):
 def user_can_retire_evidence(user, evidence):
     """
     Evaluates whether a user can retire/replace an active Evidence document.
-    Allowed only while the parent activity record is editable and evidence is ACTIVE.
+    Allowed only while the parent record is editable and evidence is ACTIVE.
     """
     if not user_can_access_evidence(user, evidence):
         return False
@@ -284,14 +310,20 @@ def user_can_retire_evidence(user, evidence):
     if evidence.status != EvidenceStatus.ACTIVE:
         return False
 
-    return user_can_modify_activity_record(user, evidence.activity_record)
+    if evidence.activity_record_id:
+        return user_can_modify_activity_record(user, evidence.activity_record)
+    if evidence.procurement_record_id:
+        from apps.core.procurement_services import user_can_modify_procurement
+        return user_can_modify_procurement(user, evidence.procurement_record)
+
+    return False
 
 
 def user_can_delete_evidence(user, evidence):
     """
     Evaluates whether a user can hard-delete an Evidence document.
     Strictly permitted ONLY when:
-    1. Parent ActivityRecord is in DRAFT state.
+    1. Parent ActivityRecord or ProcurementRecord is in DRAFT state.
     2. Reporting period is OPEN.
     3. User is either the uploader or MEIL Operator/Superuser.
     Once the record is READY, SUBMITTED, VERIFIED, or APPROVED, hard-deletion is blocked.
@@ -299,11 +331,20 @@ def user_can_delete_evidence(user, evidence):
     if not user_can_access_evidence(user, evidence):
         return False
 
-    record = evidence.activity_record
-    if record.status != RecordStatus.DRAFT:
-        return False
-
-    if not can_user_modify_data(user, record.reporting_period):
+    if evidence.activity_record_id:
+        record = evidence.activity_record
+        if record.status != RecordStatus.DRAFT:
+            return False
+        if not can_user_modify_data(user, record.reporting_period):
+            return False
+    elif evidence.procurement_record_id:
+        proc = evidence.procurement_record
+        from apps.core.models import ProcurementStatus
+        if proc.status != ProcurementStatus.DRAFT:
+            return False
+        if not can_user_modify_data(user, proc.reporting_period):
+            return False
+    else:
         return False
 
     # Only uploader or platform supervisor
@@ -324,28 +365,45 @@ def user_can_delete_evidence(user, evidence):
 
 @transaction.atomic
 def create_evidence_record(
-    activity_record,
-    uploaded_file,
-    evidence_type,
+    activity_record=None,
+    uploaded_file=None,
+    evidence_type=None,
     description="",
     user=None,
     request=None,
+    procurement_record=None,
 ):
     """
     Atomically validates the uploaded file, saves the file to safe storage,
     creates the Evidence record, and logs an audit trail event.
+    Supports either ActivityRecord or ProcurementRecord.
     """
+    if not activity_record and not procurement_record:
+        raise ValidationError("Evidence document must be linked to an ActivityRecord or a ProcurementRecord.")
+
     # 1. Authorize upload
-    if not user_can_upload_evidence(user, activity_record):
-        log_auth_event(
-            AuthAuditLog.EventType.UNAUTHORIZED_ACCESS_ATTEMPT,
-            request=request,
-            user=user,
-            resource_accessed=f"ActivityRecord:{activity_record.id}/evidence/upload",
-            details="Unauthorized attempt to upload evidence for activity record.",
-            success=False,
-        )
-        raise PermissionDenied("You do not have permission to attach evidence to this activity record.")
+    if activity_record:
+        if not user_can_upload_evidence(user, activity_record=activity_record):
+            log_auth_event(
+                AuthAuditLog.EventType.UNAUTHORIZED_ACCESS_ATTEMPT,
+                request=request,
+                user=user,
+                resource_accessed=f"ActivityRecord:{activity_record.id}/evidence/upload",
+                details="Unauthorized attempt to upload evidence for activity record.",
+                success=False,
+            )
+            raise PermissionDenied("You do not have permission to attach evidence to this activity record.")
+    elif procurement_record:
+        if not user_can_upload_evidence(user, procurement_record=procurement_record):
+            log_auth_event(
+                AuthAuditLog.EventType.UNAUTHORIZED_ACCESS_ATTEMPT,
+                request=request,
+                user=user,
+                resource_accessed=f"ProcurementRecord:{procurement_record.id}/evidence/upload",
+                details="Unauthorized attempt to upload evidence for procurement record.",
+                success=False,
+            )
+            raise PermissionDenied("You do not have permission to attach evidence to this procurement record.")
 
     # 2. Validate file
     file_meta = validate_evidence_file(uploaded_file)
@@ -353,6 +411,7 @@ def create_evidence_record(
     # 3. Create Evidence instance
     evidence = Evidence(
         activity_record=activity_record,
+        procurement_record=procurement_record,
         file=uploaded_file,
         evidence_type=evidence_type or EvidenceType.INVOICE,
         original_filename=file_meta["original_filename"],
@@ -365,13 +424,18 @@ def create_evidence_record(
     )
     evidence.save()
 
-    # 4. Sync reference on ActivityRecord if empty
-    if not activity_record.evidence_reference:
+    # 4. Sync reference if empty
+    if activity_record and not activity_record.evidence_reference:
         ref_label = description.strip() if description and len(description.strip()) <= 50 else file_meta["original_filename"]
         activity_record.evidence_reference = ref_label[:255]
         activity_record.save(update_fields=["evidence_reference", "updated_at"])
 
     # 5. Log audit event
+    target_desc = (
+        f"ActivityRecord #{activity_record.id} ({activity_record.activity.name} @ {activity_record.site.name})"
+        if activity_record
+        else f"Procurement #{procurement_record.procurement_number} ({procurement_record.supplier.name})"
+    )
     log_evidence_event(
         AuthAuditLog.EventType.EVIDENCE_UPLOADED,
         evidence=evidence,
@@ -379,16 +443,15 @@ def create_evidence_record(
         request=request,
         details=(
             f"Uploaded {evidence.get_evidence_type_display()} '{evidence.original_filename}' "
-            f"({evidence.file_size_formatted}) for ActivityRecord #{activity_record.id} "
-            f"({activity_record.activity.name} @ {activity_record.site.name}). SHA-256: {evidence.file_hash[:16]}..."
+            f"({evidence.file_size_formatted}) for {target_desc}. SHA-256: {evidence.file_hash[:16]}..."
         ),
     )
 
     logger.info(
-        "Evidence [%s] uploaded by user %s for ActivityRecord %s",
+        "Evidence [%s] uploaded by user %s for %s",
         evidence.id,
         user.username if user else "System",
-        activity_record.id,
+        target_desc,
     )
     return evidence
 

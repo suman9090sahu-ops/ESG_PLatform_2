@@ -328,3 +328,33 @@ The OCR Engine module (`/evidence/<id>/ocr/...`) enforces strict authorization b
 5. **Security Audit Logging**:
    - Every OCR execution records `OCR_REQUESTED`, `OCR_STARTED`, `OCR_COMPLETED`, or `OCR_FAILED` in the immutable `AuthAuditLog`.
 
+---
+
+## 16. Supplier & Procurement Management RBAC (Phase 16)
+
+The Supplier and Procurement Management module (`/procurement/...` and `/suppliers/...`) enforces multi-tier scoping across vendor catalogs and commercial purchasing transactions:
+
+| Role | Supplier Directory (`/suppliers/`) | Create / Edit Supplier | Soft-Archive Supplier | Procurement Ledger (`/procurement/`) | Create Procurement | Submit Procurement | Review / Verify Procurement | Request Correction |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `SITE_MANAGER` | View Active Directory | **Prohibited (403)** | **Prohibited (403)** | Scoped to Assigned Sites | Permitted for assigned sites | Permitted | **Prohibited (403)** | Remediation workspace |
+| `SUBSIDIARY_MANAGER` | View Directory | **Prohibited (403)** | **Prohibited (403)** | Scoped to Division Sites | **Prohibited (403)** | **Prohibited (403)** | Permitted in scope | Permitted |
+| `MEIL_OPERATOR` | Universal Enterprise Scope | Full CRUD | Permitted | Universal Enterprise Scope | Permitted | Permitted | Permitted | Permitted |
+| `ESG_MANAGER` | Universal Enterprise Scope | Full CRUD | Permitted | Universal Enterprise Scope | Permitted | Permitted | Permitted | Permitted |
+| `AUDITOR` | Universal Scope (Read-Only) | **Prohibited (403)** | **Prohibited (403)** | Universal Scope (Read-Only) | **Prohibited (403)** | **Prohibited (403)** | **Prohibited (403)** | **Prohibited (403)** |
+
+### Server-Side Guards & Anti-IDOR Protections:
+1. **Queryset Scoping (`get_accessible_suppliers`, `get_accessible_procurements`)**:
+   - Site Managers can view only procurement records belonging to their explicitly assigned operational sites.
+   - Subsidiary Managers can view procurement records belonging to projects and sites under their assigned subsidiaries.
+   - ESG Managers, MEIL Operators, and Auditors view all enterprise records within active company assignments.
+2. **Object Authorization (`user_can_access_procurement`, `user_can_modify_procurement`)**:
+   - Attempts to access, edit, delete, or submit procurement records from unassigned sites or other companies raise `PermissionDenied` (`403 Forbidden`) and log `UNAUTHORIZED_ACCESS_ATTEMPT`.
+3. **Workflow Segregation**:
+   - Site Managers cannot verify their own procurements (`user_can_review_procurement` returns `False`).
+   - Subsidiary Managers cannot create raw procurement records, ensuring separation of duties between purchasing entry and compliance approval.
+4. **Historical Preservation & Safe Deletion**:
+   - Only `DRAFT` procurement records can be hard-deleted.
+   - Once submitted or verified, records are locked (`is_locked=True`) and mutations require the formal correction and resubmission workflow.
+   - Suppliers cannot be hard-deleted if referenced by historical procurement records; soft-archiving (`archive()`) changes status to `ARCHIVED` while keeping historical linkages intact.
+
+

@@ -323,3 +323,70 @@ ANOMALY GOVERNANCE                     CORRECTION WORKFLOW
 4. **Controlled Review Lifecycle:** OPEN -> ACKNOWLEDGED -> EXPLAINED / RESOLVED / DISMISSED. Strict server-side RBAC protects all state transitions.
 5. **Phase 14 Correction Integration:** Resubmissions automatically trigger anomaly re-evaluation, auto-resolving normalized telemetry while preserving historical audit trails.
 
+---
+
+## 11. Phase 16 — Supplier & Procurement Management Workflow
+
+```text
+===================================================================================
+                SUPPLIER & PROCUREMENT MANAGEMENT LIFECYCLE
+===================================================================================
+
+[SUPPLIER REGISTRATION & MASTER GOVERNANCE]
+    MEIL Operator / Corporate Scope
+    │
+    ├─► Register Supplier (Code, Legal Name, Type, GST/Tax ID, Contact)
+    ├─► ESG Information (Environmental Certifications, ESG Declaration, Carbon Footprint Notes)
+    └─► Lifecycle Management: ACTIVE ──► INACTIVE / BLOCKED / ARCHIVED (Soft-archive preserves history)
+
+[COMMERCIAL PROCUREMENT TRANSACTION]
+    Site Manager (Scoped to Assigned Site)
+    │
+    ├─► Create Procurement Record (Supplier, Site, Open Reporting Period, Invoice #, PO #, Date, Currency)
+    ├─► Add Procurement Line Items (Material/Service, Quantity, Unit, Unit Price, Total)
+    │     └─► Optional Link: Activity Master & Scope 3 Category (CAT_01 Purchased Goods & Services)
+    ├─► Header Total Automatically Synchronized
+    │
+    ▼
+[EVIDENCE ATTACHMENT & OCR COMPARISON]
+    │
+    ├─► Attach Supporting Invoice / PO Evidence (Dual-parent Evidence system, SHA-256 Checksum)
+    ├─► Trigger OCR Processing (Invoice Number, Date, Amount, Vendor Name)
+    └─► OCR Comparison: Side-by-side reconciliation (Stored vs OCR extracted; Zero Silent Overwrite)
+    │
+    ▼
+[DETERMINISTIC VALIDATION & ANOMALY EVALUATION]
+    │
+    ├─► Validation Engine: Active supplier, period match, positive amounts, items present, supporting evidence
+    ├─► Anomaly Engine: Duplicate Invoice Check, Purchase Amount Spike (+200%), Unit Price Variance (+100%)
+    │
+    ▼
+[FORMAL SUBMISSION]
+    │
+    └─► Site Manager Submits Procurement ──► Status: SUBMITTED (Record locked against tampering)
+          │
+          ▼
+[SUBSIDIARY MANAGER REVIEW INBOX]
+    │
+    ├─► Inspect Supplier, Line Items, Supporting Invoices, OCR Comparison, Validation & Anomalies
+    │
+    ├──► VERIFY ──────────────────► Status: VERIFIED (Ready for future Scope 3 calculation & BRSR consolidation)
+    ├──► REQUEST CORRECTION ──────► Status: CORRECTION_REQUESTED (Reason, notes sent back to Site Manager)
+    │         │
+    │         ▼
+    │    [Site Manager Remediation]
+    │    - Edits procurement details or line items
+    │    - Re-validates and re-checks anomalies
+    │    - Resubmits ──► Status: SUBMITTED (Preserves revision history)
+    │
+    └──► REJECT ──────────────────► Status: REJECTED (Commercial record rejected with formal justification)
+===================================================================================
+```
+
+### Architectural Principles & Scope Controls:
+1. **Supplier ≠ Procurement:** Supplier is a governed enterprise master entity. Procurement is an operational purchasing transaction scoped to a site and reporting period.
+2. **Procurement ≠ Activity Record:** Commercial purchases do not replace operational telemetry; they represent commercial data with clean integration hooks to Activity Master and future Scope 3 emissions calculations.
+3. **No Silent Overwrite:** OCR extractions provide verification assistance only; extracted figures never mutate commercial data automatically.
+4. **Permanent Lineage:** Historical records are locked upon submission; corrections and reviews are tracked in the immutable `AuthAuditLog`.
+
+

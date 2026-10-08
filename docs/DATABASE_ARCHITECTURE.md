@@ -632,3 +632,110 @@ OCR output is strictly treated as **UNVERIFIED DOCUMENT INTEL**. It never silent
 - **Migration**:
   - `apps/core/migrations/0013_alter_authauditlog_event_type_anomalydetectionrun_and_more.py`
 
+---
+
+## 16. Phase 16 — Supplier & Procurement Management Schema
+
+Phase 16 establishes a centralized master vendor and commercial procurement repository connecting purchasing transactions to physical supporting evidence, deterministic validation, anomaly detection, approval workflows, and future Scope 3 GHG accounting.
+
+### Entity Relationship Diagram
+```text
++----------------------------------------------------------------------------------------------------+
+|                                              Supplier                                              |
+|  - id (BigAutoField, PK)                                                                           |
+|  - supplier_code (VARCHAR(50), UNIQUE, INDEX)                                                      |
+|  - name (VARCHAR(255), INDEX)                                                                      |
+|  - legal_name (VARCHAR(255), BLANK)                                                                |
+|  - supplier_type (VARCHAR(30), CHOICES: SupplierType, DEFAULT: VENDOR)                             |
+|  - status (VARCHAR(20), CHOICES: SupplierStatus, DEFAULT: ACTIVE, INDEX)                           |
+|  - company (FK -> Company.id, PROTECT, NULL, BLANK)                                                |
+|  - contact_name (VARCHAR(150), BLANK)                                                              |
+|  - contact_email (VARCHAR(254), BLANK)                                                             |
+|  - contact_phone (VARCHAR(50), BLANK)                                                              |
+|  - address (TEXT, BLANK)                                                                           |
+|  - city (VARCHAR(100), BLANK)                                                                      |
+|  - state (VARCHAR(100), BLANK)                                                                     |
+|  - country (VARCHAR(100), DEFAULT: "India", BLANK)                                                 |
+|  - tax_identifier (VARCHAR(50), BLANK, INDEX)                                                      |
+|  - environmental_certifications (TEXT, BLANK)                                                      |
+|  - has_esg_declaration (BOOLEAN, DEFAULT: False)                                                   |
+|  - esg_notes (TEXT, BLANK)                                                                         |
+|  - created_by (FK -> User.id, SET_NULL, NULL, BLANK)                                               |
+|  - updated_by (FK -> User.id, SET_NULL, NULL, BLANK)                                               |
+|  - created_at, updated_at (TIMESTAMPTZ)                                                            |
++----------------------------------------------------------------------------------------------------+
+                                       ▲ 1
+                                       │ supplies
+                                       ▼ N
++----------------------------------------------------------------------------------------------------+
+|                                         ProcurementRecord                                          |
+|  - id (BigAutoField, PK)                                                                           |
+|  - procurement_number (VARCHAR(64), UNIQUE, INDEX)                                                 |
+|  - supplier_id (FK -> Supplier.id, PROTECT, INDEX, related_name="procurement_records")              |
+|  - company_id (FK -> Company.id, PROTECT, INDEX)                                                   |
+|  - project_id (FK -> Project.id, PROTECT, NULL, BLANK, INDEX)                                      |
+|  - site_id (FK -> Site.id, PROTECT, INDEX, related_name="procurement_records")                     |
+|  - reporting_period_id (FK -> ReportingPeriod.id, PROTECT, INDEX)                                  |
+|  - purchase_date (DATE, INDEX)                                                                     |
+|  - purchase_order_number (VARCHAR(100), BLANK, INDEX)                                              |
+|  - invoice_number (VARCHAR(100), BLANK, INDEX)                                                     |
+|  - invoice_date (DATE, NULL, BLANK)                                                                |
+|  - category (VARCHAR(40), CHOICES: ProcurementCategory, DEFAULT: RAW_MATERIAL, INDEX)              |
+|  - description (TEXT, BLANK)                                                                       |
+|  - total_amount (DECIMAL(18,2), DEFAULT: 0.00)                                                     |
+|  - currency (VARCHAR(10), DEFAULT: "INR")                                                          |
+|  - status (VARCHAR(30), CHOICES: ProcurementStatus, DEFAULT: DRAFT, INDEX)                         |
+|  - is_locked (BOOLEAN, DEFAULT: False, INDEX)                                                      |
+|  - validation_status (VARCHAR(20), DEFAULT: "UNVALIDATED", INDEX)                                  |
+|  - has_anomalies (BOOLEAN, DEFAULT: False, INDEX)                                                  |
+|  - review_notes (TEXT, BLANK)                                                                      |
+|  - correction_reason (TEXT, BLANK)                                                                 |
+|  - created_by (FK -> User.id, SET_NULL, NULL, BLANK)                                               |
+|  - updated_by (FK -> User.id, SET_NULL, NULL, BLANK)                                               |
+|  - created_at, updated_at (TIMESTAMPTZ)                                                            |
++----------------------------------------------------------------------------------------------------+
+                      ▲ 1                                                   ▲ 1
+                      │ contains                                            │ supports
+                      ▼ N                                                   ▼ N
++-------------------------------------------------------+  +-----------------------------------------+
+|                    ProcurementItem                    |  |                 Evidence                |
+|  - id (BigAutoField, PK)                              |  |  - id (BigAutoField, PK)                |
+|  - procurement_record_id (FK -> Record, CASCADE)      |  |  - activity_record_id (FK, NULL, BLANK) |
+|  - item_name (VARCHAR(255))                           |  |  - procurement_record_id (FK -> Record) |
+|  - description (TEXT, BLANK)                          |  |  - file, sha256_hash, evidence_type     |
+|  - category (VARCHAR(40), CHOICES)                    |  |  - file_size, status, uploaded_by       |
+|  - quantity (DECIMAL(18,4), CHECK: quantity > 0)      |  |  - created_at, updated_at               |
+|  - unit (VARCHAR(30))                                 |  +-----------------------------------------+
+|  - unit_price (DECIMAL(18,2), DEFAULT: 0.00)          |
+|  - total_amount (DECIMAL(18,2), DEFAULT: 0.00)        |
+|  - activity_master (FK -> ActivityMaster, SET_NULL)   |
+|  - scope3_category (VARCHAR(50), BLANK)               |
+|  - created_at, updated_at (TIMESTAMPTZ)               |
++-------------------------------------------------------+
+```
+
+### Constraints, Integrity Rules & Field Additions (Phase 16)
+- **Supplier Code Uniqueness**: `unique=True` on `Supplier.supplier_code` ensures persistent vendor identification across organizational divisions.
+- **Controlled Lifecycles**:
+  - `SupplierStatus`: `ACTIVE`, `INACTIVE`, `BLOCKED`, `ARCHIVED`. Soft-archival via `.archive(user)` prevents destructive deletion of historical supplier records.
+  - `ProcurementStatus`: `DRAFT`, `SUBMITTED`, `UNDER_REVIEW`, `VERIFIED`, `CORRECTION_REQUESTED`, `REJECTED`, `CANCELLED`.
+  - `ProcurementCategory`: `RAW_MATERIAL`, `CONSTRUCTION_MATERIAL`, `FUEL`, `ELECTRICITY_ENERGY`, `EQUIPMENT`, `CONSUMABLE`, `SERVICES`, `TRAVEL`, `WASTE_SERVICE`, `TRANSPORT_SERVICE`, `OTHER`.
+- **Non-Negative Quantity Constraint**: `CheckConstraint(check=Q(quantity__gt=0), name="check_procurement_item_quantity_positive")` guarantees strictly positive line-item quantities at the database engine level.
+- **Evidence Dual-Parent Architecture**:
+  - `Evidence.activity_record`: Relaxed to `null=True, blank=True`.
+  - `Evidence.procurement_record`: Added `ForeignKey(ProcurementRecord, null=True, blank=True, on_delete=models.PROTECT, related_name="evidence_files")`.
+  - Model `clean()` validates that at least one of `activity_record` or `procurement_record` is provided, preventing orphaned audit records.
+- **Line-Level Totals Synchronization**: Creating, modifying, or deleting `ProcurementItem` lines automatically recalculates and syncs the parent `ProcurementRecord.total_amount`.
+- **Deterministic Validation & Anomaly Signals**:
+  - Active vendor validation, date boundary alignment within reporting period, positive total amount, line item count, and evidence attachment checks.
+  - Anomaly evaluation for duplicate invoice numbers (`DUPLICATE_INVOICE`), single purchase spikes (`AMOUNT_SPIKE`), and unit price variances (`PRICE_VARIANCE`).
+- **Audit Lineage**:
+  - `AuthAuditLog.EventType.SUPPLIER_CREATED`, `SUPPLIER_UPDATED`, `SUPPLIER_ARCHIVED`
+  - `AuthAuditLog.EventType.PROCUREMENT_CREATED`, `PROCUREMENT_UPDATED`, `PROCUREMENT_DELETED`
+  - `AuthAuditLog.EventType.PROCUREMENT_SUBMITTED`, `PROCUREMENT_VERIFIED`, `PROCUREMENT_CORRECTION_REQUESTED`
+  - `AuthAuditLog.EventType.PROCUREMENT_RESUBMITTED`, `PROCUREMENT_REJECTED`, `PROCUREMENT_CANCELLED`
+  - `AuthAuditLog.EventType.PROCUREMENT_VALIDATED`, `PROCUREMENT_ANOMALY_DETECTED`
+- **Migration**:
+  - `apps/core/migrations/0014_supplier_alter_authauditlog_event_type_and_more.py`
+
+

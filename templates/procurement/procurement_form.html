@@ -1,0 +1,142 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}
+  {% if is_create %}Record Procurement Transaction{% else %}Edit Procurement #{{ procurement.procurement_number }}{% endif %}
+{% endblock %}
+
+{% block page_subtitle %}
+  {% if is_create %}
+    Enter purchasing transaction details, supplier attribution, and organizational site scope.
+  {% else %}
+    Update header metadata, invoice references, or transaction notes.
+  {% endif %}
+{% endblock %}
+
+{% block page_actions %}
+  <div class="d-flex align-items-center gap-2">
+    {% if is_create %}
+      <a href="{% url 'core:procurement_list' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="icon-arrow-left me-1"></i> Cancel
+      </a>
+    {% else %}
+      <a href="{% url 'core:procurement_detail' procurement.id %}" class="btn btn-sm btn-outline-secondary">
+        <i class="icon-arrow-left me-1"></i> Cancel
+      </a>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+      <form method="post" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+          <div class="alert alert-danger shadow-sm">
+            {% for error in form.non_field_errors %}
+              <p class="mb-0"><i class="icon-exclamation me-1"></i>{{ error }}</p>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <!-- Supplier & Scope Section -->
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-white border-bottom py-3">
+            <h6 class="card-title fw-bold mb-0">Supplier Attribution &amp; Site Scope</h6>
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Supplier / Vendor <span class="text-danger">*</span></label>
+                {{ form.supplier }}
+                {% if form.supplier.errors %}<div class="text-danger small mt-1">{{ form.supplier.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Operational Site <span class="text-danger">*</span></label>
+                {{ form.site }}
+                <small class="text-muted">Associated project and subsidiary are derived automatically</small>
+                {% if form.site.errors %}<div class="text-danger small mt-1">{{ form.site.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Reporting Period <span class="text-danger">*</span></label>
+                {{ form.reporting_period }}
+                {% if form.reporting_period.errors %}<div class="text-danger small mt-1">{{ form.reporting_period.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-semibold">Procurement Category <span class="text-danger">*</span></label>
+                {{ form.category }}
+                {% if form.category.errors %}<div class="text-danger small mt-1">{{ form.category.errors.0 }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Commercial References & Financials -->
+        <div class="card border-0 shadow-sm mb-4">
+          <div class="card-header bg-white border-bottom py-3">
+            <h6 class="card-title fw-bold mb-0">Commercial Identifiers &amp; Financials</h6>
+          </div>
+          <div class="card-body">
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Purchase Date <span class="text-danger">*</span></label>
+                {{ form.purchase_date }}
+                {% if form.purchase_date.errors %}<div class="text-danger small mt-1">{{ form.purchase_date.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Purchase Order (PO) Reference</label>
+                {{ form.purchase_order_reference }}
+                {% if form.purchase_order_reference.errors %}<div class="text-danger small mt-1">{{ form.purchase_order_reference.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Invoice Number</label>
+                {{ form.invoice_reference }}
+                {% if form.invoice_reference.errors %}<div class="text-danger small mt-1">{{ form.invoice_reference.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Invoice Date</label>
+                {{ form.invoice_date }}
+                {% if form.invoice_date.errors %}<div class="text-danger small mt-1">{{ form.invoice_date.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Total Amount <span class="text-danger">*</span></label>
+                {{ form.total_amount }}
+                <small class="text-muted">Header amount (will sync when line items are added)</small>
+                {% if form.total_amount.errors %}<div class="text-danger small mt-1">{{ form.total_amount.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label fw-semibold">Currency <span class="text-danger">*</span></label>
+                {{ form.currency }}
+                {% if form.currency.errors %}<div class="text-danger small mt-1">{{ form.currency.errors.0 }}</div>{% endif %}
+              </div>
+              <div class="col-md-12">
+                <label class="form-label fw-semibold">Transaction Description / Notes</label>
+                {{ form.description }}
+                {% if form.description.errors %}<div class="text-danger small mt-1">{{ form.description.errors.0 }}</div>{% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Submission Buttons -->
+        <div class="d-flex justify-content-end gap-2 mb-5">
+          {% if is_create %}
+            <a href="{% url 'core:procurement_list' %}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary px-4">
+              <i class="icon-check me-1"></i> Save Draft Procurement
+            </button>
+          {% else %}
+            <a href="{% url 'core:procurement_detail' procurement.id %}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary px-4">
+              <i class="icon-check me-1"></i> Update Header
+            </button>
+          {% endif %}
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

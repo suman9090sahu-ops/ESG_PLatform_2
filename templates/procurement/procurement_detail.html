@@ -1,0 +1,414 @@
+{% extends "layouts/dashboard.html" %}
+{% load static %}
+
+{% block page_title %}Procurement #{{ procurement.procurement_number }}{% endblock %}
+{% block page_subtitle %}
+  Supplier: <a href="{% url 'core:supplier_detail' procurement.supplier.id %}" class="fw-semibold text-decoration-none">{{ procurement.supplier.name }}</a>
+  &bull; Site: {{ procurement.site.name }} &bull; Period: {{ procurement.reporting_period.name }}
+{% endblock %}
+
+{% block page_actions %}
+  <div class="d-flex align-items-center gap-2">
+    <a href="{% url 'core:procurement_list' %}" class="btn btn-sm btn-outline-secondary">
+      <i class="icon-arrow-left me-1"></i> Back to Ledger
+    </a>
+
+    <!-- Validation and Anomaly detection triggers -->
+    <form method="post" action="{% url 'core:procurement_validate' procurement.id %}" class="d-inline">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-sm btn-outline-info">
+        <i class="icon-check me-1"></i> Validate
+      </button>
+    </form>
+    <form method="post" action="{% url 'core:procurement_anomaly_detect' procurement.id %}" class="d-inline">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-sm btn-outline-warning">
+        <i class="icon-bulb me-1"></i> Scan Anomalies
+      </button>
+    </form>
+
+    {% if can_edit %}
+      <a href="{% url 'core:procurement_edit' procurement.id %}" class="btn btn-sm btn-outline-primary">
+        <i class="icon-pencil me-1"></i> Edit Header
+      </a>
+    {% endif %}
+
+    {% if can_submit %}
+      <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#submitModal">
+        <i class="icon-action-redo me-1"></i> Submit for Review
+      </button>
+    {% endif %}
+
+    {% if procurement.status == 'CORRECTION_REQUESTED' and can_edit %}
+      <a href="{% url 'core:procurement_correction' procurement.id %}" class="btn btn-sm btn-warning text-dark">
+        <i class="icon-wrench me-1"></i> Correct &amp; Resubmit
+      </a>
+    {% endif %}
+
+    {% if can_review %}
+      <a href="{% url 'core:procurement_review' procurement.id %}" class="btn btn-sm btn-primary">
+        <i class="icon-badge me-1"></i> Review Decision
+      </a>
+    {% endif %}
+
+    {% if can_delete %}
+      <form method="post" action="{% url 'core:procurement_delete' procurement.id %}" class="d-inline" onsubmit="return confirm('Delete draft procurement {{ procurement.procurement_number }}?');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm btn-outline-danger">
+          <i class="icon-trash me-1"></i> Delete
+        </button>
+      </form>
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+
+  <!-- Status / Alerts Bar -->
+  <div class="row g-3 mb-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-3 d-flex flex-wrap justify-content-between align-items-center gap-3">
+          <div class="d-flex align-items-center gap-2">
+            <span class="text-muted small text-uppercase fw-semibold">Lifecycle Status:</span>
+            {% if procurement.status == 'DRAFT' %}
+              <span class="badge bg-secondary fs-6">Draft</span>
+            {% elif procurement.status == 'SUBMITTED' %}
+              <span class="badge bg-info text-dark fs-6">Submitted (Locked)</span>
+            {% elif procurement.status == 'UNDER_REVIEW' %}
+              <span class="badge bg-primary fs-6">Under Review</span>
+            {% elif procurement.status == 'VERIFIED' %}
+              <span class="badge bg-success fs-6">Verified &amp; Approved</span>
+            {% elif procurement.status == 'CORRECTION_REQUESTED' %}
+              <span class="badge bg-warning text-dark fs-6">Correction Requested</span>
+            {% elif procurement.status == 'RESUBMITTED' %}
+              <span class="badge bg-info text-dark fs-6">Resubmitted</span>
+            {% elif procurement.status == 'REJECTED' %}
+              <span class="badge bg-danger fs-6">Rejected</span>
+            {% endif %}
+          </div>
+
+          <div class="d-flex align-items-center gap-2">
+            <span class="text-muted small text-uppercase fw-semibold">Validation:</span>
+            {% if procurement.validation_status == 'VALID' %}
+              <span class="badge bg-success-subtle text-success border border-success">Valid</span>
+            {% elif procurement.validation_status == 'WARNING' %}
+              <span class="badge bg-warning-subtle text-warning border border-warning">Warning</span>
+            {% elif procurement.validation_status == 'INVALID' %}
+              <span class="badge bg-danger-subtle text-danger border border-danger">Invalid</span>
+            {% else %}
+              <span class="badge bg-secondary-subtle text-secondary border border-secondary">Unvalidated</span>
+            {% endif %}
+          </div>
+
+          <div class="d-flex align-items-center gap-2">
+            <span class="text-muted small text-uppercase fw-semibold">Anomaly Engine:</span>
+            {% if procurement.has_anomalies %}
+              <span class="badge bg-danger text-white"><i class="icon-exclamation me-1"></i>Risk Signals Detected</span>
+            {% else %}
+              <span class="badge bg-success-subtle text-success border border-success"><i class="icon-check me-1"></i>Nominal Telemetry</span>
+            {% endif %}
+          </div>
+
+          <div class="d-flex align-items-center gap-2">
+            <span class="text-muted small text-uppercase fw-semibold">Total Amount:</span>
+            <span class="h5 fw-bold mb-0 font-monospace text-primary">
+              {{ procurement.currency }} {{ procurement.total_amount|floatformat:2 }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Anomaly Alert Banner if any -->
+  {% if active_anomalies %}
+    <div class="alert alert-danger shadow-sm mb-4">
+      <h6 class="fw-bold mb-2"><i class="icon-exclamation me-2"></i>Procurement Anomaly Signals Flagged:</h6>
+      <ul class="mb-0 small">
+        {% for anom in active_anomalies %}
+          <li><strong>{{ anom.type }}:</strong> {{ anom.description }} (Severity: <span class="badge bg-danger">{{ anom.severity }}</span>)</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  <!-- Correction Notes Banner if correction requested -->
+  {% if procurement.review_comments or procurement.correction_notes %}
+    <div class="card border-0 shadow-sm mb-4 border-start border-4 border-warning">
+      <div class="card-body">
+        <h6 class="fw-bold text-dark mb-2"><i class="icon-speech me-2 text-warning"></i>Review &amp; Governance Notes</h6>
+        {% if procurement.review_comments %}
+          <div class="mb-2">
+            <span class="text-muted small fw-semibold">Reviewer Comments:</span>
+            <div class="p-2 bg-light rounded text-dark mt-1">{{ procurement.review_comments }}</div>
+          </div>
+        {% endif %}
+        {% if procurement.correction_notes %}
+          <div>
+            <span class="text-muted small fw-semibold">Remediation Explanation:</span>
+            <div class="p-2 bg-light rounded text-secondary mt-1">{{ procurement.correction_notes }}</div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+
+  <div class="row g-4">
+    <!-- Left Column: Header Attributes -->
+    <div class="col-lg-5">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="card-title fw-bold mb-0">Commercial Metadata</h6>
+        </div>
+        <div class="card-body">
+          <dl class="row mb-0">
+            <dt class="col-sm-5 text-muted small text-uppercase">Procurement #</dt>
+            <dd class="col-sm-7 font-monospace fw-bold">{{ procurement.procurement_number }}</dd>
+
+            <dt class="col-sm-5 text-muted small text-uppercase">Supplier</dt>
+            <dd class="col-sm-7">
+              <a href="{% url 'core:supplier_detail' procurement.supplier.id %}" class="fw-semibold text-decoration-none">
+                {{ procurement.supplier.name }}
+              </a>
+              <div class="small text-muted font-monospace">{{ procurement.supplier.supplier_code }}</div>
+            </dd>
+
+            <dt class="col-sm-5 text-muted small text-uppercase">Purchase Date</dt>
+            <dd class="col-sm-7 fw-semibold">{{ procurement.purchase_date|date:"d F Y" }}</dd>
+
+            <dt class="col-sm-5 text-muted small text-uppercase">Reporting Period</dt>
+            <dd class="col-sm-7">{{ procurement.reporting_period.name }}</dd>
+
+            <dt class="col-sm-5 text-muted small text-uppercase">Company</dt>
+            <dd class="col-sm-7">{{ procurement.company.name }}</dd>
+
+            <dt class="col-sm-5 text-muted small text-uppercase">Project</dt>
+            <dd class="col-sm-7">{{ procurement.project.name }}</dd>
+
+            <dt class="col-sm-5 text-muted small text-uppercase">Site</dt>
+            <dd class="col-sm-7 fw-semibold">{{ procurement.site.name }}</dd>
+
+            <dt class="col-sm-5 text-muted small text-uppercase">Category</dt>
+            <dd class="col-sm-7">
+              <span class="badge bg-light text-dark">{{ procurement.get_category_display }}</span>
+            </dd>
+
+            <dt class="col-sm-5 text-muted small text-uppercase">PO Reference</dt>
+            <dd class="col-sm-7 font-monospace">{{ procurement.purchase_order_reference|default:"-" }}</dd>
+
+            <dt class="col-sm-5 text-muted small text-uppercase">Invoice Ref</dt>
+            <dd class="col-sm-7 font-monospace">{{ procurement.invoice_reference|default:"-" }}</dd>
+
+            <dt class="col-sm-5 text-muted small text-uppercase">Invoice Date</dt>
+            <dd class="col-sm-7">{{ procurement.invoice_date|date:"d M Y"|default:"-" }}</dd>
+
+            <dt class="col-sm-5 text-muted small text-uppercase">Description</dt>
+            <dd class="col-sm-7 text-secondary">{{ procurement.description|default:"-" }}</dd>
+
+            <dt class="col-sm-5 text-muted small text-uppercase">Recorded By</dt>
+            <dd class="col-sm-7 text-muted small">
+              {{ procurement.created_by.get_full_name|default:procurement.created_by.username }}
+              <br>{{ procurement.created_at|date:"d M Y, H:i" }}
+            </dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Line Items & Evidence Documents -->
+    <div class="col-lg-7">
+      <!-- Line Items Section -->
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+          <h6 class="card-title fw-bold mb-0">Procurement Items ({{ items.count }})</h6>
+          <span class="font-monospace fw-bold text-primary">
+            Sum: {{ procurement.currency }} {{ procurement.total_amount|floatformat:2 }}
+          </span>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light small text-uppercase">
+              <tr>
+                <th>#</th>
+                <th>Item / Description</th>
+                <th>Quantity</th>
+                <th>Unit Price</th>
+                <th class="text-end">Total</th>
+                {% if can_edit %}<th class="text-center" style="width: 50px;">Action</th>{% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for itm in items %}
+                <tr>
+                  <td class="font-monospace text-muted">{{ itm.line_number }}</td>
+                  <td>
+                    <div class="fw-semibold">{{ itm.item_name }}</div>
+                    <small class="text-muted">
+                      {{ itm.get_category_display }}
+                      {% if itm.activity_master %}&bull; ESG: {{ itm.activity_master.name }}{% endif %}
+                      {% if itm.scope3_category %}&bull; Scope 3: {{ itm.scope3_category }}{% endif %}
+                    </small>
+                  </td>
+                  <td>{{ itm.quantity }} {{ itm.unit.code|default:itm.unit_custom }}</td>
+                  <td class="font-monospace">{{ procurement.currency }} {{ itm.unit_price|floatformat:2 }}</td>
+                  <td class="text-end font-monospace fw-bold">{{ procurement.currency }} {{ itm.total_amount|floatformat:2 }}</td>
+                  {% if can_edit %}
+                    <td class="text-center">
+                      <form method="post" action="{% url 'core:procurement_item_delete' procurement.id itm.id %}" onsubmit="return confirm('Remove line item?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger p-0 px-1" title="Delete line item">
+                          &times;
+                        </button>
+                      </form>
+                    </td>
+                  {% endif %}
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="{% if can_edit %}6{% else %}5{% endif %}" class="text-center py-4 text-muted">
+                    No line items added. Total amount is currently recorded at header level.
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Add Line Item Form if can_edit -->
+        {% if can_edit and item_form %}
+          <div class="card-footer bg-light p-3 border-top">
+            <h6 class="small fw-bold text-uppercase text-muted mb-2">Add Line Item</h6>
+            <form method="post" action="{% url 'core:procurement_item_create' procurement.id %}">
+              {% csrf_token %}
+              <div class="row g-2 align-items-end">
+                <div class="col-md-3">
+                  <label class="small text-muted">Item Name *</label>
+                  {{ item_form.item_name }}
+                </div>
+                <div class="col-md-2">
+                  <label class="small text-muted">Category</label>
+                  {{ item_form.category }}
+                </div>
+                <div class="col-md-2">
+                  <label class="small text-muted">Quantity *</label>
+                  {{ item_form.quantity }}
+                </div>
+                <div class="col-md-2">
+                  <label class="small text-muted">Unit</label>
+                  {{ item_form.unit }}
+                </div>
+                <div class="col-md-2">
+                  <label class="small text-muted">Unit Price *</label>
+                  {{ item_form.unit_price }}
+                </div>
+                <div class="col-md-1">
+                  <button type="submit" class="btn btn-primary w-100" title="Add Item">
+                    <i class="icon-plus"></i>
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Evidence Documents Section -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+          <h6 class="card-title fw-bold mb-0">Supporting Evidence ({{ evidence_files.count }})</h6>
+          {% if can_edit %}
+            <a href="{% url 'core:procurement_evidence_upload' procurement.id %}" class="btn btn-sm btn-outline-primary">
+              <i class="icon-cloud-upload me-1"></i> Upload Document
+            </a>
+          {% endif %}
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light small text-uppercase">
+              <tr>
+                <th>Document</th>
+                <th>Type</th>
+                <th>Size</th>
+                <th>OCR Status</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for ev in evidence_files %}
+                <tr>
+                  <td>
+                    <div class="fw-semibold text-truncate" style="max-width: 200px;">
+                      {{ ev.original_filename }}
+                    </div>
+                    <small class="text-muted">Uploaded {{ ev.uploaded_at|date:"d M Y" }}</small>
+                  </td>
+                  <td><span class="badge bg-light text-dark">{{ ev.get_evidence_type_display }}</span></td>
+                  <td class="font-monospace small">{{ ev.file_size_formatted }}</td>
+                  <td>
+                    {% with latest_run=ev.ocr_runs.first %}
+                      {% if latest_run %}
+                        <span class="badge bg-success-subtle text-success border border-success">Run #{{ latest_run.run_number }} ({{ latest_run.get_status_display }})</span>
+                      {% else %}
+                        <span class="badge bg-secondary-subtle text-secondary">No OCR</span>
+                      {% endif %}
+                    {% endwith %}
+                  </td>
+                  <td class="text-end">
+                    <div class="btn-group btn-group-sm">
+                      <a href="{{ ev.file.url }}" target="_blank" class="btn btn-outline-secondary" title="View Document">
+                        <i class="icon-eye"></i>
+                      </a>
+                      <a href="{% url 'core:procurement_ocr_compare' procurement.id ev.id %}" class="btn btn-outline-info" title="OCR Telemetry Comparison">
+                        <i class="icon-layers"></i> OCR
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="5" class="text-center py-4 text-muted">
+                    No supporting documents attached. Invoices and POs should be uploaded to pass validation.
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Submit Confirmation Modal -->
+{% if can_submit %}
+  <div class="modal fade" id="submitModal" tabindex="-1" aria-labelledby="submitModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content border-0 shadow">
+        <form method="post" action="{% url 'core:procurement_submit' procurement.id %}">
+          {% csrf_token %}
+          <div class="modal-header">
+            <h5 class="modal-title fw-bold" id="submitModalLabel">Submit Procurement for Review</h5>
+            <button type="button" class="btn-close" data-bs-toggle="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p>You are about to submit <strong>Procurement #{{ procurement.procurement_number }}</strong> to the Subsidiary Manager.</p>
+            <p class="small text-muted mb-3">Upon submission, this record will be <strong>locked</strong> against further edits until verified or returned for correction.</p>
+            <div class="mb-3">
+              <label class="form-label small fw-semibold">Submission Comments (Optional)</label>
+              <textarea name="comments" rows="3" class="form-control" placeholder="Provide any context or notes for the reviewer..."></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-success">
+              <i class="icon-action-redo me-1"></i> Confirm Submission
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

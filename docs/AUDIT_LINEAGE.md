@@ -203,6 +203,20 @@ The platform records strict security and governance events in `AuthAuditLog`:
 | `ANOMALY_RULE_CREATED` | New deterministic anomaly rule authored | Rule Code, Category, Threshold, Author |
 | `ANOMALY_RULE_UPDATED` | Anomaly rule threshold/state modified | Rule Code, New Version, New Threshold, Modifier |
 | `ANOMALY_DETECTION_RUN` | Batch anomaly evaluation executed | Run ID, Scope, Evaluated Count, Flagged Count, Duration |
+| `SUPPLIER_CREATED` | Vendor/supplier registered | Supplier ID, Code, Legal Name, Company, User |
+| `SUPPLIER_UPDATED` | Vendor details or ESG notes modified | Supplier ID, Code, Updated fields, User |
+| `SUPPLIER_ARCHIVED` | Vendor soft-archived | Supplier ID, Code, User |
+| `PROCUREMENT_CREATED` | Commercial purchase order/record logged | Procurement ID, Number, Supplier, Site, Period, Total Amount, Currency |
+| `PROCUREMENT_UPDATED` | Procurement details or line items modified | Procurement ID, Number, Updated fields, User |
+| `PROCUREMENT_DELETED` | Draft procurement record deleted | Procurement ID, Number, User |
+| `PROCUREMENT_SUBMITTED` | Procurement formally submitted for review | Procurement ID, Number, Submitted by, Lock state |
+| `PROCUREMENT_VERIFIED` | Subsidiary manager verifies procurement | Procurement ID, Number, Reviewer, Site |
+| `PROCUREMENT_CORRECTION_REQUESTED` | Reviewer requests correction | Procurement ID, Number, Reason, Notes |
+| `PROCUREMENT_RESUBMITTED` | Remediated procurement resubmitted | Procurement ID, Number, Resubmitted by |
+| `PROCUREMENT_REJECTED` | Procurement rejected by manager | Procurement ID, Number, Reject reason |
+| `PROCUREMENT_CANCELLED` | Procurement cancelled | Procurement ID, Number, Cancel reason |
+| `PROCUREMENT_VALIDATED` | Deterministic procurement validation run | Procurement ID, Status, Errors, Warnings |
+| `PROCUREMENT_ANOMALY_DETECTED` | Procurement anomaly flagged | Procurement ID, Anomaly Code, Variance, Details |
 
 ---
 
@@ -262,6 +276,62 @@ Phase 15 integrates deterministic anomaly evaluation as an explainable risk indi
 ===================================================================================
 Evidence (SHA-256) ➔ ActivityRecord ➔ Validation ➔ Anomaly Detection ➔
 Submission ➔ Subsidiary Review ➔ Revision/Resubmission ➔ Anomaly Resolution ➔ Scope 1/2/3 Calculation
+===================================================================================
+```
+
+---
+
+## 7. Phase 16 — Supplier & Procurement Traceability Lineage
+
+Phase 16 establishes the complete commercial audit trail connecting suppliers, invoices, and purchase records to ESG evidence and future Scope 3 accounting:
+
+```text
+===================================================================================
+                  SUPPLIER & PROCUREMENT AUDIT TRACEABILITY
+===================================================================================
+
+[SUPPLIER MASTER]
+- Supplier Code: VEND-001 (Unique, Stable ID)
+- Tax / GST ID: 29AABCU9603R1ZM
+- ESG Profile: ISO 14001, ESG Declaration
+- Status: ACTIVE (Archival preserves historical purchases)
+        │
+        ▼
+[PROCUREMENT RECORD]
+- Reference: MEIL-PROC-202610-A1B2
+- Supplier: UltraTech Cement Ltd (VEND-001)
+- Invoice #: INV-2026-8819 | PO #: PO-HYDRO-4401
+- Purchase Date: 2026-10-01 (Within Reporting Period FY2026-27-Q3)
+- Site: Polavaram Headworks (SITE-POL-101)
+- Currency: INR | Total Amount: ₹500,000.00
+        │
+        ├─► [PROCUREMENT LINE ITEMS]
+        │     - Item 1: Ordinary Portland Cement (OPC 53)
+        │     - Quantity: 100.0000 Tonnes @ ₹5,000.00/T = ₹500,000.00
+        │     - Scope 3 Category: CAT_01 (Purchased Goods and Services)
+        │     - Future Link: ActivityMaster (Cement Consumption)
+        │
+        ├─► [SUPPORTING EVIDENCE]
+        │     - File: evidence/SITE-POL-101/FY2026-27-Q3/proc_1/invoice.pdf
+        │     - SHA-256: 4a2b9... (Tamper-evident checksum)
+        │
+        ├─► [OCR EXTRACTION & COMPARISON]
+        │     - Extracted Invoice #: INV-2026-8819 [MATCH]
+        │     - Extracted Amount: 500,000.00 [MATCH]
+        │     - Extracted Date: 2026-10-01 [MATCH]
+        │     - Extracted Vendor: UltraTech Cement [MATCH]
+        │     - Non-destructive: Stored commercial records never silently overwritten
+        │
+        ├─► [VALIDATION & ANOMALY EVALUATION]
+        │     - Validation: VALID (Supplier active, period open, evidence attached)
+        │     - Anomaly Detection: Clean (No duplicate invoice, price within tolerance)
+        │
+        ▼
+[WORKFLOW LIFECYCLE & AUDIT EVENTS]
+- SUBMISSION: Site Manager submits (AuthAuditLog: PROCUREMENT_SUBMITTED)
+- REVIEW: Subsidiary Manager verifies (AuthAuditLog: PROCUREMENT_VERIFIED)
+- (Or CORRECTION REQUESTED ➔ REMEDIATED ➔ RESUBMITTED ➔ VERIFIED)
+- PREPARED FOR: Scope 3 GHG Category 1 calculation & SEBI BRSR Principle 6
 ===================================================================================
 ```
 
