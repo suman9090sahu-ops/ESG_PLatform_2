@@ -46,6 +46,7 @@ from apps.core.submission_forms import (
     ActivityRecordSubmitForm,
     SubmissionWithdrawForm,
 )
+from apps.core.review_services import user_can_review_submission
 from apps.core.submission_services import (
     check_submission_eligibility,
     get_accessible_submissions,
@@ -325,6 +326,9 @@ def submission_detail_view(request, submission_id):
         | models.Q(resource_accessed__icontains=f"ActivityRecord:{record.id}")
     ).order_by("-created_at")[:10]
 
+    # Check if current user is an authorized reviewer for this submission
+    can_review = user_can_review_submission(user, submission)
+
     context = {
         "page_title": f"Submission #{submission.submission_number}",
         "page_subtitle": f"{record.activity.name} @ {submission.site.name}",
@@ -336,6 +340,7 @@ def submission_detail_view(request, submission_id):
         "validation_results": validation_results,
         "can_withdraw": can_withdraw,
         "withdraw_form": withdraw_form,
+        "can_review": can_review,
         "audit_logs": audit_logs,
     }
     return render(request, "submissions/submission_detail.html", context)

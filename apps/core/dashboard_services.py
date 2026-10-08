@@ -37,6 +37,7 @@ from apps.core.models import (
     ReportingPeriod,
     Role,
     Site,
+    ValidationStatus,
 )
 from apps.core.period_services import get_accessible_reporting_periods
 from apps.core.scope_services import (
@@ -161,16 +162,29 @@ def get_site_manager_dashboard_context(user, as_of_date=None):
         evidence_files__status=EvidenceStatus.ACTIVE
     ).distinct().count()
 
+    active_corrections_count = CorrectionRequest.objects.filter(
+        activity_record__site__in=assigned_sites,
+        status__in=[
+            CorrectionStatus.OPEN,
+            CorrectionStatus.IN_PROGRESS,
+            CorrectionStatus.READY_FOR_RESUBMISSION,
+        ],
+    ).count()
+
+    validation_issues_count = records_qs.filter(
+        validation_status=ValidationStatus.INVALID
+    ).count()
+
     workflow_status = {
         "is_data_entry_ready": bool(current_period and current_period.status == PeriodStatus.OPEN and sites_count > 0),
         "draft_records_count": draft_records_count,
         "ready_records_count": ready_records_count,
         "submitted_records_count": submitted_records_count,
         "total_records_count": records_qs.count(),
-        "corrections_count": 0,
+        "corrections_count": active_corrections_count,
         "pending_evidence_count": pending_evidence_count,
-        "validation_issues_count": 0,
-        "phase_note": "ESG Data Entry & Evidence Management active (Phase 09).",
+        "validation_issues_count": validation_issues_count,
+        "phase_note": "MEIL ESG Platform End-to-End Governance Engine Active (Phase 21).",
     }
 
     pending_actions_list = []
@@ -192,15 +206,6 @@ def get_site_manager_dashboard_context(user, as_of_date=None):
             "level": "info",
             "url": reverse("core:activity_record_list") + f"?status={RecordStatus.DRAFT}",
         })
-
-    active_corrections_count = CorrectionRequest.objects.filter(
-        activity_record__site__in=assigned_sites,
-        status__in=[
-            CorrectionStatus.OPEN,
-            CorrectionStatus.IN_PROGRESS,
-            CorrectionStatus.READY_FOR_RESUBMISSION,
-        ],
-    ).count()
 
     if active_corrections_count > 0:
         pending_actions_list.append({

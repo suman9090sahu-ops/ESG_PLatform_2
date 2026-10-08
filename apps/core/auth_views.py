@@ -244,6 +244,24 @@ def site_manager_dashboard_redirect(request):
     return redirect("core:site_manager_dashboard")
 
 
+@login_required
+def subsidiary_manager_dashboard_redirect(request):
+    """Canonical redirect from /dashboard/subsidiary-manager/ to /subsidiary-manager/dashboard/."""
+    return redirect("core:subsidiary_manager_dashboard")
+
+
+@login_required
+def esg_manager_dashboard_redirect(request):
+    """Canonical redirect from /dashboard/esg-manager/ to /esg-manager/dashboard/."""
+    return redirect("core:esg_manager_dashboard")
+
+
+@login_required
+def auditor_dashboard_redirect(request):
+    """Canonical redirect from /dashboard/auditor/ to /auditor/dashboard/."""
+    return redirect("core:auditor_dashboard")
+
+
 @role_required(
     Role.Code.SITE_MANAGER,
     Role.Code.SUBSIDIARY_MANAGER,
@@ -333,13 +351,10 @@ def esg_manager_dashboard(request):
     """
     ESG Manager Corporate Governance Dashboard.
     Scope 1, 2, 3 GHG consolidation, emission factors, and SEBI BRSR Core finalization.
+    Derives real database-backed metrics via reporting_services.
     """
-    context = {
-        "page_title": "ESG Manager Corporate Governance Dashboard",
-        "page_subtitle": "Enterprise GHG Consolidation, Emission Factors & SEBI BRSR Finalization",
-        "active_nav": "esg_dashboard",
-        "role_code": Role.Code.ESG_MANAGER,
-    }
+    from apps.core.reporting_services import get_esg_manager_dashboard_context
+    context = get_esg_manager_dashboard_context(request.user)
     return render(request, "dashboards/esg_manager.html", context)
 
 
@@ -348,13 +363,10 @@ def auditor_dashboard(request):
     """
     Auditor Independent Assurance Dashboard.
     Read-only governed disclosures, calculation lineage, evidence inspection, and audit trail.
+    Derives real database-backed metrics via reporting_services.
     """
-    context = {
-        "page_title": "Auditor Independent Assurance Dashboard",
-        "page_subtitle": "Read-Only Governed Data, GHG Formula Lineage & Audit Trail Verification",
-        "active_nav": "auditor_dashboard",
-        "role_code": Role.Code.AUDITOR,
-    }
+    from apps.core.reporting_services import get_auditor_dashboard_context
+    context = get_auditor_dashboard_context(request.user)
     return render(request, "dashboards/auditor.html", context)
 
 

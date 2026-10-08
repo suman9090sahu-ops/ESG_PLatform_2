@@ -1462,9 +1462,122 @@ Result: 438 Passed, 0 Failed, 0 Errors (100% PASS across all 17 Phases)
 
 ---
 
-## 18. Next Recommended Phase
-**PHASE 18 — TRAVEL MANAGEMENT**
+## 18. Phase 20 — Core Workflow Integration & 5-Layer Traceability Summary
 
+Phase 20 established and connected the core end-to-end governance and reporting workflow:
+`SITE MANAGER -> ESG DATA ENTRY -> EVIDENCE -> VALIDATION -> SUBMISSION -> SUBSIDIARY MANAGER REVIEW -> CORRECTION -> RESUBMISSION -> VERIFICATION -> ESG MANAGER -> REPORTING -> AUDITOR -> TRACEABILITY`
 
+### Key Architectural Deliverables
+1. **Governed Reporting & GHG Consolidation Engine (`apps/core/reporting_services.py`)**:
+   - `get_governed_reporting_dataset`: Filters and returns strictly verified submissions ready for enterprise GHG reporting.
+   - `calculate_consolidated_scope_metric`: Aggregates Scope 1, Scope 2, and Scope 3 activity across subsidiaries, projects, and sites.
+   - 5-layer granular lineage breakdown (`REPORTING METRIC -> CONSOLIDATED VALUE -> VERIFIED SUBMISSION -> SOURCE ESG RECORD & SITE -> EVIDENCE & AUDIT HISTORY`).
+2. **Auditor Workspace & Read-Only Governance**:
+   - Strictly enforced read-only permissions for Auditors (`is_auditor`).
+   - "Trace This Number" interactive lineage modal rendering all 5 layers with SHA-256 evidence validation and actor timestamps.
 
+---
 
+## 19. Phase 21 — End-to-End Workflow Hardening & Jury Demo Readiness Summary
+
+Phase 21 conducted comprehensive end-to-end hardening, debugging, integration, and verification across the complete MEIL ESG Control Tower workflow to ensure bulletproof reliability for a live jury demonstration.
+
+### Key Architectural Hardening Deliverables
+1. **State Machine & Governed Navigation Hardening**:
+   - Hardened `templates/submissions/submission_detail.html` so that the reviewer action workspace button (`Review Workspace`) is strictly visible only to authorized Subsidiary Managers (`can_review`).
+   - Injected a dedicated "Next Governance Action" guidance card for Site Managers, clearly indicating submission status (`SUBMITTED`, `UNDER_REVIEW`, `CORRECTION_REQUESTED`, `VERIFIED`), and providing direct guidance and links to the Correction Inbox if revision is requested.
+2. **Dashboard Data Accuracy & Integrity**:
+   - Fixed `apps/core/dashboard_services.py` to replace static `0` corrections count with real database-backed `active_corrections_count`.
+   - Fixed `ValidationStatus` enum lookup bug where `.FAILED` caused an `AttributeError` by replacing with canonical `ValidationStatus.INVALID`.
+   - Updated `templates/dashboards/site_manager.html` removing stale developmental placeholders and activating live Phase 21 badges (`LIVE` for Evidence & OCR, `LIVE` for Governance Review).
+3. **Submission Inbox Multi-Attribute Filtering & Demo Usability**:
+   - Enhanced `apps/core/review_views.py` and `templates/submissions/submission_inbox.html` to support all required filters: Project, ESG Category, Date Range (`date_from`, `date_to`), Site, Reporting Period, and Search query.
+   - Prominently labeled `Submission ID` (`ID #<pk>`) in review table rows and headers.
+4. **Deterministic Seed Management (`seed_demo_workflow`)**:
+   - Resolved Django `ProtectedError` on foreign keys by ordering model purges correctly (`Submission` and `Evidence` first before `ActivityRecord`).
+   - Enabled idempotent, deterministic setup of all 6 workflow states (`DRAFT`, `SUBMITTED`, `CORRECTION_REQUESTED`, `RESUBMITTED`, `VERIFIED`, `APPROVED`).
+5. **Auditor Strict Read-Only & Anti-IDOR Governance**:
+   - Enforced server-side HTTP 403 Forbidden on all state mutations, creates, edits, and verification actions when accessed by Auditor accounts.
+   - Hardened Anti-IDOR guards across `/submissions/<id>/review/` and `/data-entry/<id>/correction/`.
+   - Aligned Auditor sidebar navigation labels (`Calculation Lineage`, `Audit Findings`) for 100% RBAC test suite compliance.
+
+### Verification & Test Telemetry (Phase 21)
+
+#### 1. Live Browser-First Acceptance Testing Suite (`tests/test_phase21_live_acceptance.py`)
+```text
+.venv\Scripts\python.exe tests/test_phase21_live_acceptance.py
+==========================================================================================
+PHASE 21: BROWSER-FIRST ACCEPTANCE TESTING SUITE (Target: http://127.0.0.1:8000)
+==========================================================================================
+[OK  ] Test #01: Site Manager Login -> PASS (Status: 200)
+[OK  ] Test #02: Site Dashboard -> PASS (Status: 200, Polavaram site verified)
+[OK  ] Test #03: ESG Data Entry Ledger -> PASS (Status: 200, Draft Record #90 verified)
+[OK  ] Test #04: Evidence Verification -> PASS (Status: 200, SHA-256 tamper-evident verified)
+[OK  ] Test #05: Validation Engine -> PASS (Status: 200, Deterministic validation ran)
+[OK  ] Test #06: Record Submission -> PASS (Status: 200, Draft #90 submitted)
+[OK  ] Test #07: Submission Inbox -> PASS (Status: 200, Filter bar & columns verified)
+[OK  ] Test #08: Review Screen -> PASS (Status: 200, Review desk verified for Submission #53)
+[OK  ] Test #09: Correction Request -> PASS (Status: 200, Correction requested on Submission #53)
+[OK  ] Test #10: Correction Display -> PASS (Status: 200, Correction visible in Site Manager Inbox)
+[OK  ] Test #11: Data Correction -> PASS (Status: 200, Telemetry updated on Correction #15)
+[OK  ] Test #12: Resubmission -> PASS (Status: 200, Successfully resubmitted)
+[OK  ] Test #13: Verification -> PASS (Status: 200, Submission #53 verified)
+[OK  ] Test #14: ESG Manager Dashboard -> PASS (Status: 200, Real GHG aggregations verified)
+[OK  ] Test #15: Reporting Consistency -> PASS (Status: 200, Reports consuming verified data)
+[OK  ] Test #16: Auditor Login & Assurance Mode -> PASS (Status: 200, Read-Only banner active)
+[OK  ] Test #17: Read-Only Server Enforcement -> PASS (403 on verify & create endpoints)
+[OK  ] Test #18: Trace This Number (5 Layers) -> PASS (Status: 200, Full 5-layer lineage demonstrated)
+[OK  ] Test #19: Evidence Traceability -> PASS (SHA-256 hash & OCR metadata verified)
+[OK  ] Test #20: Audit History Timeline -> PASS (Full audit trail with actor/role/timestamp)
+[OK  ] Test #21: Logout/Login Persistence -> PASS (Database state preserved across sessions)
+[OK  ] Test #22: Anti-IDOR URL Protection -> PASS (HTTP 403 on unauthorized direct access)
+==========================================================================================
+ACCEPTANCE TEST SUMMARY: Total: 22 | Passed: 22 | Failed: 0 (100% PASS)
+==========================================================================================
+```
+
+#### 2. Regression Suites
+- **RBAC Governance Suite (`tests/test_rbac.py`)**: `12/12 PASSED` (100%)
+- **Phase 20 Workflow & Trace Suite (`tests/test_phase20_workflow_and_trace.py`)**: `4/4 PASSED` (100%)
+- **Phase 12 Submission Workflow Suite (`tests/test_phase12_submission_workflow.py`)**: `27/27 PASSED` (100%)
+- **Phase 13 Subsidiary Review Suite (`tests/test_phase13_subsidiary_review.py`)**: `16/16 PASSED` (100%)
+- **Phase 14 Corrections & Resubmission Suite (`tests/test_phase14_corrections_resubmission.py`)**: `21/21 PASSED` (100%)
+
+---
+
+## 20. Jury Demo "Golden Path" Runbook (5–10 Minutes)
+
+1. **Step 1: Site Manager Operational Intake**
+   - Login: `site_manager` / `SiteManagerPass123!`
+   - Navigate to `/data-entry/` (or `/site-manager/dashboard/`).
+   - Create operational diesel / fuel record, upload invoice/weighbridge evidence with SHA-256 verification.
+   - Run validation engine: Observe zero critical blocking errors.
+   - Submit for governance review: Status transitions to `SUBMITTED`, generating unique Submission ID (e.g., `#90`).
+2. **Step 2: Subsidiary Manager Governance & Correction Request**
+   - Login: `subsidiary_manager` / `SubManagerPass123!`
+   - Open Submission Inbox (`/submissions/inbox/`), filter by Site or Category.
+   - Open Submission `#90` detail / review screen (`/submissions/<id>/review/`).
+   - Inspect data, evidence preview, and validation rules.
+   - Request correction with reason `DOCUMENTATION_MISSING` / `CALCULATION_ERROR` and specific remediation notes.
+3. **Step 3: Site Manager Remediation & Resubmission**
+   - Login: `site_manager` / `SiteManagerPass123!`
+   - Open Correction Inbox (`/corrections/`), select flagged item.
+   - Update operational quantity / attach missing bill, submit correction notes, revalidate, and click **Resubmit**.
+4. **Step 4: Subsidiary Manager Formal Verification**
+   - Login: `subsidiary_manager` / `SubManagerPass123!`
+   - Review resubmission delta showing side-by-side original vs. updated values and explanation.
+   - Click **Verify Submission**: Status transitions to `VERIFIED`.
+5. **Step 5: ESG Manager Enterprise Aggregation**
+   - Login: `esg_manager` / `ESGManagerPass123!`
+   - Access `/dashboard/` and `/reporting/`.
+   - Inspect verified carbon / GHG consolidation and cross-subsidiary progress.
+6. **Step 6: Auditor Assurance & 5-Layer "Trace This Number"**
+   - Login: `auditor` / `AuditorPass123!`
+   - Observe Read-Only banner across all screens (all mutation buttons removed; backend returns 403 on direct URL POST).
+   - In ESG Reporting / Consolidation, click **Trace This Number** on any Scope metric.
+   - Inspect the interactive 5-layer lineage:
+     - Layer 1: Reporting Metric & Emission Factor
+     - Layer 2: Consolidated Scope Total & Aggregation formula
+     - Layer 3: Verified Submission Batch & Subsidiary Sign-off
+     - Layer 4: Source Activity Record, Operating Site, Project, & Measurement Date
+     - Layer 5: Supporting Evidence (SHA-256 checksum) & Immutable Audit Trail (Actors, Roles, Timestamps)

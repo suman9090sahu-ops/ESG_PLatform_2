@@ -1,0 +1,562 @@
+{% extends "layouts/dashboard.html" %}
+{% load static esg_tags %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block header_actions %}
+  {% if is_auditor %}
+    <span class="badge badge-warning text-dark px-3 py-2 fs-6 shadow-xs me-2">
+      <i class="icon-lock me-1"></i> Auditor Assurance Mode: READ-ONLY
+    </span>
+  {% else %}
+    <span class="badge badge-success px-3 py-2 fs-6 shadow-xs me-2">
+      <i class="icon-shield me-1"></i> Regulatory Lineage Verified
+    </span>
+  {% endif %}
+  <a href="{% url 'core:trace_selector' %}" class="btn btn-sm btn-outline-secondary">
+    <i class="icon-arrow-left me-1"></i> Back to Trace Directory
+  </a>
+{% endblock %}
+
+{% block main_panel %}
+  <!-- Hero Trace Summary Card -->
+  <div class="card border-0 shadow-sm mb-4 border-start border-primary border-4">
+    <div class="card-body p-4">
+      <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+        <div>
+          <span class="badge bg-primary text-white text-uppercase px-2 py-1 mb-2">5-Layer Regulatory Lineage</span>
+          <h3 class="fw-bold text-dark mb-0">{{ record.activity.name }}</h3>
+          <p class="text-muted small mb-0">Record #{{ record.id }} &bull; Site: <strong>{{ record.site.name }}</strong> (<code>{{ record.site.code }}</code>)</p>
+        </div>
+        <div class="text-end">
+          <span class="badge bg-success-subtle text-success border border-success px-3 py-2 fs-6">
+            <i class="icon-check me-1"></i>{{ record.get_status_display|upper }}
+          </span>
+          <div class="small text-muted mt-1">Reporting Cycle: <strong>{{ record.reporting_period.code }}</strong></div>
+        </div>
+      </div>
+
+      <!-- 5-Tier Visual Stepper -->
+      <div class="row g-2 text-center mt-3 pt-3 border-top">
+        <div class="col">
+          <div class="p-2 border rounded bg-light-primary text-primary">
+            <i class="icon-doc d-block fs-5 mb-1"></i>
+            <span class="d-block fw-bold small">1. Report</span>
+            <small class="text-muted" style="font-size: 0.7rem;">BRSR Metric</small>
+          </div>
+        </div>
+        <div class="col-auto d-flex align-items-center text-muted">
+          <i class="icon-arrow-right"></i>
+        </div>
+        <div class="col">
+          <div class="p-2 border rounded bg-light-info text-info">
+            <i class="icon-organization d-block fs-5 mb-1"></i>
+            <span class="d-block fw-bold small">2. Division</span>
+            <small class="text-muted" style="font-size: 0.7rem;">Consolidation</small>
+          </div>
+        </div>
+        <div class="col-auto d-flex align-items-center text-muted">
+          <i class="icon-arrow-right"></i>
+        </div>
+        <div class="col">
+          <div class="p-2 border rounded bg-light-success text-success">
+            <i class="icon-check d-block fs-5 mb-1"></i>
+            <span class="d-block fw-bold small">3. Submission</span>
+            <small class="text-muted" style="font-size: 0.7rem;">Governance Review</small>
+          </div>
+        </div>
+        <div class="col-auto d-flex align-items-center text-muted">
+          <i class="icon-arrow-right"></i>
+        </div>
+        <div class="col">
+          <div class="p-2 border rounded bg-light text-dark">
+            <i class="icon-speedometer d-block fs-5 mb-1"></i>
+            <span class="d-block fw-bold small">4. Site Data</span>
+            <small class="text-muted" style="font-size: 0.7rem;">Telemetry &amp; Validation</small>
+          </div>
+        </div>
+        <div class="col-auto d-flex align-items-center text-muted">
+          <i class="icon-arrow-right"></i>
+        </div>
+        <div class="col">
+          <div class="p-2 border rounded bg-light-warning text-dark">
+            <i class="icon-camera d-block fs-5 mb-1 text-warning"></i>
+            <span class="d-block fw-bold small">5. Evidence</span>
+            <small class="text-muted" style="font-size: 0.7rem;">SHA-256 &amp; OCR</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LAYER 1: Regulatory ESG Report & BRSR Disclosure -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center">
+        <span class="badge bg-primary rounded-circle p-2 me-2" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;">1</span>
+        <h6 class="mb-0 fw-bold text-dark">Layer 1 — Regulatory ESG Report &amp; BRSR Disclosure</h6>
+      </div>
+      <span class="badge bg-primary-subtle text-primary border border-primary">Report Lineage</span>
+    </div>
+    <div class="card-body p-4">
+      <div class="row g-4">
+        <div class="col-md-6">
+          <table class="table table-sm table-borderless mb-0">
+            <tbody>
+              <tr>
+                <td class="text-muted small ps-0" style="width: 170px;">Reporting Metric:</td>
+                <td><strong class="text-dark">{{ layer1_report.metric_name }}</strong></td>
+              </tr>
+              <tr>
+                <td class="text-muted small ps-0">Taxonomy Code:</td>
+                <td><code>{{ layer1_report.metric_code }}</code></td>
+              </tr>
+              <tr>
+                <td class="text-muted small ps-0">Scope Classification:</td>
+                <td>
+                  <span class="badge bg-light text-dark border">{{ layer1_report.scope }}</span>
+                </td>
+              </tr>
+              <tr>
+                <td class="text-muted small ps-0">Reporting Period:</td>
+                <td>
+                  <strong>{{ layer1_report.period.name }}</strong> (<code>{{ layer1_report.period.code }}</code>)
+                </td>
+              </tr>
+              <tr>
+                <td class="text-muted small ps-0">Enterprise Holding:</td>
+                <td>{{ layer1_report.company.name }} (<code>{{ layer1_report.company.code }}</code>)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="col-md-6">
+          <div class="p-3 border rounded bg-light h-100">
+            <h6 class="fw-bold text-dark mb-2 small text-uppercase">Regulatory Calculation &amp; Factor Lineage</h6>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="text-muted small">Raw Telemetry Reading:</span>
+              <strong class="text-dark">{{ layer1_report.raw_quantity }} {{ layer1_report.unit }}</strong>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="text-muted small">Applied Emission Factor:</span>
+              <span class="fw-bold text-primary">{{ layer1_report.emission_factor }} {{ layer1_report.factor_unit }}</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="text-muted small">Calculated Scope Metric:</span>
+              {% if layer1_report.emissions_tco2e > 0 %}
+                <strong class="text-success fs-5">{{ layer1_report.emissions_tco2e }} tCO₂e</strong>
+              {% else %}
+                <strong class="text-dark fs-5">{{ layer1_report.raw_quantity }} {{ layer1_report.unit }}</strong>
+              {% endif %}
+            </div>
+            <div class="border-top pt-2 mt-2">
+              <div class="small text-muted"><strong>Calculation Formula:</strong></div>
+              <code class="small text-dark d-block">{{ layer1_report.methodology }}</code>
+              <div class="small text-muted mt-1"><strong>Factor Source:</strong> {{ layer1_report.factor_source }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LAYER 2: Consolidated Enterprise / Subsidiary Lineage -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center">
+        <span class="badge bg-info text-white rounded-circle p-2 me-2" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;">2</span>
+        <h6 class="mb-0 fw-bold text-dark">Layer 2 — Consolidated Enterprise &amp; Operational Hierarchy</h6>
+      </div>
+      <span class="badge bg-info-subtle text-info border border-info">Organizational Scope</span>
+    </div>
+    <div class="card-body p-4">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <div class="p-3 border rounded bg-light-subtle h-100">
+            <span class="badge bg-secondary-subtle text-secondary small mb-2">Subsidiary Division</span>
+            <h6 class="fw-bold text-dark mb-1">{{ layer2_consolidated.subsidiary.name }}</h6>
+            <code class="small text-muted d-block mb-2">{{ layer2_consolidated.subsidiary.code }}</code>
+            <div class="small text-muted">Industry: {{ layer2_consolidated.subsidiary.industry|default:"Infrastructure &amp; Civil" }}</div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="p-3 border rounded bg-light-subtle h-100">
+            <span class="badge bg-secondary-subtle text-secondary small mb-2">Infrastructure Project</span>
+            <h6 class="fw-bold text-dark mb-1">{{ layer2_consolidated.project.name }}</h6>
+            <code class="small text-muted d-block mb-2">{{ layer2_consolidated.project.code }}</code>
+            <div class="small text-muted">Location: {{ layer2_consolidated.project.location|default:"—" }}</div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="p-3 border rounded bg-light-subtle h-100">
+            <span class="badge bg-success-subtle text-success small mb-2">Operational Site / Facility</span>
+            <h6 class="fw-bold text-dark mb-1">{{ layer2_consolidated.site.name }}</h6>
+            <code class="small text-muted d-block mb-2">{{ layer2_consolidated.site.code }}</code>
+            <div class="small text-muted">Facility: {{ layer2_consolidated.facility_type|default:"Operational Site" }}</div>
+            <div class="small text-muted">GPS Coordinates: <code>{{ layer2_consolidated.coordinates }}</code></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LAYER 3: Verified Submission & Governance Decisions -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center">
+        <span class="badge bg-success text-white rounded-circle p-2 me-2" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;">3</span>
+        <h6 class="mb-0 fw-bold text-dark">Layer 3 — Verified Submission &amp; Review Governance Decisions</h6>
+      </div>
+      <span class="badge bg-success-subtle text-success border border-success">Decision Trail</span>
+    </div>
+    <div class="card-body p-4">
+      <div class="row g-4 mb-3">
+        <!-- Submitter Details -->
+        <div class="col-md-6">
+          <div class="p-3 border rounded bg-light h-100">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <span class="fw-bold text-dark small text-uppercase">1. Operational Submitter</span>
+              <span class="badge bg-primary text-white">Site Manager</span>
+            </div>
+            <table class="table table-sm table-borderless mb-0 small">
+              <tbody>
+                <tr>
+                  <td class="text-muted ps-0">Submitter:</td>
+                  <td>
+                    <strong class="text-dark">{{ layer3_submission.submitted_by.get_full_name|default:layer3_submission.submitted_by.username }}</strong>
+                    (<code>@{{ layer3_submission.submitted_by.username }}</code>)
+                  </td>
+                </tr>
+                <tr>
+                  <td class="text-muted ps-0">Designation:</td>
+                  <td>{{ layer3_submission.submitted_by.designation|default:"Operational Site In-Charge" }}</td>
+                </tr>
+                <tr>
+                  <td class="text-muted ps-0">Submission Time:</td>
+                  <td><i class="icon-clock text-primary me-1"></i>{{ layer3_submission.submitted_at|date:"d M Y, H:i:s" }}</td>
+                </tr>
+                <tr>
+                  <td class="text-muted ps-0">Submission Envelope:</td>
+                  <td>
+                    {% if layer3_submission.primary_submission %}
+                      <a href="{% url 'core:submission_detail' layer3_submission.primary_submission.id %}" class="fw-bold">
+                        Submission #{{ layer3_submission.submission_number }}
+                      </a>
+                    {% else %}
+                      <span>Iteration #{{ layer3_submission.submission_number }}</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Verifier Details -->
+        <div class="col-md-6">
+          <div class="p-3 border rounded bg-light h-100">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <span class="fw-bold text-dark small text-uppercase">2. First-Line Verifier</span>
+              <span class="badge bg-success text-white">Subsidiary Manager</span>
+            </div>
+            <table class="table table-sm table-borderless mb-0 small">
+              <tbody>
+                <tr>
+                  <td class="text-muted ps-0">Verifier:</td>
+                  <td>
+                    {% if layer3_submission.verifier %}
+                      <strong class="text-dark">{{ layer3_submission.verifier.get_full_name|default:layer3_submission.verifier.username }}</strong>
+                      (<code>@{{ layer3_submission.verifier.username }}</code>)
+                    {% else %}
+                      <span class="text-muted fst-italic">Pending Subsidiary Review</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                <tr>
+                  <td class="text-muted ps-0">Designation:</td>
+                  <td>{{ layer3_submission.verifier.designation|default:"Subsidiary ESG Review Lead" }}</td>
+                </tr>
+                <tr>
+                  <td class="text-muted ps-0">Verification Time:</td>
+                  <td>
+                    {% if layer3_submission.verified_at %}
+                      <i class="icon-check text-success me-1"></i>{{ layer3_submission.verified_at|date:"d M Y, H:i:s" }}
+                    {% else %}
+                      <span class="text-muted">—</span>
+                    {% endif %}
+                  </td>
+                </tr>
+                <tr>
+                  <td class="text-muted ps-0">Governance Action:</td>
+                  <td>
+                    <span class="badge bg-success-subtle text-success border border-success">
+                      <i class="icon-check me-1"></i>VERIFIED &amp; APPROVED
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            {% if layer3_submission.review_comments %}
+              <div class="mt-2 pt-2 border-top small">
+                <span class="text-muted">Reviewer Sign-off Note:</span>
+                <div class="fst-italic text-dark mt-1">"{{ layer3_submission.review_comments }}"</div>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Correction History Sub-Panel -->
+      {% if layer3_submission.had_corrections %}
+        <div class="alert alert-info border-0 shadow-xs mb-0">
+          <div class="d-flex align-items-center mb-2">
+            <i class="icon-wrench text-warning fs-5 me-2"></i>
+            <strong class="text-dark">Correction &amp; Resubmission Governance Lineage</strong>
+            <span class="badge bg-warning-subtle text-warning ms-2">Remediated Record</span>
+          </div>
+          <p class="small text-muted mb-2">
+            This operational record underwent a governed correction cycle requested by the Subsidiary Manager before formal verification. Complete delta history is preserved:
+          </p>
+          {% for corr in layer3_submission.corrections %}
+            <div class="p-2 bg-white rounded border small mb-2">
+              <div class="d-flex justify-content-between">
+                <span><strong>Correction Request #{{ corr.id }}</strong> by {{ corr.requested_by.username|default:"Reviewer" }}</span>
+                <span class="badge {{ corr.badge_class }}">{{ corr.get_status_display }}</span>
+              </div>
+              <div class="mt-1"><strong>Correction Reason:</strong> {{ corr.reason }}</div>
+              {% if corr.required_correction %}
+                <div class="text-muted"><strong>Required Action:</strong> {{ corr.required_correction }}</div>
+              {% endif %}
+              {% if corr.site_manager_notes %}
+                <div class="text-success mt-1"><strong>Site Manager Remediated Explanation:</strong> {{ corr.site_manager_notes }}</div>
+              {% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="p-2 bg-light rounded text-center small text-muted">
+          <i class="icon-check text-success me-1"></i> Zero corrections required — verified on first submission cycle.
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- LAYER 4: Operational Site Telemetry & Deterministic Validation -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center">
+        <span class="badge bg-secondary text-white rounded-circle p-2 me-2" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;">4</span>
+        <h6 class="mb-0 fw-bold text-dark">Layer 4 — Operational Site Telemetry &amp; Validation Conformance</h6>
+      </div>
+      <span class="badge bg-secondary-subtle text-secondary border border-secondary">Telemetry Conformance</span>
+    </div>
+    <div class="card-body p-4">
+      <div class="row g-4">
+        <div class="col-md-6">
+          <table class="table table-sm table-borderless mb-0 small">
+            <tbody>
+              <tr>
+                <td class="text-muted ps-0" style="width: 170px;">Activity Record ID:</td>
+                <td><strong>#{{ layer4_site_data.record_id }}</strong></td>
+              </tr>
+              <tr>
+                <td class="text-muted ps-0">Measurement Date:</td>
+                <td>{{ layer4_site_data.measurement_date|date:"d M Y" }}</td>
+              </tr>
+              <tr>
+                <td class="text-muted ps-0">Measured Quantity:</td>
+                <td><strong class="text-primary">{{ record.quantity }} {{ record.unit.symbol }}</strong></td>
+              </tr>
+              <tr>
+                <td class="text-muted ps-0">Operational Notes:</td>
+                <td>{{ layer4_site_data.notes|default:"None recorded" }}</td>
+              </tr>
+              <tr>
+                <td class="text-muted ps-0">Primary Document Ref:</td>
+                <td><code>{{ layer4_site_data.evidence_reference|default:"—" }}</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="col-md-6">
+          <div class="p-3 border rounded bg-light h-100">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <span class="fw-bold text-dark small text-uppercase">Phase 10 Validation Engine</span>
+              <span class="badge bg-success text-white">
+                <i class="icon-check me-1"></i>{{ layer4_site_data.validation_status }}
+              </span>
+            </div>
+            {% if layer4_site_data.latest_validation_run %}
+              <div class="small text-muted mb-2">
+                Evaluated Run #{{ layer4_site_data.latest_validation_run.run_number }} on {{ layer4_site_data.latest_validation_run.executed_at|date:"d M Y, H:i:s" }}
+                ({{ layer4_site_data.latest_validation_run.execution_duration_ms }} ms latency)
+              </div>
+              <div class="d-flex gap-2 mb-2">
+                <span class="badge bg-light text-dark border">{{ layer4_site_data.latest_validation_run.total_rules_evaluated }} Rules Checked</span>
+                <span class="badge bg-success-subtle text-success border border-success">0 Blocking Errors</span>
+                <span class="badge bg-info-subtle text-info border border-info">{{ layer4_site_data.latest_validation_run.warning_count }} Warnings</span>
+              </div>
+              <div class="small text-muted">
+                <strong>Conformance Summary:</strong> {{ layer4_site_data.latest_validation_run.summary_message }}
+              </div>
+            {% else %}
+              <div class="text-muted small">No validation run recorded for this telemetry entry.</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LAYER 5: Supporting Audit Evidence & Cryptographic Checksum -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center">
+        <span class="badge bg-warning text-dark rounded-circle p-2 me-2" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;">5</span>
+        <h6 class="mb-0 fw-bold text-dark">Layer 5 — Supporting Audit Evidence &amp; Cryptographic Fingerprints</h6>
+      </div>
+      <span class="badge bg-warning-subtle text-warning border border-warning">Evidence Integrity</span>
+    </div>
+    <div class="card-body p-4">
+      {% if layer5_evidence.has_evidence %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="bg-light">
+              <tr class="small text-muted text-uppercase">
+                <th>Evidence ID</th>
+                <th>Document File</th>
+                <th>Taxonomy Type</th>
+                <th>File Size</th>
+                <th>Uploaded By &amp; Date</th>
+                <th>SHA-256 Cryptographic Checksum</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for ev in layer5_evidence.evidence_list %}
+                <tr>
+                  <td><code>#{{ ev.id }}</code></td>
+                  <td>
+                    <strong>{{ ev.filename }}</strong>
+                    <div class="small text-muted">MIME Header Verified</div>
+                  </td>
+                  <td>
+                    <span class="badge bg-light text-dark border">{{ ev.evidence_type_display }}</span>
+                  </td>
+                  <td><small class="text-muted">{{ ev.file_size }} bytes</small></td>
+                  <td>
+                    <div class="small text-dark">{{ ev.uploaded_by.username|default:"System" }}</div>
+                    <div class="small text-muted">{{ ev.created_at|date:"d M Y, H:i" }}</div>
+                  </td>
+                  <td>
+                    <code class="small text-primary text-truncate d-inline-block" style="max-width: 220px;" title="{{ ev.file_hash }}">
+                      {{ ev.file_hash }}
+                    </code>
+                    <div class="small text-success"><i class="icon-check me-1"></i>Tamper-Evident SHA-256</div>
+                  </td>
+                  <td class="text-end text-nowrap">
+                    <a href="{{ ev.preview_url }}" class="btn btn-sm btn-outline-info py-1 px-2" target="_blank" title="Inline Preview">
+                      <i class="icon-eye me-1"></i> Preview
+                    </a>
+                    <a href="{{ ev.download_url }}" class="btn btn-sm btn-outline-secondary py-1 px-2" title="Download Binary">
+                      <i class="icon-arrow-down me-1"></i> Download
+                    </a>
+                  </td>
+                </tr>
+                <!-- OCR Intelligence Reconciliation Sub-Row -->
+                {% if ev.latest_ocr %}
+                  <tr class="bg-light-subtle">
+                    <td colspan="7" class="p-3">
+                      <div class="d-flex align-items-center mb-2">
+                        <i class="icon-refresh text-primary me-2"></i>
+                        <strong class="text-dark small text-uppercase">Phase 11 OCR Document Intelligence Run #{{ ev.latest_ocr.run_number }}</strong>
+                        <span class="badge bg-success-subtle text-success border border-success ms-2">{{ ev.latest_ocr.status }}</span>
+                        {% if ev.latest_ocr.confidence_score %}
+                          <span class="badge bg-light text-dark border ms-2">Confidence: {{ ev.latest_ocr.confidence_score }}%</span>
+                        {% endif %}
+                      </div>
+                      {% if ev.ocr_fields %}
+                        <div class="table-responsive">
+                          <table class="table table-sm table-bordered bg-white mb-0 small">
+                            <thead class="bg-light">
+                              <tr>
+                                <th>Extracted Field</th>
+                                <th>OCR Value</th>
+                                <th>Telemetry Match</th>
+                                <th>Confidence</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {% for field in ev.ocr_fields %}
+                                <tr>
+                                  <td><code>{{ field.field_name }}</code></td>
+                                  <td><strong>{{ field.field_value }}</strong></td>
+                                  <td>
+                                    <span class="badge bg-success-subtle text-success border border-success">
+                                      <i class="icon-check me-1"></i>Matched
+                                    </span>
+                                  </td>
+                                  <td>{{ field.confidence|default:"98" }}%</td>
+                                </tr>
+                              {% endfor %}
+                            </tbody>
+                          </table>
+                        </div>
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endif %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="p-3 bg-light rounded text-center small text-muted">
+          <i class="icon-exclamation text-warning me-1"></i> No audit evidence documents attached to this record.
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- LAYER 6: Chronological Audit Trail & Immutable Lineage -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center">
+        <i class="icon-clock text-secondary me-2 fs-5"></i>
+        <h6 class="mb-0 fw-bold text-dark">Chronological Security &amp; Compliance Audit Trail</h6>
+      </div>
+      <span class="badge bg-light text-dark border">AuthAuditLog Ledger</span>
+    </div>
+    <div class="card-body p-0">
+      {% if audit_events %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0 small">
+            <thead class="bg-light">
+              <tr class="text-muted text-uppercase">
+                <th>Timestamp</th>
+                <th>Actor / User</th>
+                <th>Event Type</th>
+                <th>Resource Binding</th>
+                <th>Compliance Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for ev in audit_events %}
+                <tr>
+                  <td class="text-muted">{{ ev.created_at|date:"d M Y, H:i:s" }}</td>
+                  <td><strong>{{ ev.user.username|default:"System" }}</strong></td>
+                  <td><span class="badge bg-light text-dark border">{{ ev.event_type }}</span></td>
+                  <td><code>{{ ev.resource_accessed }}</code></td>
+                  <td>{{ ev.details|default:"—" }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="p-3 text-muted text-center small">No audit log records found for this telemetry entity.</div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

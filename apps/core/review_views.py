@@ -109,8 +109,11 @@ def submission_inbox_view(request):
     search_query = request.GET.get("q", "").strip()
     status_filter = request.GET.get("status", "").strip()
     site_filter = request.GET.get("site", "").strip()
+    project_filter = request.GET.get("project", "").strip()
     period_filter = request.GET.get("period", "").strip()
     category_filter = request.GET.get("category", "").strip()
+    date_from = request.GET.get("date_from", "").strip()
+    date_to = request.GET.get("date_to", "").strip()
 
     qs = base_qs
 
@@ -130,11 +133,20 @@ def submission_inbox_view(request):
     if site_filter:
         qs = qs.filter(site_id=site_filter)
 
+    if project_filter:
+        qs = qs.filter(site__project_id=project_filter)
+
     if period_filter:
         qs = qs.filter(reporting_period_id=period_filter)
 
     if category_filter:
         qs = qs.filter(activity_record__activity__category_id=category_filter)
+
+    if date_from:
+        qs = qs.filter(submitted_at__date__gte=date_from)
+
+    if date_to:
+        qs = qs.filter(submitted_at__date__lte=date_to)
 
     # KPI counts for quick tab filters
     total_count = base_qs.count()
@@ -152,6 +164,7 @@ def submission_inbox_view(request):
 
     # Filter candidates
     accessible_sites = get_accessible_sites(user).order_by("name")
+    accessible_projects = get_accessible_projects(user).order_by("name")
     accessible_periods = get_accessible_reporting_periods(user).order_by("-start_date")
     accessible_categories = ActivityCategory.objects.filter(is_active=True).order_by("name")
 
@@ -171,10 +184,14 @@ def submission_inbox_view(request):
         "search_query": search_query,
         "status_filter": status_filter,
         "site_filter": site_filter,
+        "project_filter": project_filter,
         "period_filter": period_filter,
         "category_filter": category_filter,
+        "date_from": date_from,
+        "date_to": date_to,
         "status_choices": SubmissionStatus.choices,
         "accessible_sites": accessible_sites,
+        "accessible_projects": accessible_projects,
         "accessible_periods": accessible_periods,
         "accessible_categories": accessible_categories,
     }

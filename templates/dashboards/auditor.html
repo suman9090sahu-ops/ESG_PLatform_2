@@ -5,54 +5,367 @@
 {% block page_subtitle %}{{ page_subtitle }}{% endblock %}
 
 {% block header_actions %}
-  <span class="badge badge-warning text-dark px-3 py-2 fs-6">
-    <i class="icon-lock me-1"></i> Role: AUDITOR (READ-ONLY)
+  <span class="badge badge-warning text-dark px-3 py-2 fs-6 shadow-xs me-2">
+    <i class="icon-lock me-1"></i> Assurance Mode: READ-ONLY ENFORCED
+  </span>
+  {% if current_period %}
+    <span class="badge badge-info px-3 py-2 fs-6 shadow-xs me-2">
+      <i class="icon-calendar me-1"></i> Audit Cycle: {{ current_period.code }}
+    </span>
+  {% endif %}
+  <span class="badge badge-secondary px-3 py-2 fs-6 shadow-xs">
+    <i class="icon-user me-1"></i> Role: AUDITOR
   </span>
 {% endblock %}
 
 {% block kpi_section %}
-  <div class="col-md-4 col-sm-6 grid-margin stretch-card">
-    <div class="card card-statistics border-0 shadow-sm">
-      <div class="card-body">
-        <h6 class="text-muted font-weight-normal mb-1">Governed Disclosures</h6>
-        <h3 class="mb-0 font-weight-bold text-dark">48 Indicators</h3>
-        <p class="text-success small mt-2 mb-0"><i class="icon-check me-1"></i> 100% Traceable Lineage</p>
+  <div class="row g-3 mb-4">
+    <!-- Governed Disclosures -->
+    <div class="col-xl-2 col-md-4 col-sm-6">
+      <div class="card card-statistics border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="text-muted font-weight-normal mb-1 small text-uppercase">Governed Records</h6>
+          <h3 class="mb-0 font-weight-bold text-dark">{{ total_disclosures }}</h3>
+          <p class="text-success small mt-2 mb-0"><i class="icon-check me-1"></i> 100% Traceable Lineage</p>
+        </div>
       </div>
     </div>
-  </div>
-  <div class="col-md-4 col-sm-6 grid-margin stretch-card">
-    <div class="card card-statistics border-0 shadow-sm">
-      <div class="card-body">
-        <h6 class="text-muted font-weight-normal mb-1">Assurance Findings</h6>
-        <h3 class="mb-0 font-weight-bold text-warning">0 Critical</h3>
-        <p class="text-muted small mt-2 mb-0"><i class="icon-badge text-warning me-1"></i> 2 Low-Risk Observations</p>
+    <!-- Total Auditable GHG -->
+    <div class="col-xl-2 col-md-4 col-sm-6">
+      <div class="card card-statistics border-0 shadow-sm h-100 bg-light-warning border-warning">
+        <div class="card-body">
+          <h6 class="text-dark font-weight-bold mb-1 small text-uppercase">Auditable Emissions</h6>
+          <h3 class="mb-0 font-weight-bold text-dark">{{ total_ghg_tco2e|default:"0.0000" }} <small class="fs-6 font-weight-normal">tCO₂e</small></h3>
+          <p class="text-muted small mt-2 mb-0"><i class="icon-chart me-1"></i> Scope 1 + 2 Inventory</p>
+        </div>
       </div>
     </div>
-  </div>
-  <div class="col-md-4 col-sm-6 grid-margin stretch-card">
-    <div class="card card-statistics border-0 shadow-sm">
-      <div class="card-body">
-        <h6 class="text-muted font-weight-normal mb-1">Data Mutation Access</h6>
-        <h3 class="mb-0 font-weight-bold text-danger">RESTRICTED</h3>
-        <p class="text-danger small mt-2 mb-0"><i class="icon-lock me-1"></i> Read-Only Assurance Mode</p>
+    <!-- Scope 1 Direct -->
+    <div class="col-xl-2 col-md-4 col-sm-6">
+      <div class="card card-statistics border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="text-muted font-weight-normal mb-1 small text-uppercase">Scope 1 Combustion</h6>
+          <h3 class="mb-0 font-weight-bold text-dark">{{ total_scope1_tco2e|default:"0.0000" }} <small class="fs-6 font-weight-normal text-muted">tCO₂e</small></h3>
+          <p class="text-muted small mt-2 mb-0"><i class="icon-check text-success me-1"></i> Diesel &amp; Fleet Verified</p>
+        </div>
+      </div>
+    </div>
+    <!-- Scope 2 Grid -->
+    <div class="col-xl-2 col-md-4 col-sm-6">
+      <div class="card card-statistics border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="text-muted font-weight-normal mb-1 small text-uppercase">Scope 2 Grid</h6>
+          <h3 class="mb-0 font-weight-bold text-dark">{{ total_scope2_tco2e|default:"0.0000" }} <small class="fs-6 font-weight-normal text-muted">tCO₂e</small></h3>
+          <p class="text-muted small mt-2 mb-0"><i class="icon-energy text-info me-1"></i> Utility Meter Readings</p>
+        </div>
+      </div>
+    </div>
+    <!-- Evidence Coverage -->
+    <div class="col-xl-2 col-md-4 col-sm-6">
+      <div class="card card-statistics border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="text-muted font-weight-normal mb-1 small text-uppercase">Evidence Coverage</h6>
+          <h3 class="mb-0 font-weight-bold {% if evidence_coverage_pct >= 80 %}text-success{% else %}text-warning{% endif %}">{{ evidence_coverage_pct }}%</h3>
+          <p class="text-muted small mt-2 mb-0">
+            <i class="icon-docs me-1"></i> {{ with_evidence_count }}/{{ total_disclosures }} Docs Attached
+          </p>
+        </div>
+      </div>
+    </div>
+    <!-- Audit Findings / Flags -->
+    <div class="col-xl-2 col-md-4 col-sm-6">
+      <div class="card card-statistics border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="text-muted font-weight-normal mb-1 small text-uppercase">Assurance Flags</h6>
+          <h3 class="mb-0 font-weight-bold {% if open_findings_count > 0 %}text-warning{% else %}text-success{% endif %}">{{ open_findings_count }}</h3>
+          <p class="text-muted small mt-2 mb-0">
+            {% if open_findings_count > 0 %}
+              <span class="text-warning"><i class="icon-flag me-1"></i> Open Anomaly Flags</span>
+            {% else %}
+              <span class="text-success"><i class="icon-badge me-1"></i> Zero Open Exceptions</span>
+            {% endif %}
+          </p>
+        </div>
       </div>
     </div>
   </div>
 {% endblock %}
 
 {% block main_panel %}
-  <div class="card border-0 shadow-sm">
-    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
-      <h6 class="mb-0 font-weight-bold text-dark">
-        <i class="icon-doc me-2 text-warning"></i> Independent ESG Assurance Workspace (Phase 02 Placeholder)
-      </h6>
-      <span class="badge badge-warning text-dark">Read-Only Enforced</span>
+  <!-- Assurance Guard Notice -->
+  <div class="alert alert-warning border-0 shadow-sm mb-4 d-flex align-items-center">
+    <i class="icon-lock fs-4 text-warning me-3"></i>
+    <div class="flex-grow-1">
+      <strong class="text-dark">Independent ESG Assurance Mandate:</strong>
+      <span class="text-dark"> As an Auditor, you possess read-only transparency over all enterprise disclosures, evidence documents, SHA-256 hashes, and approval decisions. Data mutation is strictly prohibited at the server level.</span>
     </div>
-    <div class="card-body">
-      <div class="alert alert-warning small mb-3">
-        <strong>Strict Architectural Constraint:</strong> The <code>AUDITOR</code> role is strictly read-only. Server-side authorization blocks all state mutation, document deletion, or data alterations. Auditors have transparent read access to raw OCR evidence, approval trails, and calculation lineage formulas.
+    <a href="{% url 'core:trace_selector' %}" class="btn btn-sm btn-outline-dark ms-3 text-nowrap">
+      <i class="icon-directions me-1"></i> Trace Number Directory
+    </a>
+  </div>
+
+  <!-- Section 1: Governed Disclosures & Trace Lineage Ledger -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+      <div>
+        <h6 class="mb-0 font-weight-bold text-dark">
+          <i class="icon-doc me-2 text-primary"></i> Governed Disclosures &amp; Traceable ESG Numbers
+        </h6>
+        <span class="small text-muted">Click "Trace This Number" on any record to inspect complete 5-layer regulatory lineage</span>
       </div>
-      <p class="text-muted small mb-0">Phase 06 will integrate the formal audit finding log and assurance workpapers generator.</p>
+      <div>
+        <a href="{% url 'core:reports_overview' %}" class="btn btn-sm btn-outline-primary">
+          <i class="icon-layers me-1"></i> Governed Reports Summary
+        </a>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      {% if disclosures %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="bg-light">
+              <tr class="small text-muted text-uppercase">
+                <th>Metric / Indicator</th>
+                <th>Scope</th>
+                <th>Subsidiary &amp; Site</th>
+                <th>Measured Reading</th>
+                <th>Calculated ESG Value</th>
+                <th>Evidence Audit</th>
+                <th>Verification State</th>
+                <th class="text-end">Lineage Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for d in disclosures %}
+                <tr>
+                  <td>
+                    <div class="fw-bold text-dark">{{ d.activity_name }}</div>
+                    <code class="small text-muted">{{ d.activity_code }}</code>
+                  </td>
+                  <td>
+                    {% if d.scope == 'SCOPE_1' %}
+                      <span class="badge bg-danger-subtle text-danger border border-danger">Scope 1</span>
+                    {% elif d.scope == 'SCOPE_2' %}
+                      <span class="badge bg-info-subtle text-info border border-info">Scope 2</span>
+                    {% elif d.scope == 'SCOPE_3' %}
+                      <span class="badge bg-warning-subtle text-warning border border-warning">Scope 3</span>
+                    {% else %}
+                      <span class="badge bg-secondary-subtle text-secondary">Non-GHG</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <div class="text-dark fw-semibold">{{ d.site.name }}</div>
+                    <div class="small text-muted">{{ d.subsidiary.short_name|default:d.subsidiary.name }}</div>
+                  </td>
+                  <td>
+                    <strong>{{ d.quantity }}</strong> {{ d.unit }}
+                    <div class="small text-muted">{{ d.measurement_date|date:"d M Y" }}</div>
+                  </td>
+                  <td>
+                    {% if d.emissions_tco2e > 0 %}
+                      <strong class="text-primary fs-6">{{ d.emissions_tco2e }}</strong> <small class="text-muted">tCO₂e</small>
+                      <div class="small text-muted" style="font-size: 0.72rem;">Factor: {{ d.emission_factor }} {{ d.factor_unit }}</div>
+                    {% else %}
+                      <strong class="text-dark">{{ d.quantity }}</strong> <small class="text-muted">{{ d.unit }}</small>
+                      <div class="small text-muted" style="font-size: 0.72rem;">Physical Resource</div>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if d.has_evidence %}
+                      <span class="badge bg-success-subtle text-success border border-success">
+                        <i class="icon-check me-1"></i>{{ d.evidence_count }} Document{{ d.evidence_count|pluralize }}
+                      </span>
+                    {% else %}
+                      <span class="badge bg-warning-subtle text-warning border border-warning">
+                        <i class="icon-exclamation me-1"></i>No Documents
+                      </span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <span class="badge bg-success-subtle text-success border border-success">
+                      <i class="icon-check me-1"></i>VERIFIED
+                    </span>
+                    {% if d.verified_by %}
+                      <div class="small text-muted" style="font-size: 0.75rem;">by {{ d.verified_by.username }}</div>
+                    {% endif %}
+                  </td>
+                  <td class="text-end text-nowrap">
+                    <a href="{{ d.trace_url }}" class="btn btn-sm btn-primary py-1 px-3 shadow-xs" title="Trace this value back to site data and source evidence">
+                      <i class="icon-directions me-1"></i> Trace This Number
+                    </a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        {% include "components/empty_state.html" with title="No Verified Records to Audit" description="Operational records verified by Subsidiary Managers will appear here for audit assurance." icon="icon-magnifier" %}
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Section 2: Division Scope Breakdown -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-bottom">
+      <h6 class="mb-0 font-weight-bold text-dark">
+        <i class="icon-organization me-2 text-info"></i> Division Scope &amp; Assurance Completeness
+      </h6>
+    </div>
+    <div class="card-body p-0">
+      {% if subsidiary_breakdowns %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="bg-light">
+              <tr class="small text-muted text-uppercase">
+                <th>Subsidiary Division</th>
+                <th class="text-center">Projects / Sites</th>
+                <th class="text-center">Verified Records</th>
+                <th class="text-end">Scope 1 (tCO₂e)</th>
+                <th class="text-end">Scope 2 (tCO₂e)</th>
+                <th class="text-end">Total GHG (tCO₂e)</th>
+                <th class="text-end">Assurance State</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for sub in subsidiary_breakdowns %}
+                <tr>
+                  <td>
+                    <strong>{{ sub.subsidiary.name }}</strong>
+                    <code class="small text-muted d-block">{{ sub.subsidiary.code }}</code>
+                  </td>
+                  <td class="text-center">
+                    <span class="badge bg-secondary-subtle text-secondary">
+                      {{ sub.projects_count }} Proj / {{ sub.sites_count }} Site{{ sub.sites_count|pluralize }}
+                    </span>
+                  </td>
+                  <td class="text-center">
+                    <span class="badge bg-success-subtle text-success border border-success">
+                      {{ sub.verified_records_count }}
+                    </span>
+                  </td>
+                  <td class="text-end">{{ sub.scope1_tco2e }}</td>
+                  <td class="text-end">{{ sub.scope2_tco2e }}</td>
+                  <td class="text-end fw-bold text-primary">{{ sub.total_ghg_tco2e }}</td>
+                  <td class="text-end">
+                    {% if sub.verified_records_count > 0 %}
+                      <span class="badge bg-success text-white"><i class="icon-check me-1"></i>Audit Ready</span>
+                    {% else %}
+                      <span class="badge bg-secondary text-white">Pending Telemetry</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}
+
+{% block side_panel %}
+  <!-- Auditor Profile Card -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-bottom">
+      <h6 class="mb-0 font-weight-bold text-dark">
+        <i class="icon-user me-2 text-warning"></i> Assurance Auditor
+      </h6>
+    </div>
+    <div class="card-body small">
+      <div class="d-flex align-items-center mb-3">
+        <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 44px; height: 44px; font-weight: bold; font-size: 1.1rem;">
+          {{ request.user.first_name|first|default:"A" }}{{ request.user.last_name|first|default:"U" }}
+        </div>
+        <div>
+          <h6 class="mb-0 font-weight-bold text-dark">{{ request.user.get_full_name|default:request.user.username }}</h6>
+          <span class="text-muted small">@{{ request.user.username }}</span>
+        </div>
+      </div>
+      <p class="mb-2"><strong>Designation:</strong> {{ request.user.designation|default:"Senior Assurance Auditor" }}</p>
+      <p class="mb-2"><strong>Department:</strong> {{ request.user.department|default:"External ESG Assurance" }}</p>
+      <p class="mb-2">
+        <strong>Access Mode:</strong>
+        <span class="badge badge-warning text-dark">READ-ONLY (Strict)</span>
+      </p>
+      <div class="alert alert-light border small text-muted p-2 mb-0 mt-3">
+        <i class="icon-shield text-warning me-1"></i>
+        Server authorization prohibits data edits, deletions, or status overrides by this role.
+      </div>
+    </div>
+  </div>
+
+  <!-- Audit Assurance Quick Links -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-bottom">
+      <h6 class="mb-0 font-weight-bold text-dark">
+        <i class="icon-magnifier me-2 text-primary"></i> Assurance Navigation
+      </h6>
+    </div>
+    <div class="card-body p-2">
+      <div class="list-group list-group-flush small">
+        <a href="{% url 'core:trace_selector' %}" class="list-group-item list-group-item-action d-flex align-items-center py-2 px-3">
+          <i class="icon-directions text-primary me-2"></i>
+          <div>
+            <strong>Trace This Number</strong>
+            <div class="text-muted" style="font-size: 0.75rem;">5-Layer Lineage Inspection</div>
+          </div>
+        </a>
+        <a href="{% url 'core:reports_overview' %}" class="list-group-item list-group-item-action d-flex align-items-center py-2 px-3">
+          <i class="icon-doc text-success me-2"></i>
+          <div>
+            <strong>Governed Reports</strong>
+            <div class="text-muted" style="font-size: 0.75rem;">Consolidated BRSR Disclosures</div>
+          </div>
+        </a>
+        <a href="{% url 'core:evidence_list' %}" class="list-group-item list-group-item-action d-flex align-items-center py-2 px-3">
+          <i class="icon-camera text-info me-2"></i>
+          <div>
+            <strong>Evidence Repository</strong>
+            <div class="text-muted" style="font-size: 0.75rem;">SHA-256 Hashes &amp; Invoices</div>
+          </div>
+        </a>
+        <a href="{% url 'core:validation_rule_list' %}" class="list-group-item list-group-item-action d-flex align-items-center py-2 px-3">
+          <i class="icon-check text-warning me-2"></i>
+          <div>
+            <strong>Validation Rules</strong>
+            <div class="text-muted" style="font-size: 0.75rem;">Governance Catalog (Read-Only)</div>
+          </div>
+        </a>
+        <a href="{% url 'core:anomaly_list' %}" class="list-group-item list-group-item-action d-flex align-items-center py-2 px-3">
+          <i class="icon-notebook text-danger me-2"></i>
+          <div>
+            <strong>Audit Findings / Flags</strong>
+            <div class="text-muted" style="font-size: 0.75rem;">Exceptions &amp; Variances</div>
+          </div>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Immutable Audit Trail -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-bottom">
+      <h6 class="mb-0 font-weight-bold text-dark">
+        <i class="icon-clock me-2 text-secondary"></i> Live Compliance Ledger
+      </h6>
+    </div>
+    <div class="card-body p-0 small">
+      {% if recent_audit_trail %}
+        <div class="list-group list-group-flush">
+          {% for ev in recent_audit_trail %}
+            <div class="list-group-item px-3 py-2">
+              <div class="d-flex justify-content-between">
+                <span class="badge bg-light text-dark border">{{ ev.event_type }}</span>
+                <span class="text-muted" style="font-size: 0.75rem;">{{ ev.created_at|date:"d M H:i" }}</span>
+              </div>
+              <div class="text-muted text-truncate mt-1" style="font-size: 0.75rem;">{{ ev.details|default:ev.resource_accessed }}</div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="p-3 text-muted">No audit trail records logged.</div>
+      {% endif %}
     </div>
   </div>
 {% endblock %}

@@ -5,63 +5,439 @@
 {% block page_subtitle %}{{ page_subtitle }}{% endblock %}
 
 {% block header_actions %}
-  <span class="badge badge-info px-3 py-2 fs-6">
+  <span class="badge badge-success px-3 py-2 fs-6 shadow-xs me-2">
+    <i class="icon-badge me-1"></i> Corporate Scope (Enterprise Group)
+  </span>
+  {% if current_period %}
+    <span class="badge badge-info px-3 py-2 fs-6 shadow-xs me-2">
+      <i class="icon-calendar me-1"></i> Cycle: {{ current_period.code }} ({{ current_period.status }})
+    </span>
+  {% endif %}
+  <span class="badge badge-primary px-3 py-2 fs-6 shadow-xs">
     <i class="icon-user me-1"></i> Role: ESG_MANAGER
   </span>
 {% endblock %}
 
 {% block kpi_section %}
-  <div class="col-md-3 col-sm-6 grid-margin stretch-card">
-    <div class="card card-statistics border-0 shadow-sm">
-      <div class="card-body">
-        <h6 class="text-muted font-weight-normal mb-1">Scope 1 Direct</h6>
-        <h3 class="mb-0 font-weight-bold text-dark">18,420 <small class="fs-6 font-weight-normal">tCO₂e</small></h3>
-        <p class="text-success small mt-2 mb-0"><i class="icon-check me-1"></i> Verified Baseline</p>
+  <div class="row g-3 mb-4">
+    <!-- Scope 1 -->
+    <div class="col-xl-2 col-md-4 col-sm-6">
+      <div class="card card-statistics border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="text-muted font-weight-normal mb-1 small text-uppercase">Scope 1 Direct</h6>
+          <h3 class="mb-0 font-weight-bold text-dark">{{ total_scope1_tco2e|default:"0.0000" }} <small class="fs-6 font-weight-normal text-muted">tCO₂e</small></h3>
+          <p class="text-success small mt-2 mb-0"><i class="icon-check me-1"></i> Diesel &amp; Fleet Fuel</p>
+        </div>
       </div>
     </div>
-  </div>
-  <div class="col-md-3 col-sm-6 grid-margin stretch-card">
-    <div class="card card-statistics border-0 shadow-sm">
-      <div class="card-body">
-        <h6 class="text-muted font-weight-normal mb-1">Scope 2 Grid</h6>
-        <h3 class="mb-0 font-weight-bold text-dark">34,110 <small class="fs-6 font-weight-normal">tCO₂e</small></h3>
-        <p class="text-info small mt-2 mb-0"><i class="icon-energy me-1"></i> CEA Factor Applied</p>
+    <!-- Scope 2 -->
+    <div class="col-xl-2 col-md-4 col-sm-6">
+      <div class="card card-statistics border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="text-muted font-weight-normal mb-1 small text-uppercase">Scope 2 Grid</h6>
+          <h3 class="mb-0 font-weight-bold text-dark">{{ total_scope2_tco2e|default:"0.0000" }} <small class="fs-6 font-weight-normal text-muted">tCO₂e</small></h3>
+          <p class="text-info small mt-2 mb-0"><i class="icon-energy me-1"></i> CEA CEA Factor Applied</p>
+        </div>
       </div>
     </div>
-  </div>
-  <div class="col-md-3 col-sm-6 grid-margin stretch-card">
-    <div class="card card-statistics border-0 shadow-sm">
-      <div class="card-body">
-        <h6 class="text-muted font-weight-normal mb-1">Scope 3 Value Chain</h6>
-        <h3 class="mb-0 font-weight-bold text-dark">82,500 <small class="fs-6 font-weight-normal">tCO₂e</small></h3>
-        <p class="text-muted small mt-2 mb-0"><i class="icon-layers me-1"></i> Upstream Logistics</p>
+    <!-- Total Gross GHG -->
+    <div class="col-xl-2 col-md-4 col-sm-6">
+      <div class="card card-statistics border-0 shadow-sm h-100 bg-light-primary border-primary">
+        <div class="card-body">
+          <h6 class="text-primary font-weight-bold mb-1 small text-uppercase">Total Gross GHG</h6>
+          <h3 class="mb-0 font-weight-bold text-primary">{{ total_ghg_tco2e|default:"0.0000" }} <small class="fs-6 font-weight-normal">tCO₂e</small></h3>
+          <p class="text-muted small mt-2 mb-0"><i class="icon-chart me-1"></i> Scope 1 + 2 Inventory</p>
+        </div>
       </div>
     </div>
-  </div>
-  <div class="col-md-3 col-sm-6 grid-margin stretch-card">
-    <div class="card card-statistics border-0 shadow-sm">
-      <div class="card-body">
-        <h6 class="text-muted font-weight-normal mb-1">BRSR Core Ready</h6>
-        <h3 class="mb-0 font-weight-bold text-success">92.4%</h3>
-        <p class="text-success small mt-2 mb-0"><i class="icon-badge me-1"></i> 8/9 Principles Filled</p>
+    <!-- Verified Submissions -->
+    <div class="col-xl-2 col-md-4 col-sm-6">
+      <div class="card card-statistics border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="text-muted font-weight-normal mb-1 small text-uppercase">Verified Submissions</h6>
+          <h3 class="mb-0 font-weight-bold text-success">{{ verified_submissions_count }}</h3>
+          <p class="text-success small mt-2 mb-0"><i class="icon-lock me-1"></i> Audited &amp; Locked</p>
+        </div>
+      </div>
+    </div>
+    <!-- Open Anomalies -->
+    <div class="col-xl-2 col-md-4 col-sm-6">
+      <div class="card card-statistics border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="text-muted font-weight-normal mb-1 small text-uppercase">Exceptions / Flags</h6>
+          <h3 class="mb-0 font-weight-bold {% if open_anomalies_count > 0 %}text-warning{% else %}text-muted{% endif %}">{{ open_anomalies_count }}</h3>
+          <p class="text-muted small mt-2 mb-0">
+            {% if open_anomalies_count > 0 %}
+              <span class="text-warning"><i class="icon-flag me-1"></i> Active Anomalies</span>
+            {% else %}
+              <i class="icon-check text-success me-1"></i> Zero Flagged Issues
+            {% endif %}
+          </p>
+        </div>
+      </div>
+    </div>
+    <!-- Water & Waste Footprint -->
+    <div class="col-xl-2 col-md-4 col-sm-6">
+      <div class="card card-statistics border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="text-muted font-weight-normal mb-1 small text-uppercase">Water Footprint</h6>
+          <h3 class="mb-0 font-weight-bold text-dark">{{ total_water_kl|default:"0" }} <small class="fs-6 font-weight-normal text-muted">kL</small></h3>
+          <p class="text-muted small mt-2 mb-0"><i class="icon-drop text-info me-1"></i> Groundwater &amp; City</p>
+        </div>
       </div>
     </div>
   </div>
 {% endblock %}
 
 {% block main_panel %}
-  <div class="card border-0 shadow-sm">
+  <!-- Section 1: Subsidiary Division Consolidation -->
+  <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
-      <h6 class="mb-0 font-weight-bold text-dark">
-        <i class="icon-chart me-2 text-success"></i> Corporate Governance Consolidation Engine (Phase 02 Placeholder)
-      </h6>
-      <span class="badge badge-success">Corporate Scope</span>
-    </div>
-    <div class="card-body">
-      <div class="alert alert-info small mb-3">
-        <strong>Phase 02 Role Placeholder:</strong> As <code>ESG_MANAGER</code>, you have corporate-level authority across all subsidiaries to configure emission factors, calculate greenhouse gas inventories, manage exceptions, and finalize SEBI BRSR reports.
+      <div>
+        <h6 class="mb-0 font-weight-bold text-dark">
+          <i class="icon-organization me-2 text-primary"></i> Subsidiary Division Consolidation
+        </h6>
+        <span class="small text-muted">Authoritative multi-tier roll-up across operating infrastructure divisions</span>
       </div>
-      <p class="text-muted small mb-0">Detailed calculation pipelines and automated BRSR XBRL generation modules are scheduled for Phase 05 &amp; Phase 06.</p>
+      <div>
+        <a href="{% url 'core:reports_overview' %}" class="btn btn-sm btn-outline-primary">
+          <i class="icon-layers me-1"></i> Full Consolidation Engine
+        </a>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      {% if subsidiary_breakdowns %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="bg-light">
+              <tr class="small text-muted text-uppercase">
+                <th>Subsidiary Division</th>
+                <th>Industry / Sector</th>
+                <th class="text-center">Projects / Sites</th>
+                <th class="text-center">Verified Records</th>
+                <th class="text-center">Pending Review</th>
+                <th class="text-end">Scope 1 (tCO₂e)</th>
+                <th class="text-end">Scope 2 (tCO₂e)</th>
+                <th class="text-end">Total GHG (tCO₂e)</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for sub in subsidiary_breakdowns %}
+                <tr>
+                  <td>
+                    <div class="fw-bold text-dark">{{ sub.subsidiary.name }}</div>
+                    <code class="small text-muted">{{ sub.subsidiary.code }}</code>
+                  </td>
+                  <td>
+                    <span class="badge bg-light text-dark border">{{ sub.subsidiary.industry|default:"Infrastructure" }}</span>
+                  </td>
+                  <td class="text-center">
+                    <span class="badge bg-secondary-subtle text-secondary px-2 py-1">
+                      {{ sub.projects_count }} Proj / {{ sub.sites_count }} Site{{ sub.sites_count|pluralize }}
+                    </span>
+                  </td>
+                  <td class="text-center">
+                    <span class="badge bg-success-subtle text-success border border-success px-2 py-1">
+                      <i class="icon-check me-1"></i>{{ sub.verified_records_count }}
+                    </span>
+                  </td>
+                  <td class="text-center">
+                    {% if sub.pending_count > 0 %}
+                      <span class="badge bg-warning-subtle text-warning border border-warning px-2 py-1">
+                        {{ sub.pending_count }} In Review
+                      </span>
+                    {% else %}
+                      <span class="text-muted small">0</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-end fw-semibold text-dark">{{ sub.scope1_tco2e }}</td>
+                  <td class="text-end fw-semibold text-dark">{{ sub.scope2_tco2e }}</td>
+                  <td class="text-end fw-bold text-primary">{{ sub.total_ghg_tco2e }}</td>
+                  <td class="text-end">
+                    <a href="{% url 'core:reports_overview' %}?subsidiary={{ sub.subsidiary.id }}" class="btn btn-xs btn-outline-primary py-1 px-2" style="font-size: 0.75rem;">
+                      <i class="icon-magnifier me-1"></i> Filter Scope
+                    </a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        {% include "components/empty_state.html" with title="No Subsidiary Data" description="No operational subsidiaries are currently enrolled in this enterprise scope." icon="icon-organization" %}
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Section 2: Recent Verified Disclosures & Submissions -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+      <div>
+        <h6 class="mb-0 font-weight-bold text-dark">
+          <i class="icon-check me-2 text-success"></i> Recently Verified Operational Telemetry
+        </h6>
+        <span class="small text-muted">First-line subsidiary verified operational data ready for SEBI BRSR Core consolidation</span>
+      </div>
+      <div>
+        <a href="{% url 'core:submission_list' %}?status=VERIFIED" class="btn btn-sm btn-outline-success">
+          <i class="icon-list me-1"></i> All Verified Submissions
+        </a>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      {% if recent_verified %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="bg-light">
+              <tr class="small text-muted text-uppercase">
+                <th>Submission ID</th>
+                <th>Activity &amp; Category</th>
+                <th>Operational Site &amp; Project</th>
+                <th>Measured Quantity</th>
+                <th>Submitter &amp; Verifier</th>
+                <th>Status</th>
+                <th class="text-end">Trace Lineage</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for sub in recent_verified %}
+                <tr>
+                  <td>
+                    <span class="fw-bold text-dark">#{{ sub.id }}</span>
+                    <div class="small text-muted">Iteration {{ sub.submission_number }}</div>
+                  </td>
+                  <td>
+                    <div class="fw-semibold text-dark">{{ sub.activity_record.activity.name }}</div>
+                    <code class="small text-muted">{{ sub.activity_record.activity.code }}</code>
+                  </td>
+                  <td>
+                    <div class="text-dark">{{ sub.site.name }}</div>
+                    <div class="small text-muted">{{ sub.site.project.subsidiary.short_name|default:sub.site.project.subsidiary.name }}</div>
+                  </td>
+                  <td>
+                    <strong>{{ sub.activity_record.quantity }}</strong> {{ sub.activity_record.unit.symbol }}
+                    <div class="small text-muted">{{ sub.activity_record.measurement_date|date:"d M Y" }}</div>
+                  </td>
+                  <td>
+                    <div class="small text-muted">
+                      Sub: <strong class="text-dark">{{ sub.submitted_by.username|default:"System" }}</strong>
+                    </div>
+                    {% with latest_rev=sub.latest_review %}
+                      {% if latest_rev and latest_rev.reviewer %}
+                        <div class="small text-success">
+                          Ver: <strong>{{ latest_rev.reviewer.username }}</strong>
+                        </div>
+                      {% endif %}
+                    {% endwith %}
+                  </td>
+                  <td>
+                    <span class="badge bg-success-subtle text-success border border-success px-2 py-1">
+                      <i class="icon-check me-1"></i>VERIFIED
+                    </span>
+                  </td>
+                  <td class="text-end text-nowrap">
+                    <a href="{% url 'core:submission_detail' sub.id %}" class="btn btn-sm btn-outline-secondary py-1 px-2 me-1" title="View Submission Envelope">
+                      <i class="icon-eye me-1"></i> Envelope
+                    </a>
+                    <a href="{% url 'core:trace_number_detail' sub.activity_record_id %}" class="btn btn-sm btn-outline-primary py-1 px-2" title="Trace 5-Layer Regulatory Lineage">
+                      <i class="icon-directions me-1"></i> Trace This Number
+                    </a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        {% include "components/empty_state.html" with title="No Verified Records Yet" description="Operational records submitted by Site Managers and verified by Subsidiary Managers will appear here." icon="icon-clock" %}
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Section 3: Active ESG Exceptions & Anomalies -->
+  {% if recent_anomalies %}
+    <div class="card border-0 shadow-sm mb-4 border-start border-warning border-4">
+      <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+        <div>
+          <h6 class="mb-0 font-weight-bold text-dark">
+            <i class="icon-flag me-2 text-warning"></i> Active Operational Exceptions &amp; Anomalies
+          </h6>
+          <span class="small text-muted">Flagged by Phase 15 Deterministic Anomaly Detection Engine</span>
+        </div>
+        <div>
+          <a href="{% url 'core:anomaly_list' %}" class="btn btn-sm btn-outline-warning text-dark">
+            <i class="icon-flag me-1"></i> Open Anomaly Desk ({{ open_anomalies_count }})
+          </a>
+        </div>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="bg-light">
+              <tr class="small text-muted text-uppercase">
+                <th>Severity</th>
+                <th>Rule Code &amp; Anomaly Type</th>
+                <th>Site &amp; Activity</th>
+                <th>Observed Reading</th>
+                <th>Detected Date</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for anom in recent_anomalies %}
+                <tr>
+                  <td>
+                    <span class="badge {{ anom.severity_badge_class }}">{{ anom.severity }}</span>
+                  </td>
+                  <td>
+                    <strong>{{ anom.rule.name }}</strong>
+                    <div class="small text-muted"><code>{{ anom.rule.rule_code }}</code></div>
+                  </td>
+                  <td>
+                    <div class="text-dark">{{ anom.activity_record.site.name }}</div>
+                    <div class="small text-muted">{{ anom.activity_record.activity.name }}</div>
+                  </td>
+                  <td>
+                    <strong>{{ anom.activity_record.quantity }}</strong> {{ anom.activity_record.unit.symbol }}
+                    {% if anom.deviation_percentage %}
+                      <span class="badge bg-danger-subtle text-danger small ms-1">{{ anom.deviation_percentage }}% dev</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <small class="text-muted">{{ anom.created_at|date:"d M Y, H:i" }}</small>
+                  </td>
+                  <td class="text-end">
+                    <a href="{% url 'core:anomaly_detail' anom.id %}" class="btn btn-sm btn-outline-dark py-1 px-2">
+                      <i class="icon-arrow-right me-1"></i> Investigate
+                    </a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}
+
+{% block side_panel %}
+  <!-- Officer Profile Card -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-bottom">
+      <h6 class="mb-0 font-weight-bold text-dark">
+        <i class="icon-user me-2 text-primary"></i> ESG Governance Officer
+      </h6>
+    </div>
+    <div class="card-body small">
+      <div class="d-flex align-items-center mb-3">
+        <div class="bg-success text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 44px; height: 44px; font-weight: bold; font-size: 1.1rem;">
+          {{ request.user.first_name|first|default:"E" }}{{ request.user.last_name|first|default:"M" }}
+        </div>
+        <div>
+          <h6 class="mb-0 font-weight-bold text-dark">{{ request.user.get_full_name|default:request.user.username }}</h6>
+          <span class="text-muted small">@{{ request.user.username }}</span>
+        </div>
+      </div>
+      <p class="mb-2"><strong>Designation:</strong> {{ request.user.designation|default:"Chief ESG Governance Officer" }}</p>
+      <p class="mb-2"><strong>Department:</strong> {{ request.user.department|default:"Corporate Sustainability" }}</p>
+      <p class="mb-2">
+        <strong>Governance Scope:</strong>
+        <span class="badge badge-success">Enterprise Group (All Divisions)</span>
+      </p>
+    </div>
+  </div>
+
+  <!-- Temporal Governance Cycle -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-bottom">
+      <h6 class="mb-0 font-weight-bold text-dark">
+        <i class="icon-calendar me-2 text-info"></i> Temporal Cycle Scope
+      </h6>
+    </div>
+    <div class="card-body small">
+      {% if current_period %}
+        <p class="mb-1"><strong>Active Cycle:</strong> <span class="fw-bold text-primary">{{ current_period.name }}</span></p>
+        <p class="mb-1"><strong>Code:</strong> <code>{{ current_period.code }}</code></p>
+        <p class="mb-1"><strong>Window:</strong> {{ current_period.start_date|date:"d M Y" }} to {{ current_period.end_date|date:"d M Y" }}</p>
+        <p class="mb-2">
+          <strong>Lifecycle State:</strong>
+          <span class="badge bg-success-subtle text-success border border-success px-2 py-1">{{ current_period.status }}</span>
+        </p>
+        <a href="{% url 'core:period_list' %}" class="btn btn-sm btn-outline-info w-100 mt-2">
+          <i class="icon-calendar me-1"></i> Manage Reporting Periods
+        </a>
+      {% else %}
+        <div class="text-muted">No reporting period currently configured.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Governance Quick Links -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-bottom">
+      <h6 class="mb-0 font-weight-bold text-dark">
+        <i class="icon-energy me-2 text-warning"></i> Governance Modules
+      </h6>
+    </div>
+    <div class="card-body p-2">
+      <div class="list-group list-group-flush small">
+        <a href="{% url 'core:reports_overview' %}" class="list-group-item list-group-item-action d-flex align-items-center py-2 px-3">
+          <i class="icon-chart text-primary me-2"></i>
+          <div>
+            <strong>Consolidation Engine</strong>
+            <div class="text-muted" style="font-size: 0.75rem;">SEBI BRSR Scope 1, 2, 3 Roll-up</div>
+          </div>
+        </a>
+        <a href="{% url 'core:activity_list' %}" class="list-group-item list-group-item-action d-flex align-items-center py-2 px-3">
+          <i class="icon-list text-success me-2"></i>
+          <div>
+            <strong>Activity Master Catalog</strong>
+            <div class="text-muted" style="font-size: 0.75rem;">Central Taxonomy &amp; Units</div>
+          </div>
+        </a>
+        <a href="{% url 'core:validation_rule_list' %}" class="list-group-item list-group-item-action d-flex align-items-center py-2 px-3">
+          <i class="icon-check text-info me-2"></i>
+          <div>
+            <strong>Validation Rule Engine</strong>
+            <div class="text-muted" style="font-size: 0.75rem;">Layer 1–7 Conformance Rules</div>
+          </div>
+        </a>
+        <a href="{% url 'core:anomaly_list' %}" class="list-group-item list-group-item-action d-flex align-items-center py-2 px-3">
+          <i class="icon-flag text-danger me-2"></i>
+          <div>
+            <strong>Anomaly Review Desk</strong>
+            <div class="text-muted" style="font-size: 0.75rem;">Spikes, Drops &amp; Exceptions</div>
+          </div>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Compliance Events -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-bottom">
+      <h6 class="mb-0 font-weight-bold text-dark">
+        <i class="icon-clock me-2 text-secondary"></i> Compliance Audit Stream
+      </h6>
+    </div>
+    <div class="card-body p-0 small">
+      {% if recent_audit_events %}
+        <div class="list-group list-group-flush">
+          {% for ev in recent_audit_events %}
+            <div class="list-group-item px-3 py-2">
+              <div class="d-flex justify-content-between">
+                <span class="badge bg-light text-dark border">{{ ev.event_type }}</span>
+                <span class="text-muted" style="font-size: 0.75rem;">{{ ev.created_at|date:"d M H:i" }}</span>
+              </div>
+              <div class="text-muted text-truncate mt-1" style="font-size: 0.75rem;">{{ ev.details|default:ev.resource_accessed }}</div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="p-3 text-muted">No recent compliance events recorded.</div>
+      {% endif %}
     </div>
   </div>
 {% endblock %}

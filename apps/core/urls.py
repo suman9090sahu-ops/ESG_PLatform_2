@@ -15,6 +15,7 @@ from apps.core import (
     org_views,
     period_views,
     procurement_views,
+    reporting_views,
     review_views,
     submission_views,
     transport_views,
@@ -53,9 +54,12 @@ urlpatterns = [
     path("dashboard/site-manager/", auth_views.site_manager_dashboard_redirect, name="site_manager_dashboard_alias"),
     path("site-manager/sites/<int:site_id>/", auth_views.site_detail_view, name="site_detail"),
     path("subsidiary-manager/dashboard/", review_views.subsidiary_manager_dashboard_view, name="subsidiary_manager_dashboard"),
+    path("dashboard/subsidiary-manager/", auth_views.subsidiary_manager_dashboard_redirect, name="subsidiary_manager_dashboard_alias"),
     path("subsidiary-manager/subsidiaries/<int:subsidiary_id>/", auth_views.subsidiary_detail_view, name="subsidiary_detail"),
     path("esg-manager/dashboard/", auth_views.esg_manager_dashboard, name="esg_manager_dashboard"),
+    path("dashboard/esg-manager/", auth_views.esg_manager_dashboard_redirect, name="esg_manager_dashboard_alias"),
     path("auditor/dashboard/", auth_views.auditor_dashboard, name="auditor_dashboard"),
+    path("dashboard/auditor/", auth_views.auditor_dashboard_redirect, name="auditor_dashboard_alias"),
     path("meil-operator/dashboard/", auth_views.meil_operator_dashboard, name="meil_operator_dashboard"),
 
     # -------------------------------------------------------------------------
@@ -266,6 +270,19 @@ urlpatterns = [
     path("logistics/", transport_views.transport_list_view, name="logistics_list"),
     path("logistics/carriers/", transport_views.carrier_list_view, name="logistics_carrier_list"),
     path("logistics/vehicles/", transport_views.vehicle_list_view, name="logistics_vehicle_list"),
+
+    # -------------------------------------------------------------------------
+    # Phase 20 Governed Reporting, Consolidation & Trace This Number Routes
+    # -------------------------------------------------------------------------
+    path("reports/", reporting_views.reports_overview_view, name="reports_overview"),
+    path("reports/consolidation/", reporting_views.reports_overview_view, name="reports_consolidation"),
+    path("reports/trace/", reporting_views.trace_selector_view, name="trace_selector"),
+    path("reports/trace/<int:record_id>/", reporting_views.trace_number_view, name="trace_number_detail"),
+    path("reports/trace-record/<int:record_id>/", reporting_views.trace_number_view, name="trace_record"),
+    path("trace/<int:record_id>/", reporting_views.trace_number_view, name="trace_direct"),
+    path("auditor/reports/", reporting_views.reports_overview_view, name="auditor_reports"),
+    path("auditor/trace/", reporting_views.trace_selector_view, name="auditor_trace_selector"),
+    path("auditor/trace/<int:record_id>/", reporting_views.trace_number_view, name="auditor_trace_detail"),
 ]
 
 

@@ -12,7 +12,7 @@
     <a href="{% url 'core:activity_record_detail' record_id=record.id %}" class="btn btn-sm btn-outline-primary">
       <i class="icon-doc me-1"></i> Source Record #{{ record.id }}
     </a>
-    {% if submission.is_reviewable %}
+    {% if submission.is_reviewable and can_review %}
       <a href="{% url 'core:submission_review_detail' submission_id=submission.id %}" class="btn btn-sm btn-primary">
         <i class="icon-magnifier me-1"></i> Review Workspace
       </a>
@@ -447,9 +447,24 @@
           <div class="text-muted mb-3" style="font-size: 0.8rem;">
             <i class="icon-check text-success me-1"></i> Data lineage, validation snapshot, and evidence attachments are locked and ready for Subsidiary verification.
           </div>
-          <a href="{% url 'core:submission_review_detail' submission_id=submission.id %}" class="btn btn-sm btn-primary w-100">
-            <i class="icon-magnifier me-1"></i> Open Review Workspace
-          </a>
+          {% if can_review %}
+            <a href="{% url 'core:submission_review_detail' submission_id=submission.id %}" class="btn btn-sm btn-primary w-100">
+              <i class="icon-magnifier me-1"></i> Open Review Workspace
+            </a>
+          {% else %}
+            <div class="alert alert-light border small text-muted mb-0">
+              <div class="fw-bold text-dark mb-1"><i class="icon-clock text-primary me-1"></i> Next Governance Action:</div>
+              {% if submission.status == 'SUBMITTED' or submission.status == 'RESUBMITTED' %}
+                <span>Awaiting governance review &amp; verification by Subsidiary Manager (<em>{{ submission.subsidiary.name }}</em>).</span>
+              {% elif submission.status == 'CORRECTION_REQUIRED' %}
+                <span>Correction requested. Please visit your <a href="{% url 'core:correction_inbox' %}" class="fw-semibold text-danger">Correction Inbox</a> to review comments, edit telemetry, and resubmit.</span>
+              {% elif submission.status == 'APPROVED' %}
+                <span><i class="icon-check text-success me-1"></i> Formally verified &amp; approved. Locked for corporate ESG reporting and independent assurance.</span>
+              {% else %}
+                <span>Status: {{ submission.get_status_display }}</span>
+              {% endif %}
+            </div>
+          {% endif %}
         </div>
       </div>
 

@@ -1,0 +1,356 @@
+{% extends "layouts/dashboard.html" %}
+{% load static esg_tags %}
+
+{% block page_title %}{{ page_title }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+
+{% block header_actions %}
+  {% if is_auditor %}
+    <span class="badge badge-warning text-dark px-3 py-2 fs-6 shadow-xs me-2">
+      <i class="icon-lock me-1"></i> Read-Only Assurance Mode
+    </span>
+  {% else %}
+    <span class="badge badge-success px-3 py-2 fs-6 shadow-xs me-2">
+      <i class="icon-badge me-1"></i> Corporate Consolidation Mode
+    </span>
+  {% endif %}
+  {% if current_period %}
+    <span class="badge badge-info px-3 py-2 fs-6 shadow-xs">
+      <i class="icon-calendar me-1"></i> Cycle: {{ current_period.code }}
+    </span>
+  {% endif %}
+{% endblock %}
+
+{% block kpi_section %}
+  <div class="row g-3 mb-4">
+    <!-- Scope 1 -->
+    <div class="col-xl-2 col-md-4 col-sm-6">
+      <div class="card card-statistics border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="text-muted font-weight-normal mb-1 small text-uppercase">Scope 1 Direct</h6>
+          <h3 class="mb-0 font-weight-bold text-dark">{{ report.total_scope1_tco2e }} <small class="fs-6 font-weight-normal text-muted">tCO₂e</small></h3>
+          <p class="text-success small mt-2 mb-0"><i class="icon-check me-1"></i> Stationary &amp; Fleet</p>
+        </div>
+      </div>
+    </div>
+    <!-- Scope 2 -->
+    <div class="col-xl-2 col-md-4 col-sm-6">
+      <div class="card card-statistics border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="text-muted font-weight-normal mb-1 small text-uppercase">Scope 2 Indirect</h6>
+          <h3 class="mb-0 font-weight-bold text-dark">{{ report.total_scope2_tco2e }} <small class="fs-6 font-weight-normal text-muted">tCO₂e</small></h3>
+          <p class="text-info small mt-2 mb-0"><i class="icon-energy me-1"></i> Grid Electricity</p>
+        </div>
+      </div>
+    </div>
+    <!-- Total Gross GHG -->
+    <div class="col-xl-2 col-md-4 col-sm-6">
+      <div class="card card-statistics border-0 shadow-sm h-100 bg-light-primary border-primary">
+        <div class="card-body">
+          <h6 class="text-primary font-weight-bold mb-1 small text-uppercase">Total Gross GHG</h6>
+          <h3 class="mb-0 font-weight-bold text-primary">{{ report.total_ghg_tco2e }} <small class="fs-6 font-weight-normal">tCO₂e</small></h3>
+          <p class="text-muted small mt-2 mb-0"><i class="icon-chart me-1"></i> Consolidated Total</p>
+        </div>
+      </div>
+    </div>
+    <!-- Water Withdrawal -->
+    <div class="col-xl-2 col-md-4 col-sm-6">
+      <div class="card card-statistics border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="text-muted font-weight-normal mb-1 small text-uppercase">Water Withdrawal</h6>
+          <h3 class="mb-0 font-weight-bold text-dark">{{ report.total_water_kl }} <small class="fs-6 font-weight-normal text-muted">kL</small></h3>
+          <p class="text-info small mt-2 mb-0"><i class="icon-drop me-1"></i> Groundwater &amp; City</p>
+        </div>
+      </div>
+    </div>
+    <!-- Waste Generated -->
+    <div class="col-xl-2 col-md-4 col-sm-6">
+      <div class="card card-statistics border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="text-muted font-weight-normal mb-1 small text-uppercase">Waste Generated</h6>
+          <h3 class="mb-0 font-weight-bold text-dark">{{ report.total_waste_tonnes }} <small class="fs-6 font-weight-normal text-muted">MT</small></h3>
+          <p class="text-muted small mt-2 mb-0"><i class="icon-trash me-1"></i> Hazardous &amp; Scrap</p>
+        </div>
+      </div>
+    </div>
+    <!-- Governed Records -->
+    <div class="col-xl-2 col-md-4 col-sm-6">
+      <div class="card card-statistics border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="text-muted font-weight-normal mb-1 small text-uppercase">Verified Records</h6>
+          <h3 class="mb-0 font-weight-bold text-success">{{ report.total_verified_count }}</h3>
+          <p class="text-success small mt-2 mb-0"><i class="icon-badge me-1"></i> 100% Traceable</p>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block main_panel %}
+  <!-- Filter Toolbar -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body p-3">
+      <form method="get" class="row g-2 align-items-center">
+        <!-- Period Selector -->
+        <div class="col-md-3">
+          <label class="form-label small text-muted mb-1">Reporting Cycle</label>
+          <select name="period" class="form-select form-select-sm" onchange="this.form.submit()">
+            {% for p in accessible_periods %}
+              <option value="{{ p.id }}" {% if p.id == selected_period_id %}selected{% endif %}>
+                {{ p.code }} ({{ p.status }})
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <!-- Subsidiary Selector -->
+        <div class="col-md-3">
+          <label class="form-label small text-muted mb-1">Subsidiary Division</label>
+          <select name="subsidiary" class="form-select form-select-sm" onchange="this.form.submit()">
+            <option value="">— All Enterprise Divisions —</option>
+            {% for sub in accessible_subsidiaries %}
+              <option value="{{ sub.id }}" {% if sub.id == selected_subsidiary_id %}selected{% endif %}>
+                {{ sub.name }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <!-- Scope Selector -->
+        <div class="col-md-3">
+          <label class="form-label small text-muted mb-1">Emission / Resource Scope</label>
+          <select name="scope" class="form-select form-select-sm" onchange="this.form.submit()">
+            <option value="">— All Scopes &amp; Resources —</option>
+            {% for sc_val, sc_label in scope_choices %}
+              <option value="{{ sc_val }}" {% if sc_val == scope_filter %}selected{% endif %}>
+                {{ sc_label }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <!-- Action Buttons -->
+        <div class="col-md-3 d-flex align-items-end justify-content-end gap-2">
+          <a href="{% url 'core:reports_overview' %}" class="btn btn-sm btn-outline-secondary">
+            <i class="icon-refresh me-1"></i> Reset
+          </a>
+          <a href="{% url 'core:trace_selector' %}" class="btn btn-sm btn-primary">
+            <i class="icon-directions me-1"></i> Trace Directory
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Disclosures & Traceability Table -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
+      <div>
+        <h6 class="mb-0 font-weight-bold text-dark">
+          <i class="icon-doc me-2 text-primary"></i> Governed ESG Disclosures &amp; Physical Telemetry Roll-Up
+        </h6>
+        <span class="small text-muted">Showing {{ disclosures|length }} of {{ total_disclosures_count }} verified operational disclosures</span>
+      </div>
+      <div>
+        <span class="badge bg-light text-dark border">
+          <i class="icon-shield text-success me-1"></i> SEBI BRSR Core Traceable
+        </span>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      {% if disclosures %}
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="bg-light">
+              <tr class="small text-muted text-uppercase">
+                <th>Metric / Activity</th>
+                <th>Scope</th>
+                <th>Division &amp; Operational Site</th>
+                <th>Measured Reading</th>
+                <th>Applied Emission Factor</th>
+                <th>Calculated ESG Value</th>
+                <th>Evidence Audit</th>
+                <th>Status</th>
+                <th class="text-end">Trace Lineage</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for d in disclosures %}
+                <tr>
+                  <td>
+                    <div class="fw-bold text-dark">{{ d.activity_name }}</div>
+                    <code class="small text-muted">{{ d.activity_code }}</code>
+                  </td>
+                  <td>
+                    {% if d.scope == 'SCOPE_1' %}
+                      <span class="badge bg-danger-subtle text-danger border border-danger">Scope 1</span>
+                    {% elif d.scope == 'SCOPE_2' %}
+                      <span class="badge bg-info-subtle text-info border border-info">Scope 2</span>
+                    {% elif d.scope == 'SCOPE_3' %}
+                      <span class="badge bg-warning-subtle text-warning border border-warning">Scope 3</span>
+                    {% else %}
+                      <span class="badge bg-secondary-subtle text-secondary">Non-GHG</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <div class="text-dark fw-semibold">{{ d.site.name }}</div>
+                    <div class="small text-muted">{{ d.subsidiary.short_name|default:d.subsidiary.name }}</div>
+                  </td>
+                  <td>
+                    <strong>{{ d.quantity }}</strong> {{ d.unit }}
+                    <div class="small text-muted">{{ d.measurement_date|date:"d M Y" }}</div>
+                  </td>
+                  <td>
+                    <span class="fw-semibold text-dark">{{ d.emission_factor }}</span> <small class="text-muted">{{ d.factor_unit }}</small>
+                    <div class="small text-muted text-truncate" style="max-width: 180px;" title="{{ d.factor_source }}">
+                      {{ d.factor_source }}
+                    </div>
+                  </td>
+                  <td>
+                    {% if d.emissions_tco2e > 0 %}
+                      <strong class="text-primary fs-6">{{ d.emissions_tco2e }}</strong> <small class="text-muted">tCO₂e</small>
+                    {% else %}
+                      <strong class="text-dark">{{ d.quantity }}</strong> <small class="text-muted">{{ d.unit }}</small>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if d.has_evidence %}
+                      <span class="badge bg-success-subtle text-success border border-success">
+                        <i class="icon-check me-1"></i>{{ d.evidence_count }} Doc{{ d.evidence_count|pluralize }}
+                      </span>
+                    {% else %}
+                      <span class="badge bg-warning-subtle text-warning border border-warning">
+                        <i class="icon-exclamation me-1"></i>None
+                      </span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <span class="badge bg-success-subtle text-success border border-success">
+                      <i class="icon-check me-1"></i>VERIFIED
+                    </span>
+                    {% if d.verified_by %}
+                      <div class="small text-muted" style="font-size: 0.72rem;">by {{ d.verified_by.username }}</div>
+                    {% endif %}
+                  </td>
+                  <td class="text-end text-nowrap">
+                    <a href="{{ d.trace_url }}" class="btn btn-sm btn-primary py-1 px-3 shadow-xs" title="Trace 5-layer regulatory lineage">
+                      <i class="icon-directions me-1"></i> Trace Lineage
+                    </a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        {% include "components/empty_state.html" with title="No Matching Disclosures" description="No verified disclosures matched the selected filters. Verify records or adjust filter criteria." icon="icon-magnifier" %}
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Subsidiary Division Breakdown -->
+  {% if report.subsidiary_breakdowns %}
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-white py-3 border-bottom">
+        <h6 class="mb-0 font-weight-bold text-dark">
+          <i class="icon-organization me-2 text-info"></i> Division Consolidation Roll-Up
+        </h6>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="bg-light">
+              <tr class="small text-muted text-uppercase">
+                <th>Subsidiary Division</th>
+                <th class="text-center">Projects / Sites</th>
+                <th class="text-center">Verified Records</th>
+                <th class="text-end">Scope 1 (tCO₂e)</th>
+                <th class="text-end">Scope 2 (tCO₂e)</th>
+                <th class="text-end">Total GHG (tCO₂e)</th>
+                <th class="text-end">Water (kL)</th>
+                <th class="text-end">Waste (MT)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for sub in report.subsidiary_breakdowns %}
+                <tr>
+                  <td>
+                    <strong>{{ sub.subsidiary.name }}</strong>
+                    <code class="small text-muted d-block">{{ sub.subsidiary.code }}</code>
+                  </td>
+                  <td class="text-center">
+                    <span class="badge bg-secondary-subtle text-secondary">
+                      {{ sub.projects_count }} Proj / {{ sub.sites_count }} Site{{ sub.sites_count|pluralize }}
+                    </span>
+                  </td>
+                  <td class="text-center">
+                    <span class="badge bg-success-subtle text-success border border-success">
+                      {{ sub.verified_records_count }}
+                    </span>
+                  </td>
+                  <td class="text-end">{{ sub.scope1_tco2e }}</td>
+                  <td class="text-end">{{ sub.scope2_tco2e }}</td>
+                  <td class="text-end fw-bold text-primary">{{ sub.total_ghg_tco2e }}</td>
+                  <td class="text-end">{{ sub.water_kl }}</td>
+                  <td class="text-end">{{ sub.waste_tonnes }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}
+
+{% block side_panel %}
+  <!-- Regulatory Standards Card -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-bottom">
+      <h6 class="mb-0 font-weight-bold text-dark">
+        <i class="icon-shield me-2 text-success"></i> Regulatory Standard
+      </h6>
+    </div>
+    <div class="card-body small">
+      <p class="mb-2"><strong>Reporting Framework:</strong> SEBI BRSR Core (India)</p>
+      <p class="mb-2"><strong>Assurance Standard:</strong> ISAE 3000 (Revised) Limited Assurance</p>
+      <p class="mb-2"><strong>GHG Standard:</strong> GHG Protocol Corporate Accounting Standard</p>
+      <p class="mb-2"><strong>Grid Emission Factor:</strong> CEA CO₂ Baseline Database v19</p>
+      <div class="alert alert-light border small text-muted p-2 mt-3 mb-0">
+        <i class="icon-check text-success me-1"></i>
+        All calculations preserve strict deterministic unit conversion and complete evidence linkage.
+      </div>
+    </div>
+  </div>
+
+  <!-- Traceability Quick Access -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3 border-bottom">
+      <h6 class="mb-0 font-weight-bold text-dark">
+        <i class="icon-directions me-2 text-primary"></i> Traceability Shortcuts
+      </h6>
+    </div>
+    <div class="card-body p-2">
+      <div class="list-group list-group-flush small">
+        <a href="{% url 'core:trace_selector' %}" class="list-group-item list-group-item-action d-flex align-items-center py-2 px-3">
+          <i class="icon-magnifier text-primary me-2"></i>
+          <div>
+            <strong>Trace This Number</strong>
+            <div class="text-muted" style="font-size: 0.75rem;">Interactive Lineage Explorer</div>
+          </div>
+        </a>
+        <a href="{% url 'core:evidence_list' %}" class="list-group-item list-group-item-action d-flex align-items-center py-2 px-3">
+          <i class="icon-camera text-info me-2"></i>
+          <div>
+            <strong>Evidence Repository</strong>
+            <div class="text-muted" style="font-size: 0.75rem;">SHA-256 Hashes &amp; Documents</div>
+          </div>
+        </a>
+        <a href="{% url 'core:submission_list' %}?status=VERIFIED" class="list-group-item list-group-item-action d-flex align-items-center py-2 px-3">
+          <i class="icon-badge text-success me-2"></i>
+          <div>
+            <strong>Verified Submissions</strong>
+            <div class="text-muted" style="font-size: 0.75rem;">Approved Review Envelopes</div>
+          </div>
+        </a>
+      </div>
+    </div>
+  </div>
+{% endblock %}
