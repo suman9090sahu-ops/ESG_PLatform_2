@@ -31,7 +31,11 @@ urlpatterns = [
     # -------------------------------------------------------------------------
     # Phase 01 Core Endpoints
     # -------------------------------------------------------------------------
-    path("", views.index_view, name="index"),
+    path("", views.landing_page_view, name="index"),
+    path("landing/", views.landing_page_view, name="landing"),
+    path("dashboard/", views.control_tower_dashboard, name="control_tower_dashboard"),
+    path("dashboard/control-tower/", views.control_tower_dashboard, name="control_tower_dashboard_alias"),
+    path("control-tower/", views.control_tower_dashboard, name="control_tower"),
     path("health/", views.health_check, name="health_check"),
     path("ui-preview/", views.ui_preview, name="ui_preview"),
     path("components/", views.components_showcase, name="components_showcase"),

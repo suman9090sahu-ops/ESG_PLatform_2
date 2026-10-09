@@ -129,7 +129,7 @@ else:
 AUTH_USER_MODEL = "core.User"
 
 LOGIN_URL = "core:login"
-LOGIN_REDIRECT_URL = "core:index"
+LOGIN_REDIRECT_URL = "core:control_tower_dashboard"
 LOGOUT_REDIRECT_URL = "core:login"
 
 # -----------------------------------------------------------------------------

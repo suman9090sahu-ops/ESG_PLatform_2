@@ -15,12 +15,15 @@ class UIComponentsTests(SimpleTestCase):
     def setUp(self):
         self.client = Client()
 
-    def test_dashboard_index_renders_successfully(self):
-        """Index dashboard renders with 200 OK and site title."""
+    def test_landing_page_renders_successfully(self):
+        """Landing page at root URL renders with 200 OK and sustainability theme."""
         response = self.client.get(reverse("core:index"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "MEIL ESG CONTROL TOWER")
-        self.assertContains(response, "Executive ESG Dashboard")
+        self.assertContains(response, "Building a")
+        self.assertContains(response, "Sustainable Future")
+        self.assertContains(response, "Login")
+        self.assertContains(response, "Sign Up")
+        self.assertContains(response, "sustainable_hero.jpg")
 
     def test_components_showcase_renders_successfully(self):
         """Showcase page renders with 200 OK and demonstrates components."""

@@ -240,7 +240,7 @@ def get_post_login_redirect_url(request, user):
     if primary_role in role_dashboard_map:
         return role_dashboard_map[primary_role]
 
-    return reverse("core:index")
+    return reverse("core:control_tower_dashboard")
 
 
 # -----------------------------------------------------------------------------

@@ -5,6 +5,7 @@ for MEIL ESG CONTROL TOWER.
 
 import logging
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
 from django.db import connection
 from django.http import JsonResponse, HttpResponseServerError
 from django.shortcuts import render
@@ -44,9 +45,35 @@ def health_check(request):
     return JsonResponse(payload, status=status_code)
 
 
+def landing_page_view(request):
+    """
+    Public Sustainability Landing Page.
+    Renders an image-first, clean, modern, public-facing sustainability homepage
+    featuring the sustainable architecture tower, minimal text, and prominent
+    Login and Sign Up access controls. No authentication required.
+    """
+    context = {
+        "page_title": "Building a Sustainable Future | MEIL ESG Platform",
+        "headline": "Building a Sustainable Future.",
+        "supporting_text": "One platform for responsible growth, environmental performance, and ESG accountability.",
+        "hero_image": "images/landing/sustainable_hero.jpg",
+    }
+    return render(request, "landing/index.html", context)
+
+
 def index_view(request):
     """
-    MEIL ESG CONTROL TOWER primary dashboard landing page.
+    Root URL '/' handler.
+    Serves the public sustainability landing page.
+    """
+    return landing_page_view(request)
+
+
+@login_required
+def control_tower_dashboard(request):
+    """
+    MEIL ESG CONTROL TOWER primary executive dashboard.
+    Protected view accessible only to authenticated users.
     Renders executive ESG metrics, recent activity, data status, and pending actions.
     """
     context = {

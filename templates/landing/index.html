@@ -1,0 +1,672 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="MEIL ESG Platform — Enterprise Environmental, Social, and Governance Monitoring, Decarbonization, and SEBI BRSR Accountability.">
+  <title>{{ page_title|default:"Building a Sustainable Future | MEIL ESG Platform" }}</title>
+  {% include "base/_head.html" %}
+  <style>
+    /* CSS Variables & Theme Tokens */
+    :root {
+      --landing-emerald: #10b981;
+      --landing-emerald-light: #34d399;
+      --landing-emerald-dark: #059669;
+      --landing-teal: #0d9488;
+      --landing-bg-dark: #091712;
+      --landing-glass: rgba(10, 28, 20, 0.45);
+      --landing-glass-border: rgba(255, 255, 255, 0.15);
+      --landing-text-light: #f8fafc;
+      --landing-text-muted: #cbd5e1;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--landing-bg-dark);
+      color: var(--landing-text-light);
+      overflow-x: hidden;
+    }
+
+    /* Full-viewport Hero Container */
+    .landing-hero {
+      position: relative;
+      min-height: 100vh;
+      width: 100vw;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background-color: var(--landing-bg-dark);
+      background-image: url("{% static 'images/landing/sustainable_hero.jpg' %}");
+      background-size: cover;
+      background-position: right center;
+      background-repeat: no-repeat;
+      overflow-x: hidden;
+    }
+
+    /* Architectural Overlay: Rich dark gradient to keep text readable without hiding building features */
+    .landing-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(
+        90deg,
+        rgba(7, 20, 15, 0.92) 0%,
+        rgba(7, 20, 15, 0.82) 36%,
+        rgba(7, 20, 15, 0.45) 68%,
+        rgba(7, 20, 15, 0.15) 100%
+      );
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    /* Bottom vignette for sleek footer transition */
+    .landing-vignette-bottom {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 140px;
+      background: linear-gradient(to top, rgba(5, 15, 10, 0.85) 0%, rgba(5, 15, 10, 0) 100%);
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    /* Slim Translucent Header */
+    .landing-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 1.15rem 2.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--landing-glass);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--landing-glass-border);
+      transition: background 0.3s ease;
+    }
+
+    .brand-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+      color: #ffffff;
+    }
+
+    .brand-wrap:hover {
+      color: #ffffff;
+      text-decoration: none;
+    }
+
+    .brand-badge {
+      display: inline-flex;
+      align-items: center;
+      background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+      color: #ffffff;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      padding: 0.25rem 0.55rem;
+      border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+    }
+
+    .brand-text {
+      font-size: 1.125rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: #ffffff;
+      text-transform: uppercase;
+    }
+
+    .brand-sub {
+      color: var(--landing-emerald-light);
+      font-weight: 300;
+      margin-left: 0.25rem;
+    }
+
+    /* Header Nav Action Buttons */
+    .header-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    .btn-nav-login {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      font-size: 0.875rem;
+      font-weight: 600;
+      padding: 0.5rem 1.15rem;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      backdrop-filter: blur(6px);
+    }
+
+    .btn-nav-login:hover {
+      background: rgba(255, 255, 255, 0.18);
+      border-color: rgba(255, 255, 255, 0.45);
+      color: #ffffff;
+      text-decoration: none;
+      transform: translateY(-1px);
+    }
+
+    .btn-nav-signup {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      font-size: 0.875rem;
+      font-weight: 600;
+      padding: 0.5rem 1.25rem;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: all 0.25s ease;
+      display: inline-flex;
+      align-items: center;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+    }
+
+    .btn-nav-signup:hover {
+      background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+      color: #ffffff;
+      text-decoration: none;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(16, 185, 129, 0.45);
+    }
+
+    /* Main Hero Content Area */
+    .hero-main {
+      position: relative;
+      z-index: 10;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      padding: 7rem 2.5rem 5rem;
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .hero-content-box {
+      max-width: 660px;
+      animation: fadeInHero 0.8s ease-out;
+    }
+
+    @keyframes fadeInHero {
+      from {
+        opacity: 0;
+        transform: translateY(18px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Tag / Eyebrow Badge */
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.85rem;
+      border-radius: 9999px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(52, 211, 153, 0.35);
+      color: var(--landing-emerald-light);
+      font-size: 0.775rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 1.25rem;
+      backdrop-filter: blur(8px);
+    }
+
+    .eyebrow-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--landing-emerald-light);
+      box-shadow: 0 0 10px var(--landing-emerald);
+      animation: pulseDot 2s infinite;
+    }
+
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    /* Typography */
+    .hero-headline {
+      font-size: clamp(2.5rem, 5.2vw, 4.25rem);
+      font-weight: 800;
+      line-height: 1.12;
+      letter-spacing: -0.025em;
+      color: #ffffff;
+      margin-bottom: 1.25rem;
+    }
+
+    .highlight-gradient {
+      background: linear-gradient(135deg, #34d399 0%, #10b981 50%, #6ee7b7 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: inline-block;
+    }
+
+    .hero-supporting-text {
+      font-size: clamp(1.05rem, 1.8vw, 1.3rem);
+      font-weight: 400;
+      line-height: 1.6;
+      color: var(--landing-text-muted);
+      margin-bottom: 2.25rem;
+      max-width: 580px;
+    }
+
+    /* Prominent Action Buttons */
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1.15rem;
+      margin-bottom: 3rem;
+    }
+
+    .btn-action-primary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.65rem;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: #ffffff;
+      font-size: 1.05rem;
+      font-weight: 700;
+      padding: 0.85rem 1.85rem;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      text-decoration: none;
+      box-shadow: 0 10px 25px -4px rgba(16, 185, 129, 0.45);
+      transition: all 0.25s ease;
+    }
+
+    .btn-action-primary:hover {
+      background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+      color: #ffffff;
+      text-decoration: none;
+      transform: translateY(-2px);
+      box-shadow: 0 14px 28px -4px rgba(16, 185, 129, 0.55);
+    }
+
+    .btn-action-outline {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.65rem;
+      background: rgba(255, 255, 255, 0.08);
+      color: #ffffff;
+      font-size: 1.05rem;
+      font-weight: 600;
+      padding: 0.85rem 1.75rem;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      text-decoration: none;
+      backdrop-filter: blur(10px);
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+
+    .btn-action-outline:hover {
+      background: rgba(255, 255, 255, 0.18);
+      border-color: rgba(255, 255, 255, 0.6);
+      color: #ffffff;
+      text-decoration: none;
+      transform: translateY(-2px);
+    }
+
+    /* Pillar Badges */
+    .hero-pillars {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+    }
+
+    .pillar-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.4rem 0.8rem;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: #e2e8f0;
+      backdrop-filter: blur(6px);
+    }
+
+    .pillar-icon {
+      color: var(--landing-emerald-light);
+      font-size: 0.85rem;
+    }
+
+    /* Minimal Transparent Footer */
+    .landing-footer {
+      position: relative;
+      z-index: 10;
+      padding: 1.25rem 2.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(7, 20, 15, 0.65);
+      backdrop-filter: blur(8px);
+      font-size: 0.8125rem;
+      color: #94a3b8;
+    }
+
+    .footer-brand {
+      color: #cbd5e1;
+      font-weight: 500;
+    }
+
+    .footer-links {
+      display: inline-flex;
+      gap: 1.25rem;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .footer-links a {
+      color: #94a3b8;
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    .footer-links a:hover {
+      color: var(--landing-emerald-light);
+    }
+
+    /* Modal Styling for Account Request / Policy */
+    .modal-content-glass {
+      background: #0f241d;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      color: #f8fafc;
+      border-radius: 16px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+    }
+
+    .modal-header-glass {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 1.5rem 1.75rem 1.25rem;
+    }
+
+    .modal-footer-glass {
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 1.25rem 1.75rem;
+    }
+
+    .access-step-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 0.9rem 1rem;
+      margin-bottom: 0.75rem;
+    }
+
+    /* Responsive Breakpoints */
+    @media (max-width: 991.98px) {
+      .landing-hero {
+        background-position: 75% center;
+      }
+      .landing-header {
+        padding: 1rem 1.5rem;
+      }
+      .hero-main {
+        padding: 6.5rem 1.5rem 4rem;
+      }
+      .landing-footer {
+        padding: 1rem 1.5rem;
+        flex-direction: column;
+        gap: 0.5rem;
+        text-align: center;
+      }
+    }
+
+    @media (max-width: 767.98px) {
+      .landing-hero {
+        background-position: 70% center;
+      }
+      .landing-overlay {
+        background: linear-gradient(
+          180deg,
+          rgba(7, 20, 15, 0.85) 0%,
+          rgba(7, 20, 15, 0.75) 45%,
+          rgba(7, 20, 15, 0.9) 100%
+        );
+      }
+      .landing-header {
+        padding: 0.85rem 1rem;
+      }
+      .brand-text {
+        font-size: 1rem;
+      }
+      .hero-main {
+        padding: 5.5rem 1.25rem 3.5rem;
+      }
+      .hero-actions {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.85rem;
+      }
+      .btn-action-primary,
+      .btn-action-outline {
+        width: 100%;
+      }
+      .hero-pillars {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Landing Page Full-Viewport Container -->
+  <div class="landing-hero" id="landingHero">
+    <!-- Visual Gradient Overlays -->
+    <div class="landing-overlay" aria-hidden="true"></div>
+    <div class="landing-vignette-bottom" aria-hidden="true"></div>
+
+    <!-- Slim Translucent Header -->
+    <header class="landing-header" role="banner">
+      <a href="{% url 'core:index' %}" class="brand-wrap" aria-label="MEIL ESG Platform Home">
+        <span class="brand-badge"><i class="icon-shield me-1" aria-hidden="true"></i>MEIL</span>
+        <span class="brand-text">ESG<span class="brand-sub">PLATFORM</span></span>
+      </a>
+
+      <nav class="header-actions" aria-label="Authentication Actions">
+        {% if request.user.is_authenticated %}
+          <a href="{% url 'core:control_tower_dashboard' %}" class="btn-nav-signup" id="headerDashboardBtn">
+            <i class="icon-speedometer me-1" aria-hidden="true"></i> Dashboard
+          </a>
+          <a href="{% url 'core:logout' %}" class="btn-nav-login" id="headerLogoutBtn">
+            Sign Out
+          </a>
+        {% else %}
+          <a href="{% url 'core:login' %}" class="btn-nav-login" id="headerLoginBtn">
+            Login
+          </a>
+          <button type="button" class="btn-nav-signup" data-bs-toggle="modal" data-bs-target="#accessRequestModal" id="headerSignUpBtn">
+            Sign Up
+          </button>
+        {% endif %}
+      </nav>
+    </header>
+
+    <!-- Hero Main Section -->
+    <main class="hero-main" role="main">
+      <div class="hero-content-box">
+        <!-- Eyebrow Badge -->
+        <div class="hero-eyebrow">
+          <span class="eyebrow-dot" aria-hidden="true"></span>
+          <span>SEBI BRSR &bull; GHG Protocol &bull; Governance</span>
+        </div>
+
+        <!-- Headline -->
+        <h1 class="hero-headline">
+          Building a<br>
+          <span class="highlight-gradient">Sustainable Future.</span>
+        </h1>
+
+        <!-- Supporting Text -->
+        <p class="hero-supporting-text">
+          One platform for responsible growth, environmental performance, and ESG accountability.
+        </p>
+
+        <!-- Primary Actions -->
+        <div class="hero-actions">
+          {% if request.user.is_authenticated %}
+            <a href="{% url 'core:control_tower_dashboard' %}" class="btn-action-primary" id="heroDashboardAction">
+              <span>Go to Control Tower</span>
+              <i class="icon-arrow-right ms-1" aria-hidden="true"></i>
+            </a>
+          {% else %}
+            <a href="{% url 'core:login' %}" class="btn-action-primary" id="heroLoginAction">
+              <span>Login</span>
+              <i class="icon-arrow-right ms-1" aria-hidden="true"></i>
+            </a>
+            <button type="button" class="btn-action-outline" data-bs-toggle="modal" data-bs-target="#accessRequestModal" id="heroSignUpAction">
+              <i class="icon-user-follow me-1" aria-hidden="true"></i>
+              <span>Sign Up</span>
+            </button>
+          {% endif %}
+        </div>
+
+        <!-- Corporate ESG Verification Badges -->
+        <div class="hero-pillars" aria-label="Key Capabilities">
+          <div class="pillar-item">
+            <i class="icon-check pillar-icon" aria-hidden="true"></i>
+            <span>Scope 1, 2 &amp; 3 Telemetry</span>
+          </div>
+          <div class="pillar-item">
+            <i class="icon-shield pillar-icon" aria-hidden="true"></i>
+            <span>SEBI BRSR Core Disclosures</span>
+          </div>
+          <div class="pillar-item">
+            <i class="icon-badge pillar-icon" aria-hidden="true"></i>
+            <span>Auditor Assurance &amp; Lineage</span>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Minimal Transparent Footer -->
+    <footer class="landing-footer" role="contentinfo">
+      <div class="footer-brand">
+        &copy; {{ CURRENT_YEAR|default:"2026" }} ESG Platform | Sustainability &bull; Accountability &bull; Transparency
+      </div>
+      <ul class="footer-links">
+        <li><a href="{% url 'core:health_check' %}" target="_blank" rel="noopener">System Status</a></li>
+        <li><a href="#" data-bs-toggle="modal" data-bs-target="#accessRequestModal">Access Policy</a></li>
+        <li><a href="{% url 'core:login' %}">Portal Sign In</a></li>
+      </ul>
+    </footer>
+  </div>
+
+  <!-- Enterprise Account Request / Registration Modal -->
+  <div class="modal fade" id="accessRequestModal" tabindex="-1" aria-labelledby="accessRequestModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content modal-content-glass">
+        <div class="modal-header modal-header-glass">
+          <div class="d-flex align-items-center gap-2">
+            <span class="brand-badge"><i class="icon-shield me-1"></i>MEIL</span>
+            <h5 class="modal-title h6 font-weight-bold mb-0 text-white" id="accessRequestModalLabel">
+              Account Registration &amp; Access Policy
+            </h5>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="mb-3">
+            <h6 class="text-white font-weight-bold mb-1">Enterprise Role-Based Access Governance</h6>
+            <p class="text-muted small mb-0">
+              The MEIL ESG Control Tower is an enterprise regulatory system. Self-registration is restricted by organization policy to ensure audit integrity and SEBI BRSR compliance.
+            </p>
+          </div>
+
+          <div class="access-step-card">
+            <div class="d-flex align-items-start gap-2">
+              <i class="icon-user text-success mt-1"></i>
+              <div>
+                <strong class="d-block text-white small">Site Managers &amp; Operators</strong>
+                <span class="text-muted small">Account creation is provisioned by your Project Manager or Subsidiary Admin.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="access-step-card">
+            <div class="d-flex align-items-start gap-2">
+              <i class="icon-briefcase text-info mt-1"></i>
+              <div>
+                <strong class="d-block text-white small">ESG Managers &amp; Division Heads</strong>
+                <span class="text-muted small">Credentials are issued directly through Corporate Sustainability Governance.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="access-step-card">
+            <div class="d-flex align-items-start gap-2">
+              <i class="icon-badge text-warning mt-1"></i>
+              <div>
+                <strong class="d-block text-white small">Assurance Officers &amp; Auditors</strong>
+                <span class="text-muted small">Independent audit access is authorized by the ESG Governance Committee.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-3 p-3 rounded" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2);">
+            <div class="small text-white-50">
+              <i class="icon-envelope me-1 text-success"></i>
+              To request platform credentials, email the Corporate ESG Office:
+              <a href="mailto:sustainability@meilgroup.com?subject=MEIL%20ESG%20Platform%20Account%20Request" class="text-success text-decoration-none font-weight-bold d-block mt-1">
+                sustainability@meilgroup.com
+              </a>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer modal-footer-glass d-flex justify-content-between">
+          <a href="{% url 'core:login' %}" class="btn btn-outline-light btn-sm px-3">
+            <i class="icon-login me-1"></i> Existing User Sign In
+          </a>
+          <button type="button" class="btn btn-success btn-sm px-4" data-bs-dismiss="modal">
+            Understood
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vendor JS Bundle for Bootstrap Modals & Interactivity -->
+  {% include "base/_scripts.html" %}
+</body>
+</html>

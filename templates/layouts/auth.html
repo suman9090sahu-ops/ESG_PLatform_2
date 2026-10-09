@@ -43,10 +43,10 @@
   <div class="auth-page-wrapper">
     <div class="auth-card">
       <div class="auth-header">
-        <div class="d-inline-flex align-items-center gap-2 mb-2">
+        <a href="{% url 'core:index' %}" class="d-inline-flex align-items-center gap-2 mb-2 text-decoration-none" title="Return to Public Homepage">
           <span class="brand-esg-badge"><i class="icon-shield me-1"></i>MEIL</span>
           <span class="brand-esg-title text-dark">ESG CONTROL TOWER</span>
-        </div>
+        </a>
         <h2 class="h5 font-weight-bold text-dark mt-2 mb-1">{% block auth_title %}{{ auth_title|default:"Sign In" }}{% endblock %}</h2>
         <p class="text-muted small mb-0">{% block auth_subtitle %}{{ auth_subtitle|default:"SEBI BRSR & GHG Governance Portal" }}{% endblock %}</p>
       </div>
@@ -66,7 +66,12 @@
 
       <div class="auth-footer">
         {% block auth_footer %}
-          <span>&copy; {{ CURRENT_YEAR|default:"2026" }} MEIL Group &bull; Confidential &amp; Proprietary</span>
+          <div class="d-flex flex-column gap-1">
+            <span>&copy; {{ CURRENT_YEAR|default:"2026" }} MEIL Group &bull; Confidential &amp; Proprietary</span>
+            <a href="{% url 'core:index' %}" class="text-decoration-none text-success small font-weight-medium">
+              <i class="icon-arrow-left me-1"></i> Return to Public Sustainability Portal
+            </a>
+          </div>
         {% endblock %}
       </div>
     </div>
