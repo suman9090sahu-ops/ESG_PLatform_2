@@ -28,7 +28,7 @@ def health_check(request):
         connection.ensure_connection()
     except Exception as exc:  # noqa: BLE001
         logger.error(f"Health check database connection failed: {exc}")
-        db_status = f"unhealthy: {exc.__class__.__name__}"
+        db_status = f"unhealthy: {exc.__class__.__name__}: {str(exc)}"
         overall_status = "degraded"
         status_code = 503
 
@@ -37,6 +37,7 @@ def health_check(request):
         "service": "MEIL ESG CONTROL TOWER",
         "timestamp": timezone.now().isoformat(),
         "database": db_status,
+        "db_name": str(settings.DATABASES["default"]["NAME"]),
         "environment": "development" if settings.DEBUG else "production",
         "version": "1.0.0-phase01",
         "timezone": settings.TIME_ZONE,
