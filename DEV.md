@@ -1817,7 +1817,7 @@ Ensures the platform can identify, calculate, store, validate, review, aggregate
 
 ---
 
-## 25. Controlled Database Cleanup & Workflow Reset
++## 25. Controlled Database Cleanup & Workflow Reset
 
 Executed a safe, non-destructive, audit-preserving reset of disposable dummy and test transaction data across the platform, establishing a clean operational state for manual testing while enforcing the canonical MEIL 1-Company / 2-Subsidiary / 2-Project organizational hierarchy.
 
@@ -1950,7 +1950,12 @@ A platform-wide audit and polish pass was conducted across all public and authen
 - **`templates/components/breadcrumb.html` & `templates/components/breadcrumbs/breadcrumb.html`:** Added conditional routing for the root link (pointing to Control Tower Dashboard when authenticated, Landing Portal when anonymous) and replaced inert `#` fallbacks with `javascript:void(0)`.
 - **`templates/components/pagination.html` & `templates/components/pagination/pagination.html`:** Replaced inert `#` fallbacks on disabled page items with `javascript:void(0);` and added `tabindex="-1" aria-disabled="true"`.
 
+#### E. CSS Standards & Compatibility
+- **`templates/landing/index.html` & `index.html`:** Added standard `background-clip: text;` alongside `-webkit-background-clip: text;` on `.highlight-gradient` to eliminate browser compatibility linter warnings.
+
 ### 3. Verification & Validation
 - **Automated Platform Audit (`scripts/audit_platform_links_titles_meta.py`):** Verified HTTP 200 responses, unique meta descriptions, and non-duplicate titles across all platform endpoints.
 - **UI Test Suite (`tests/test_ui_components.py`):** 21/21 tests passed with 0 errors.
 - **Django System Check (`python manage.py check`):** 0 issues identified.
+- **CSS Linter Check:** 0 warnings detected across landing templates.
+

@@ -45,3 +45,9 @@ staticfiles/
 # Temporary files
 stellar_temp/
 *.zip
+
+# Node / Frontend
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
