@@ -1,6 +1,12 @@
 {% load static %}
-<meta name="description" content="MEIL ESG CONTROL TOWER - Enterprise Environmental, Social, and Governance Monitoring &amp; Reporting Platform">
+<meta name="description" content="{% block meta_description %}{{ meta_description|default:'MEIL ESG CONTROL TOWER — Enterprise Environmental, Social, and Governance Monitoring, Decarbonization, and SEBI BRSR Accountability.' }}{% endblock %}">
 <meta name="author" content="MEIL ESG Architecture">
+
+<!-- Favicon & Brand Icons -->
+<link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/brand/favicon-32x32.png' %}">
+<link rel="icon" type="image/png" sizes="16x16" href="{% static 'images/brand/favicon-16x16.png' %}">
+<link rel="shortcut icon" href="{% static 'images/favicon.ico' %}">
+<link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/brand/favicon-180x180.png' %}">
 
 <!-- Core Stellar Admin Vendor Styles -->
 <link rel="stylesheet" href="{% static 'vendors/simple-line-icons/css/simple-line-icons.css' %}">

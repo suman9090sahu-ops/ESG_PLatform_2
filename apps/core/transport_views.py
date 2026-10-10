@@ -131,6 +131,9 @@ def carrier_list_view(request):
     can_create = user_can_modify_carrier(request.user, None)
 
     context = {
+        "page_title": "Carriers & Logistics Providers",
+        "page_subtitle": "Directory of approved logistics carriers and freight transportation partners.",
+        "meta_description": "Directory of approved freight carriers, transportation vendors, and logistics service providers.",
         "page_obj": page_obj,
         "filter_form": filter_form,
         "total_carriers": total_carriers,
@@ -271,6 +274,9 @@ def vehicle_list_view(request):
     can_create = user_can_modify_vehicle(request.user, None)
 
     context = {
+        "page_title": "Vehicle Fleet Directory",
+        "page_subtitle": "Operational vehicle fleet registry and mobile combustion emission source tracking.",
+        "meta_description": "Directory of company-owned and leased transport vehicles, mobile machinery, and fuel metrics.",
         "page_obj": page_obj,
         "filter_form": filter_form,
         "total_vehicles": total_vehicles,
@@ -438,6 +444,9 @@ def transport_list_view(request):
     )
 
     context = {
+        "page_title": "Transport & Logistics Ledger",
+        "page_subtitle": "Centralized ESG transportation records, Scope 1 mobile combustion & Scope 3 freight.",
+        "meta_description": "Centralized ESG transportation records, mobile combustion telemetry, and logistics freight validation for MEIL ESG Control Tower.",
         "page_obj": page_obj,
         "filter_form": filter_form,
         "total_count": total_transports,

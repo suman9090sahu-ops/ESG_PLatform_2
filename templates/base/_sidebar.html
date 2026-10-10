@@ -60,7 +60,7 @@
         </a>
       </li>
 
-      <!-- ESG Governance Pillars (Future Role Injections) -->
+      <!-- ESG Governance Pillars (Platform Modules) -->
       <li class="nav-item nav-category">
         <span class="nav-link">ESG PILLARS</span>
       </li>
@@ -72,10 +72,24 @@
         <div class="collapse" id="envPillar">
           <ul class="nav flex-column sub-menu">
             <li class="nav-item">
-              <span class="nav-link text-muted small"><i class="icon-clock me-1"></i> Scope 1, 2, 3 GHG</span>
+              <a class="nav-link text-truncate" href="{% url 'core:scope3_inventory' %}" title="Scope 3 Value Chain Emissions">
+                <i class="icon-chart me-1 text-success"></i> Scope 3 Emissions
+              </a>
             </li>
             <li class="nav-item">
-              <span class="nav-link text-muted small"><i class="icon-clock me-1"></i> Energy &amp; Water</span>
+              <a class="nav-link text-truncate" href="{% url 'core:activity_record_list' %}" title="Activity Telemetry & Data Records">
+                <i class="icon-energy me-1 text-success"></i> Activity Telemetry
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link text-truncate" href="{% url 'core:procurement_list' %}" title="Value Chain Procurement">
+                <i class="icon-bag me-1 text-success"></i> Procurement
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link text-truncate" href="{% url 'core:transport_list' %}" title="Logistics & Fleet Transport">
+                <i class="icon-speedometer me-1 text-success"></i> Fleet Logistics
+              </a>
             </li>
           </ul>
         </div>
@@ -88,10 +102,14 @@
         <div class="collapse" id="socPillar">
           <ul class="nav flex-column sub-menu">
             <li class="nav-item">
-              <span class="nav-link text-muted small"><i class="icon-clock me-1"></i> Workforce &amp; Safety</span>
+              <a class="nav-link text-truncate text-muted" href="javascript:void(0)" title="Workforce & Safety Disclosures">
+                <i class="icon-user-following me-1 text-info"></i> Workforce &amp; Safety
+              </a>
             </li>
             <li class="nav-item">
-              <span class="nav-link text-muted small"><i class="icon-clock me-1"></i> CSR Operations</span>
+              <a class="nav-link text-truncate text-muted" href="javascript:void(0)" title="CSR Operations & Community Outreach">
+                <i class="icon-heart me-1 text-info"></i> CSR Operations
+              </a>
             </li>
           </ul>
         </div>
@@ -104,22 +122,37 @@
         <div class="collapse" id="govPillar">
           <ul class="nav flex-column sub-menu">
             <li class="nav-item">
-              <span class="nav-link text-muted small"><i class="icon-clock me-1"></i> Ethics &amp; Compliance</span>
+              <a class="nav-link text-truncate" href="{% url 'core:reports_overview' %}" title="BRSR Reports & Consolidation">
+                <i class="icon-doc me-1 text-warning"></i> Governed Reports
+              </a>
             </li>
             <li class="nav-item">
-              <span class="nav-link text-muted small"><i class="icon-clock me-1"></i> BRSR Disclosures</span>
+              <a class="nav-link text-truncate" href="{% url 'core:emission_factor_list' %}" title="GHG Emission Factor Library">
+                <i class="icon-chemistry me-1 text-warning"></i> Emission Factors
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link text-truncate" href="{% url 'core:submission_list' %}" title="Submissions Workflow">
+                <i class="icon-check me-1 text-warning"></i> Submissions
+              </a>
             </li>
           </ul>
         </div>
       </li>
 
       <li class="nav-item nav-category">
-        <span class="nav-link">SYSTEM</span>
+        <span class="nav-link">SYSTEM OPERATIONS</span>
       </li>
       <li class="nav-item">
-        <a class="nav-link" href="{% url 'core:health_check' %}" target="_blank">
+        <a class="nav-link" href="{% url 'core:health_check' %}" target="_blank" rel="noopener">
           <span class="menu-title">Health Check Probe</span>
           <i class="icon-pulse menu-icon text-danger" aria-hidden="true"></i>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="{% url 'admin:index' %}" target="_blank" rel="noopener">
+          <span class="menu-title">Django Admin</span>
+          <i class="icon-settings menu-icon text-secondary" aria-hidden="true"></i>
         </a>
       </li>
     {% endif %}

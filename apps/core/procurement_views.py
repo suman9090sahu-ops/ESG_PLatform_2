@@ -124,6 +124,9 @@ def supplier_list_view(request):
     can_create = user_can_modify_supplier(request.user)
 
     context = {
+        "page_title": "Supplier & Vendor Directory",
+        "page_subtitle": "Approved supplier directory, ESG accreditation compliance, and commercial vendor lifecycle.",
+        "meta_description": "Directory of approved suppliers, ESG ratings, sustainability declarations, and vendor tiers.",
         "page_obj": page_obj,
         "filter_form": filter_form,
         "total_suppliers": total_suppliers,
@@ -270,6 +273,9 @@ def procurement_list_view(request):
     is_sub_mgr = request.user.has_role(Role.Code.SUBSIDIARY_MANAGER)
 
     context = {
+        "page_title": "Procurement & Commercial Ledger",
+        "page_subtitle": "Centralized commercial purchasing transactions, audit documents, deterministic validation, and anomaly detection.",
+        "meta_description": "Centralized commercial purchasing transactions, supplier audit records, and governance reviews for MEIL ESG Control Tower.",
         "page_obj": page_obj,
         "filter_form": filter_form,
         "total_count": total_count,

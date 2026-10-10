@@ -1,13 +1,14 @@
 {% extends "layouts/dashboard.html" %}
 {% load static esg_tags %}
 
-{% block title %}UI Component Library &amp; Design System Preview{% endblock %}
+{% block title %}UI Component Library &amp; Design System Preview | {{ SITE_SHORT_NAME|default:"MEIL ESG" }}{% endblock %}
+{% block meta_description %}Interactive preview of ESG design system tokens, workflow status badges, telemetry indicators, and components.{% endblock %}
 
 {% block page_actions %}
   <span class="badge bg-success text-white py-2 px-3">
     <i class="icon-check me-1"></i>Phase 01 UI Foundation Ready
   </span>
-  <a href="{% url 'core:index' %}" class="btn btn-esg-secondary btn-sm">
+  <a href="{% url 'core:control_tower_dashboard' %}" class="btn btn-esg-secondary btn-sm">
     <i class="icon-arrow-left me-1"></i>Back to Dashboard
   </a>
 {% endblock %}

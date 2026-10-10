@@ -3,7 +3,7 @@
   <ul class="pagination pagination-sm justify-content-center justify-content-md-end mb-0">
     <!-- Previous Page -->
     <li class="page-item {% if not has_previous %}disabled{% endif %}">
-      <a class="page-link" href="{% if has_previous %}?page={{ previous_page_number|default:1 }}{% else %}#{% endif %}" aria-label="Previous" {% if not has_previous %}tabindex="-1" aria-disabled="true"{% endif %}>
+      <a class="page-link" href="{% if has_previous %}?page={{ previous_page_number|default:1 }}{% else %}javascript:void(0);{% endif %}" aria-label="Previous" {% if not has_previous %}tabindex="-1" aria-disabled="true"{% endif %}>
         <span aria-hidden="true">&laquo;</span>
         <span class="d-none d-sm-inline ms-1">Previous</span>
       </a>
@@ -18,7 +18,7 @@
 
     <!-- Next Page -->
     <li class="page-item {% if not has_next %}disabled{% endif %}">
-      <a class="page-link" href="{% if has_next %}?page={{ next_page_number|default:2 }}{% else %}#{% endif %}" aria-label="Next" {% if not has_next %}tabindex="-1" aria-disabled="true"{% endif %}>
+      <a class="page-link" href="{% if has_next %}?page={{ next_page_number|default:2 }}{% else %}javascript:void(0);{% endif %}" aria-label="Next" {% if not has_next %}tabindex="-1" aria-disabled="true"{% endif %}>
         <span class="d-none d-sm-inline me-1">Next</span>
         <span aria-hidden="true">&raquo;</span>
       </a>

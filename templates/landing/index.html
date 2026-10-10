@@ -4,8 +4,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-  <meta name="description" content="MEIL ESG Platform — Enterprise Environmental, Social, and Governance Monitoring, Decarbonization, and SEBI BRSR Accountability.">
   <title>{{ page_title|default:"Building a Sustainable Future | MEIL ESG Platform" }}</title>
+  {% block meta_description %}
+    <meta name="description" content="MEIL ESG Platform — Enterprise Environmental, Social, and Governance Monitoring, Decarbonization, and SEBI BRSR Accountability.">
+  {% endblock %}
   {% include "base/_head.html" %}
   <style>
     /* CSS Variables & Theme Tokens */
@@ -29,6 +31,7 @@
       margin: 0;
       padding: 0;
       width: 100%;
+      max-width: 100%;
       height: 100%;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       background-color: var(--landing-bg-dark);
@@ -40,7 +43,8 @@
     .landing-hero {
       position: relative;
       min-height: 100vh;
-      width: 100vw;
+      width: 100%;
+      max-width: 100%;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -500,8 +504,7 @@
     <!-- Slim Translucent Header -->
     <header class="landing-header" role="banner">
       <a href="{% url 'core:index' %}" class="brand-wrap" aria-label="MEIL ESG Platform Home">
-        <span class="brand-badge"><i class="icon-shield me-1" aria-hidden="true"></i>MEIL</span>
-        <span class="brand-text">ESG<span class="brand-sub">PLATFORM</span></span>
+        <img src="{% static 'images/brand/meil-esg-logo-light.png' %}" alt="MEIL ESG Platform" class="landing-brand-logo" style="height: 38px; width: auto; max-width: 175px; object-fit: contain; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));">
       </a>
 
       <nav class="header-actions" aria-label="Authentication Actions">
@@ -587,6 +590,8 @@
       </div>
       <ul class="footer-links">
         <li><a href="{% url 'core:health_check' %}" target="_blank" rel="noopener">System Status</a></li>
+        <li><a href="{% url 'core:ui_preview' %}">UI Preview</a></li>
+        <li><a href="{% url 'core:components_showcase' %}">Components</a></li>
         <li><a href="#" data-bs-toggle="modal" data-bs-target="#accessRequestModal">Access Policy</a></li>
         <li><a href="{% url 'core:login' %}">Portal Sign In</a></li>
       </ul>
@@ -599,7 +604,7 @@
       <div class="modal-content modal-content-glass">
         <div class="modal-header modal-header-glass">
           <div class="d-flex align-items-center gap-2">
-            <span class="brand-badge"><i class="icon-shield me-1"></i>MEIL</span>
+            <img src="{% static 'images/brand/meil-esg-icon.png' %}" alt="MEIL" style="height: 28px; width: 28px; object-fit: contain;">
             <h5 class="modal-title h6 font-weight-bold mb-0 text-white" id="accessRequestModalLabel">
               Account Registration &amp; Access Policy
             </h5>

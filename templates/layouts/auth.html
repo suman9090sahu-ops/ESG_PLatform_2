@@ -2,77 +2,168 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>{% block title %}{{ page_title|default:auth_title|default:"Enterprise ESG Sign In" }} | {{ SITE_SHORT_NAME|default:"MEIL ESG" }}{% endblock %}</title>
   {% include "base/_head.html" %}
+  <link rel="stylesheet" href="{% static 'css/auth-glass.css' %}">
   <style>
+    /* Inline baseline ensuring styles render instantly with white-noise & dev servers */
     .auth-page-wrapper {
       min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: linear-gradient(135deg, #f0fdf4 0%, #f8fafc 50%, #eff6ff 100%);
-      padding: 2rem 1rem;
-    }
-    .auth-card {
+      min-height: 100dvh;
       width: 100%;
-      max-width: 440px;
-      background: #ffffff;
-      border: 1px solid #e2e8f0;
-      border-radius: var(--esg-radius-xl, 12px);
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
-      overflow: hidden;
-    }
-    .auth-header {
-      padding: 2rem 2rem 1.5rem;
-      text-align: center;
-      border-bottom: 1px solid #f1f5f9;
-    }
-    .auth-body {
-      padding: 2rem;
-    }
-    .auth-footer {
-      padding: 1rem 2rem 1.5rem;
-      background-color: #f8fafc;
-      border-top: 1px solid #f1f5f9;
-      text-align: center;
-      font-size: 0.8125rem;
-      color: #64748b;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      background-image:
+        linear-gradient(135deg, rgba(6, 26, 20, 0.22) 0%, rgba(4, 18, 14, 0.36) 100%),
+        url("{% static 'images/auth/sustainable-building.jpg' %}");
+      background-size: cover;
+      background-position: center center;
+      background-repeat: no-repeat;
+      overflow-x: hidden;
+      padding: 1.25rem 1rem;
+      box-sizing: border-box;
     }
   </style>
+  {% block extra_css %}{% endblock %}
 </head>
-<body>
-  <div class="auth-page-wrapper">
-    <div class="auth-card">
-      <div class="auth-header">
-        <a href="{% url 'core:index' %}" class="d-inline-flex align-items-center gap-2 mb-2 text-decoration-none" title="Return to Public Homepage">
-          <span class="brand-esg-badge"><i class="icon-shield me-1"></i>MEIL</span>
-          <span class="brand-esg-title text-dark">ESG CONTROL TOWER</span>
-        </a>
-        <h2 class="h5 font-weight-bold text-dark mt-2 mb-1">{% block auth_title %}{{ auth_title|default:"Sign In" }}{% endblock %}</h2>
-        <p class="text-muted small mb-0">{% block auth_subtitle %}{{ auth_subtitle|default:"SEBI BRSR & GHG Governance Portal" }}{% endblock %}</p>
-      </div>
+<body class="login-page">
+  <div class="auth-page-wrapper login-page-container">
+    <div class="auth-bg-overlay" aria-hidden="true"></div>
 
-      <div class="auth-body">
-        {% if messages %}
-          {% for message in messages %}
-            <div class="alert alert-{% if message.tags == 'error' %}danger{% elif message.tags %}{{ message.tags }}{% else %}info{% endif %} alert-dismissible fade show small mb-3" role="alert">
-              {{ message }}
-              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-          {% endfor %}
-        {% endif %}
+    <!-- Header & Branding (Top Left) -->
+    <header class="auth-top-header" role="banner">
+      <a href="{% url 'core:index' %}" class="auth-brand-pill" title="Return to Public Sustainability Portal">
+        <img src="{% static 'images/brand/meil-esg-logo-light.png' %}" alt="MEIL ESG Platform" class="auth-brand-logo-img" style="height: 32px; width: auto; object-fit: contain;">
+        <span class="auth-brand-sub" style="font-size: 0.76rem; color: #a7f3d0; font-weight: 600; letter-spacing: 0.04em; padding-left: 0.35rem; border-left: 1px solid rgba(255,255,255,0.22); margin-left: 0.25rem;">CONTROL TOWER</span>
+      </a>
+    </header>
 
-        {% block auth_content %}{% endblock %}
-      </div>
-
-      <div class="auth-footer">
-        {% block auth_footer %}
-          <div class="d-flex flex-column gap-1">
-            <span>&copy; {{ CURRENT_YEAR|default:"2026" }} MEIL Group &bull; Confidential &amp; Proprietary</span>
-            <a href="{% url 'core:index' %}" class="text-decoration-none text-success small font-weight-medium">
-              <i class="icon-arrow-left me-1"></i> Return to Public Sustainability Portal
-            </a>
+    <!-- Center Glass Card Container -->
+    <main class="auth-center-wrapper" role="main">
+      <div class="auth-card login-glass-card shadow-lg">
+        <div class="auth-card-header">
+          <div class="auth-card-icon-wrap" aria-hidden="true">
+            <i class="icon-lock"></i>
           </div>
-        {% endblock %}
+          <h1 class="auth-card-title">{% block auth_card_heading %}{% block auth_title %}{{ auth_title|default:"Welcome Back" }}{% endblock %}{% endblock %}</h1>
+          <p class="auth-card-subtitle">{% block auth_subtitle %}{{ auth_subtitle|default:"Sign in to continue to your ESG workspace." }}{% endblock %}</p>
+        </div>
+
+        <div class="auth-card-body">
+          {% if messages %}
+            {% for message in messages %}
+              <div class="glass-alert glass-alert-{% if message.tags == 'error' %}danger{% elif message.tags %}{{ message.tags }}{% else %}info{% endif %} alert-dismissible fade show mb-3" role="alert">
+                <div class="d-flex align-items-center">
+                  <i class="{% if message.tags == 'error' %}icon-ban text-danger{% elif message.tags == 'success' %}icon-check text-success{% else %}icon-info text-primary{% endif %} me-2" aria-hidden="true"></i>
+                  <div class="flex-grow-1 small">{{ message }}</div>
+                  <button type="button" class="btn-close ms-2" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+              </div>
+            {% endfor %}
+          {% endif %}
+
+          {% block auth_content %}{% endblock %}
+        </div>
+
+        {% block auth_footer %}{% endblock %}
+      </div>
+
+      <!-- Sustainability Tagline & Portal Return -->
+      <div class="auth-tagline-wrap">
+        <p class="auth-sustainability-caption">
+          <i class="icon-globe me-1 text-success" aria-hidden="true"></i> Building a more sustainable tomorrow.
+        </p>
+        <div class="d-flex flex-wrap justify-content-center align-items-center gap-3 mt-1">
+          <a href="{% url 'core:index' %}" class="auth-return-portal-link" title="Return to Public Sustainability Portal">
+            <i class="icon-arrow-left me-1" aria-hidden="true"></i> Sustainability Portal
+          </a>
+          <span class="text-white-50 small">&bull;</span>
+          <a href="#" data-bs-toggle="modal" data-bs-target="#accessRequestModal" class="auth-return-portal-link">
+            Access Policy
+          </a>
+          <span class="text-white-50 small">&bull;</span>
+          <a href="{% url 'core:health_check' %}" target="_blank" rel="noopener" class="auth-return-portal-link">
+            System Status
+          </a>
+        </div>
+      </div>
+    </main>
+
+    <!-- Bottom balanced spacing -->
+    <div style="height: 1px; visibility: hidden;" aria-hidden="true"></div>
+  </div>
+
+  <!-- Enterprise Account Request / Access Policy Modal -->
+  <div class="modal fade" id="accessRequestModal" tabindex="-1" aria-labelledby="accessRequestModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content" style="background: #0f241d; border: 1px solid rgba(255, 255, 255, 0.18); color: #f8fafc; border-radius: 16px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);">
+        <div class="modal-header" style="border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding: 1.25rem 1.5rem;">
+          <div class="d-flex align-items-center gap-2">
+            <img src="{% static 'images/brand/meil-esg-icon.png' %}" alt="MEIL" style="height: 28px; width: 28px; object-fit: contain;">
+            <h5 class="modal-title h6 font-weight-bold mb-0 text-white" id="accessRequestModalLabel">
+              Account Registration &amp; Access Policy
+            </h5>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="mb-3">
+            <h6 class="text-white font-weight-bold mb-1">Enterprise Role-Based Access Governance</h6>
+            <p class="text-muted small mb-0">
+              The MEIL ESG Control Tower is an enterprise regulatory system. Self-registration is restricted by organization policy to ensure audit integrity and SEBI BRSR compliance.
+            </p>
+          </div>
+
+          <div class="mb-2 p-3 rounded" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);">
+            <div class="d-flex align-items-start gap-2">
+              <i class="icon-user text-success mt-1"></i>
+              <div>
+                <strong class="d-block text-white small">Site Managers &amp; Operators</strong>
+                <span class="text-muted small">Account creation is provisioned by your Project Manager or Subsidiary Admin.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-2 p-3 rounded" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);">
+            <div class="d-flex align-items-start gap-2">
+              <i class="icon-briefcase text-info mt-1"></i>
+              <div>
+                <strong class="d-block text-white small">ESG Managers &amp; Division Heads</strong>
+                <span class="text-muted small">Credentials are issued directly through Corporate Sustainability Governance.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-2 p-3 rounded" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);">
+            <div class="d-flex align-items-start gap-2">
+              <i class="icon-badge text-warning mt-1"></i>
+              <div>
+                <strong class="d-block text-white small">Assurance Officers &amp; Auditors</strong>
+                <span class="text-muted small">Independent audit access is authorized by the ESG Governance Committee.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-3 p-3 rounded" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2);">
+            <div class="small text-white-50">
+              <i class="icon-envelope me-1 text-success"></i>
+              To request platform credentials, email the Corporate ESG Office:
+              <a href="mailto:sustainability@meilgroup.com?subject=MEIL%20ESG%20Platform%20Account%20Request" class="text-success text-decoration-none font-weight-bold d-block mt-1">
+                sustainability@meilgroup.com
+              </a>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer" style="border-top: 1px solid rgba(255, 255, 255, 0.1); padding: 1rem 1.5rem;">
+          <button type="button" class="btn btn-success btn-sm px-4" data-bs-dismiss="modal">
+            Understood
+          </button>
+        </div>
       </div>
     </div>
   </div>

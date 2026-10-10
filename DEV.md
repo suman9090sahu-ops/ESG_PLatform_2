@@ -1815,3 +1815,142 @@ Ensures the platform can identify, calculate, store, validate, review, aggregate
 | **RBAC: Site Manager Recalculation Blocked** | **PASS** | HTTP 403 Forbidden returned on Site Manager mutation attempt |
 | **6-Tier Auditor Traceability Lineage** | **PASS** | Layer 1 displays Cat 4, Upstream, Distance-Based method, 1.5000 tCO₂e and formula string |
 
+---
+
+## 25. Controlled Database Cleanup & Workflow Reset
+
+Executed a safe, non-destructive, audit-preserving reset of disposable dummy and test transaction data across the platform, establishing a clean operational state for manual testing while enforcing the canonical MEIL 1-Company / 2-Subsidiary / 2-Project organizational hierarchy.
+
+### 1. Architectural Safeguards & Non-Negotiable Preservation
+- **Preserved in Full**: All Django models, database schema, migrations, ESG activity master definitions (18), allowed units of measure (17), activity categories (13), validation rules (22), anomaly detection rules (8), Scope 3 category definitions (15), regulatory emission factors (10), supplier reference records (13), user accounts (26), roles (5), permissions (180), and the complete audit trail in `AuthAuditLog` (1,341 entries).
+- **Zero shortcuts**: Did not use `flush`, drop tables, reset migrations, or recreate the database.
+
+### 2. Organizational Target Hierarchy
+Enforced the canonical MEIL enterprise hierarchy:
+```text
+MEIL Enterprise Group (MEIL-ENT)
+|-- MEIL Hydro & Infrastructure Division (MEIL-HYDRO)
+|   `-- Polavaram National Irrigation Project (PRJ-POL-01)
+|       |-- Polavaram Dam Headworks Site (SITE-POL-101)
+|       `-- Polavaram Spillway & Powerhouse Site (SITE-POL-102)
+`-- MEIL Clean Energy Division (MEIL-SOLAR)
+    `-- Kurnool Ultra Mega Solar Park (PRJ-KRN-01)
+        `-- Kurnool Array 1 Solar Inverter Station (SITE-KRN-201)
+```
+- Consolidated from 7 companies down to **1 canonical company** (`MEIL-ENT`).
+- Consolidated from 10 subsidiaries down to **exactly 2 intended subsidiaries** (`MEIL-HYDRO`, `MEIL-SOLAR`).
+- Consolidated from 8 projects down to **exactly 2 intended projects** (`PRJ-POL-01`, `PRJ-KRN-01`), 1 per subsidiary.
+- Preserved **3 canonical reporting periods** (`FY2024-25` LOCKED, `FY2025-26` OPEN, `FY2026-27` DRAFT).
+
+### 3. Dedicated Cleanup Management Command
+Implemented `apps.core.management.commands.cleanup_dummy_workflow`:
+- Supports `--dry-run` (atomic rollback simulation) and `--execute` (transactional commit).
+- Foreign-key safe cascade order: ProcurementItems -> CalculationResults -> AnomalyRecords -> CorrectionRequests -> SubmissionReviews -> Submissions -> Evidence/OCR -> ValidationRuns -> ProcurementRecords -> ActivityRecords -> Disposable Periods/Sites/Projects/Subsidiaries/Companies.
+- Reassigned suppliers referencing disposable companies to `MEIL-ENT` to protect reusable master data.
+- Removed orphaned evidence storage directories under `media/evidence/`.
+
+### 4. Backup & Dry-Run Verification
+- Native SQLite online backup created and verified at `backups/db_backup_pre_cleanup.sqlite3` (`PRAGMA integrity_check = ok`, 2,703,360 bytes, 50 tables, 2,483 rows).
+- Full media evidence backup archived at `backups/media_evidence_backup_20261009_224300`.
+- Dry-run simulation completed with 100% assertion validation before commit.
+
+### 5. Post-Cleanup 15-Step Workflow Verification (`scripts/verify_workflow_post_cleanup.py`)
+| Step | Action Verified | Actor / Persona | Result |
+|---|---|---|:---:|
+| 1 | Authenticate via HTTP session | Site Manager (`site_manager`) | **PASS** |
+| 2 | Access assigned operational site | Site Manager (`SITE-POL-101`) | **PASS** |
+| 3 | Create ESG activity record (Diesel Stationary) | Site Manager | **PASS** |
+| 4 | Enter telemetry using permitted units (3,500 L) | Site Manager | **PASS** |
+| 5 | Upload supporting invoice evidence (SHA-256) | Site Manager | **PASS** |
+| 6 | Execute validation engine (`execute_validation_run`) | Site Manager | **PASS** |
+| 7 | Process document OCR (`execute_ocr_run`) | Site Manager | **PASS** |
+| 8 | Formal submission (`submit_activity_record`) | Site Manager | **PASS** |
+| 9 | Authenticate Subsidiary Manager session | Subsidiary Manager (`subsidiary_manager`) | **PASS** |
+| 10 | Review submission in subsidiary inbox | Subsidiary Manager | **PASS** |
+| 11 | Request correction action (`request_correction_submission`) | Subsidiary Manager | **PASS** |
+| 12 | Correction edit, resubmission, and verification | Site Manager & Subsidiary Manager | **PASS** |
+| 13 | Access governance dashboard and calculation desk | ESG Manager (`esg_manager`) | **PASS** |
+| 14 | Execute calculation engine & trace number lineage | ESG Manager | **PASS** |
+| 15 | Assurance read-only mode & mutation blocking (HTTP 403) | Auditor (`auditor`) | **PASS** |
+
+### 6. Jury Demonstration Dataset — Explicitly Deferred
+The jury presentation demonstration dataset has been explicitly deferred to the next phase as required. Zero synthetic demo transactions were seeded. The platform is clean, stable, and ready for fresh manual workflow testing.
+
+---
+
+## 24. Official MEIL ESG Platform Brand Logo Integration
+
+Integrated the official high-resolution **MEIL ESG PLATFORM** brand identity system across the monolith. Replaced legacy CSS placeholders with high-fidelity, transparent vector-grade brand assets tailored for both dark glassmorphic and light operational views.
+
+### 1. Brand Asset Pipeline (`static/images/brand/`)
+- **Dark Theme Navbar Logo (`meil-esg-logo-light.png`):** 825x289 retina asset featuring the authentic circular "M" leaf emblem paired with crisp white `MEIL` and vibrant mint `#34d399` `ESG PLATFORM` typography for high contrast (WCAG AAA) on dark glassmorphic headers.
+- **Corporate Base Logo (`meil-esg-logo.png`):** Transparent unmultiplied alpha asset preserving the authentic deep navy `(0, 8, 23)` and emerald leaf branding for light contexts and official documents.
+- **Monogram Icon (`meil-esg-icon.png`):** Square (389x389) icon isolating the intertwined "M" and orbital sustainability leaf for sidebar-mini collapsed states, modals, and avatars.
+- **Multi-Resolution Favicon Suite:** Generated `favicon.ico`, `favicon-16x16.png`, `favicon-32x32.png`, `favicon-48x48.png`, `favicon-64x64.png`, and `favicon-180x180.png` (Apple touch icon).
+
+### 2. Template Implementations
+1. **Authenticated Base Navbar (`templates/base/_navbar.html`):**
+   - Replaced legacy `[MEIL] ESG TOWER` badge with `.brand-logo-img` (`meil-esg-logo-light.png`).
+   - Wired collapsed/mobile navigation to `.brand-logo-mini-img` (`meil-esg-icon.png`).
+2. **Component Navbar (`templates/components/navbar.html`):**
+   - Injected official full logo and mini icon into the reusable navbar component.
+3. **Authentication Portal (`templates/layouts/auth.html`):**
+   - Translucent top-left brand pill upgraded with official brand logo, divider, and `CONTROL TOWER` badge.
+   - Enterprise access policy modal updated with the official leaf monogram icon.
+4. **Public Sustainability Portal (`templates/landing/index.html`):**
+   - Landing hero header upgraded with official glowing logo asset.
+   - Access modal updated with circular monogram.
+5. **Head Meta & Favicons (`templates/base/_head.html`):**
+   - Global `<link rel="icon">` and `<link rel="apple-touch-icon">` tags pointing to official brand icons.
+6. **Stylesheet Enhancements (`static/css/authenticated-glass.css`):**
+   - Refined `.navbar-brand-wrapper` spacing, flexbox alignment, and brand logo drop-shadows with subtle green elevation on hover.
+
+### 3. Empirical Verification
+- `scripts/verify_all_authenticated_glass_live.py`: **17/17 categories PASSED**.
+- `python manage.py check`: **0 issues**.
+- Live HTTP endpoints:
+  - Landing (`/`): **200 OK**
+  - Login (`/auth/login/`): **200 OK**
+  - Brand logo assets: **200 OK**
+
+---
+
+## Phase UI/UX Polish: Platform-Wide Layout, Responsiveness, Links & Metadata Overhaul
+
+### 1. Scope & Objectives
+A platform-wide audit and polish pass was conducted across all public and authenticated views originating from `http://127.0.0.1:8000/` to resolve layout issues, broken links, metadata deficiencies, and styling inconsistencies:
+1. **Remove Horizontal Scrolling:** Eliminate window viewport width overflows on both public landing and authenticated glass layouts.
+2. **Find & Fix Broken Links:** Audit all anchor tags (`<a>`), notification dropdowns, breadcrumbs, return buttons, and sidebars to replace inert `#` links with functional routes or accessible JavaScript triggers.
+3. **Fix Page Titles:** Standardize `<title>` tags across all views, eliminating redundant brand suffix duplication (`... | MEIL ESG CONTROL TOWER | MEIL ESG CONTROL TOWER`).
+4. **Add Meta Descriptions:** Introduce accessible `<meta name="description">` tags across global base layouts, public pages, auth flows, and all platform ledgers.
+5. **Fix Footer Links:** Enhance authenticated and public footers with working direct links to core system resources (Dashboard, UI Showcase, Components, Status Probe, Django Admin).
+6. **Fix Broken Buttons:** Ensure mobile and desktop navbar toggles (`data-bs-toggle="minimize"`, `data-bs-toggle="offcanvas"`), modals, and pagination links interact smoothly.
+7. **Adjust Texts & Images:** Remove cluttered and clipped `(Phase 01/02/03)` text suffixes in sidebars, add text wrapping support, and verify brand asset rendering.
+
+### 2. Implementation Summary
+
+#### A. Horizontal Scroll Remediation
+- **`templates/landing/index.html`:** Replaced `width: 100vw;` with `width: 100%; max-width: 100%;` and enforced `overflow-x: hidden;` on `html, body`.
+- **`static/css/authenticated-glass.css`:** Corrected `body.esg-body::before` and `::after` fixed background layers from `width: 100vw; height: 100vh;` to `width: 100%; height: 100%;`. Applied `overflow-x: hidden;` and `max-width: 100%;` to `.container-scroller`, `.page-body-wrapper`, and `.content-wrapper`.
+
+#### B. Page Titles & Meta Descriptions
+- **`templates/base/_head.html`:** Added customizable `{% block meta_description %}` falling back gracefully to descriptive platform text.
+- **`templates/base/base.html`:** Refined title logic to cleanly append `| {{ SITE_SHORT_NAME|default:"MEIL ESG" }}` without repeated suffixes.
+- **`templates/layouts/dashboard.html`:** Nested `page_heading` and `page_title` blocks for automated synchronization of browser tab title and `<h1>` headings.
+- **`templates/layouts/auth.html`:** Renamed card heading block to avoid title collision; added unique meta descriptions and titles to all auth templates (`login.html`, `password_reset.html`, `password_change.html`, etc.).
+- **View Enhancements:** Injected explicit `page_title`, `page_subtitle`, and `meta_description` in `apps/core/procurement_views.py`, `apps/core/transport_views.py`, and `scope3_views.py`.
+
+#### C. Navbars, Sidebars & Footers
+- **`templates/base/_navbar.html` & `templates/components/navbar.html`:** Rewired notification dropdown alerts to live routes (`core:submission_list`, `core:activity_record_list`, `core:anomaly_list`), wired sign-out button, and added Bootstrap 5 offcanvas/minimize toggle attributes.
+- **`templates/base/_sidebar.html` & `templates/components/sidebar.html`:** Removed truncated `(Phase 01/02/03)` suffixes; wired Environmental and Governance sub-menus directly to Scope 3 Inventory, Activity Telemetry, Procurement, Logistics, and Reports; updated Django Admin link to reverse `{% url 'admin:index' %}`.
+- **`templates/base/_footer.html`:** Added quick-links navigation to Dashboard, Components Showcase, UI Preview Gallery, Health Check, and Django Admin.
+- **`templates/landing/index.html`:** Added direct links to UI Preview and Components Showcase in the public portal footer.
+
+#### D. Breadcrumbs & Pagination
+- **`templates/components/breadcrumb.html` & `templates/components/breadcrumbs/breadcrumb.html`:** Added conditional routing for the root link (pointing to Control Tower Dashboard when authenticated, Landing Portal when anonymous) and replaced inert `#` fallbacks with `javascript:void(0)`.
+- **`templates/components/pagination.html` & `templates/components/pagination/pagination.html`:** Replaced inert `#` fallbacks on disabled page items with `javascript:void(0);` and added `tabindex="-1" aria-disabled="true"`.
+
+### 3. Verification & Validation
+- **Automated Platform Audit (`scripts/audit_platform_links_titles_meta.py`):** Verified HTTP 200 responses, unique meta descriptions, and non-duplicate titles across all platform endpoints.
+- **UI Test Suite (`tests/test_ui_components.py`):** 21/21 tests passed with 0 errors.
+- **Django System Check (`python manage.py check`):** 0 issues identified.

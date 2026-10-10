@@ -222,18 +222,24 @@
                   </td>
                   <td>
                     <div>
+                      {% if ev.activity_record %}
                       <a href="{% url 'core:activity_record_detail' ev.activity_record.id %}" class="fw-semibold text-primary text-decoration-none">
                         {{ ev.activity_record.activity.name }}
                       </a>
+                      {% else %}
+                      <span class="text-muted fst-italic">Unlinked Evidence</span>
+                      {% endif %}
                       <div class="small text-muted">
-                        <i class="icon-location-pin me-1"></i>{{ ev.site.name }}
+                        <i class="icon-location-pin me-1"></i>{{ ev.site.name|default:"General" }}
                         <span class="mx-1">•</span>
-                        {{ ev.reporting_period.code }}
+                        {{ ev.reporting_period.code|default:"-" }}
                       </div>
+                      {% if ev.activity_record %}
                       <div class="small text-dark fw-bold">
                         {{ ev.activity_record.quantity }} {{ ev.activity_record.unit.symbol }}
                         <span class="text-muted fw-normal">({{ ev.activity_record.measurement_date|date:"Y-m-d" }})</span>
                       </div>
+                      {% endif %}
                     </div>
                   </td>
                   <td>

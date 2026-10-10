@@ -4,14 +4,14 @@
 <div class="page-header d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
   <div class="esg-page-title-group">
     <div class="d-flex align-items-center gap-2">
-      <h1 class="h3 font-weight-bold mb-0 text-dark">{{ page_title|default:"Executive ESG Control Tower" }}</h1>
+      <h1 class="h3 font-weight-bold mb-0 text-dark">{% block page_heading %}{% block page_title %}{{ page_title|default:"Executive ESG Control Tower" }}{% endblock %}{% endblock %}</h1>
       {% if is_live_monitoring %}
         <span class="badge badge-success badge-pill py-1 px-2 font-weight-normal fs-6">
           <span class="status-indicator-dot bg-success me-1"></span> Live
         </span>
       {% endif %}
     </div>
-    <p class="text-muted small mt-1 mb-0">{{ page_subtitle|default:"Continuous ESG Governance, BRSR Core Disclosures & Compliance Audit" }}</p>
+    <p class="text-muted small mt-1 mb-0">{% block page_subtitle %}{{ page_subtitle|default:"Continuous ESG Governance, BRSR Core Disclosures & Compliance Audit" }}{% endblock %}</p>
   </div>
   <div class="esg-page-actions mt-2 mt-sm-0 d-flex flex-wrap align-items-center gap-2">
     {% block header_actions %}{% endblock %}

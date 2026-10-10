@@ -1,12 +1,25 @@
 <!-- Reusable Platform Footer -->
 <footer class="footer esg-footer" role="contentinfo">
-  <div class="d-sm-flex justify-content-center justify-content-sm-between py-2 px-3">
-    <span class="text-muted text-center text-sm-start d-block d-sm-inline-block small">
-      &copy; {{ CURRENT_YEAR|default:"2026" }} <strong>MEIL</strong> &mdash; ESG CONTROL TOWER. All rights reserved.
-    </span>
-    <span class="float-none float-sm-end d-block mt-1 mt-sm-0 text-center text-muted small">
-      <span class="badge bg-light border text-secondary me-2">{{ ENVIRONMENT|default:"production"|upper }}</span>
-      v{{ APP_VERSION|default:"1.0.0" }} | Timezone: {{ TIME_ZONE|default:"Asia/Kolkata" }}
-    </span>
+  <div class="d-flex flex-wrap justify-content-between align-items-center py-2 px-3 gap-2">
+    <div class="d-flex flex-wrap align-items-center gap-3">
+      <span class="text-muted small">
+        &copy; {{ CURRENT_YEAR|default:"2026" }} <strong>MEIL</strong> &mdash; ESG CONTROL TOWER. All rights reserved.
+      </span>
+      <ul class="esg-footer-nav d-none d-md-inline-flex list-unstyled gap-3 mb-0 small">
+        <li><a href="{% url 'core:control_tower_dashboard' %}" class="text-muted text-decoration-none">Dashboard</a></li>
+        <li><a href="{% url 'core:ui_preview' %}" class="text-muted text-decoration-none">UI Showcase</a></li>
+        <li><a href="{% url 'core:components_showcase' %}" class="text-muted text-decoration-none">Components</a></li>
+        <li><a href="{% url 'core:health_check' %}" target="_blank" rel="noopener" class="text-muted text-decoration-none">Health Status</a></li>
+        {% if request.user.is_staff %}
+          <li><a href="{% url 'admin:index' %}" class="text-muted text-decoration-none">Administration</a></li>
+        {% endif %}
+      </ul>
+    </div>
+    <div class="text-muted small d-flex align-items-center gap-2">
+      <span class="badge bg-light border text-secondary">{{ ENVIRONMENT|default:"production"|upper }}</span>
+      <span>v{{ APP_VERSION|default:"1.0.0" }}</span>
+      <span class="d-none d-sm-inline text-muted">&bull;</span>
+      <span class="d-none d-sm-inline">{{ TIME_ZONE|default:"Asia/Kolkata" }}</span>
+    </div>
   </div>
 </footer>
