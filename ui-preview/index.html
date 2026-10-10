@@ -1,0 +1,1570 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>UI Component Library &amp; Design System Preview | MEIL ESG</title>
+  
+    
+<meta name="description" content="MEIL ESG CONTROL TOWER — Enterprise Environmental, Social, and Governance Monitoring, Decarbonization, and SEBI BRSR Accountability.">
+<meta name="author" content="MEIL ESG Architecture">
+
+<!-- Favicon & Brand Icons -->
+<link rel="icon" type="image/png" sizes="32x32" href="../static/images/brand/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="../static/images/brand/favicon-16x16.png">
+<link rel="shortcut icon" href="../static/images/favicon.ico">
+<link rel="apple-touch-icon" sizes="180x180" href="../static/images/brand/favicon-180x180.png">
+
+<!-- Core Stellar Admin Vendor Styles -->
+<link rel="stylesheet" href="../static/vendors/simple-line-icons/css/simple-line-icons.css">
+<link rel="stylesheet" href="../static/vendors/font-awesome/css/font-awesome.min.css">
+<link rel="stylesheet" href="../static/vendors/flag-icon-css/css/flag-icons.min.css">
+<link rel="stylesheet" href="../static/vendors/css/vendor.bundle.base.css">
+
+<!-- Layout and Platform Styles -->
+<link rel="stylesheet" href="../static/css/vertical-light-layout/style.css">
+<link rel="stylesheet" href="../static/css/app.css">
+
+    <link rel="stylesheet" href="../static/css/authenticated-glass.css">
+  
+  
+</head>
+<body class="esg-body">
+  <div class="container-scroller">
+    <!-- Navbar Component -->
+    
+      
+<!-- Reusable Platform Top Navbar -->
+<nav class="navbar default-layout-navbar col-lg-12 col-12 p-0 fixed-top d-flex flex-row" id="main-navbar" aria-label="Top Navigation">
+  <div class="text-center navbar-brand-wrapper d-flex align-items-center justify-content-between px-3">
+    <a class="navbar-brand brand-logo text-decoration-none d-flex align-items-center" href="../" aria-label="MEIL ESG Platform Home">
+      <img src="../static/images/brand/meil-esg-logo-light.png" alt="MEIL ESG Platform" class="brand-logo-img">
+      <span class="brand-esg-title d-none sr-only">MEIL ESG PLATFORM</span>
+    </a>
+    <a class="navbar-brand brand-logo-mini text-decoration-none d-flex align-items-center justify-content-center" href="../" aria-label="MEIL ESG Platform">
+      <img src="../static/images/brand/meil-esg-icon.png" alt="MEIL ESG" class="brand-logo-mini-img">
+    </a>
+    <button class="navbar-toggler navbar-toggler align-self-center d-none d-lg-block" type="button" data-toggle="minimize" data-bs-toggle="minimize" aria-label="Toggle Sidebar Navigation">
+      <span class="icon-menu" aria-hidden="true"></span>
+    </button>
+  </div>
+  <div class="navbar-menu-wrapper d-flex align-items-center">
+    <div class="d-none d-lg-flex align-items-center me-3">
+      <h6 class="mb-0 font-weight-bold text-dark d-flex align-items-center gap-2">
+        <span>UI Component Library &amp; Design System</span>
+        <span class="badge badge-success badge-pill py-1 px-2 font-weight-normal fs-6">
+          <span class="status-indicator-dot bg-success me-1" aria-hidden="true"></span>
+          <span class="sr-only">[Live] </span>Live Monitor
+        </span>
+      </h6>
+    </div>
+
+    <ul class="navbar-nav navbar-nav-right ms-auto d-flex align-items-center">
+      <!-- Search Bar -->
+      <li class="nav-item d-none d-md-block">
+        <form class="search-form" action="#" onsubmit="event.preventDefault();" role="search">
+          <i class="icon-magnifier" aria-hidden="true"></i>
+          <input type="search" class="form-control" placeholder="Search ESG indicators, metrics, sites..." aria-label="Search ESG indicators">
+        </form>
+      </li>
+
+      <!-- Quick Action / Status Probe -->
+      <li class="nav-item">
+        <a href="../#" target="_blank" class="nav-link" title="Health Probe API" aria-label="Health Probe API">
+          <i class="icon-heart text-success" aria-hidden="true"></i>
+        </a>
+      </li>
+
+      <!-- Showcase Link -->
+      <li class="nav-item">
+        <a href="../ui-preview/" class="nav-link" title="UI Preview Showcase" aria-label="UI Preview Showcase">
+          <i class="icon-grid text-primary" aria-hidden="true"></i>
+        </a>
+      </li>
+
+      <!-- Notification Alerts Dropdown -->
+      <li class="nav-item dropdown">
+        <a class="nav-link count-indicator message-dropdown" id="notificationDropdown" href="#" data-bs-toggle="dropdown" aria-expanded="false" title="System Alerts" aria-label="3 Unread Alerts">
+          <i class="icon-bell" aria-hidden="true"></i>
+          <span class="count bg-danger">3</span>
+        </a>
+        <div class="dropdown-menu dropdown-menu-end navbar-dropdown preview-list pb-0 shadow-sm" aria-labelledby="notificationDropdown">
+          <div class="dropdown-item py-3 bg-light">
+            <p class="mb-0 font-weight-bold float-start">ESG Alerts &amp; Compliance</p>
+            <span class="badge badge-pill badge-primary float-end">3 New</span>
+          </div>
+          <div class="dropdown-divider m-0"></div>
+          <a class="dropdown-item preview-item py-2" href="#" onclick="alert('Live transactional routes require the active Django backend server: python manage.py runserver'); return false;">
+            <div class="preview-thumbnail">
+              <div class="preview-icon bg-success text-white p-2 rounded-circle"><i class="icon-energy"></i></div>
+            </div>
+            <div class="preview-item-content flex-grow ps-2">
+              <p class="preview-subject font-weight-medium text-dark mb-0">Solar Site 4 Compliance</p>
+              <p class="font-weight-light small text-muted mb-0">BRSR reporting cycle passed audit</p>
+            </div>
+          </a>
+          <a class="dropdown-item preview-item py-2" href="#" onclick="alert('Live transactional routes require the active Django backend server: python manage.py runserver'); return false;">
+            <div class="preview-thumbnail">
+              <div class="preview-icon bg-warning text-white p-2 rounded-circle"><i class="icon-drop"></i></div>
+            </div>
+            <div class="preview-item-content flex-grow ps-2">
+              <p class="preview-subject font-weight-medium text-dark mb-0">Water Recycling Target</p>
+              <p class="font-weight-light small text-muted mb-0">Site B nearing quarterly threshold</p>
+            </div>
+          </a>
+          <div class="dropdown-divider m-0"></div>
+          <a class="dropdown-item text-center small text-primary font-weight-medium py-2" href="#" onclick="alert('Live transactional routes require the active Django backend server: python manage.py runserver'); return false;">View all ESG alerts</a>
+        </div>
+      </li>
+
+      <!-- User Profile Dropdown / Auth State -->
+      
+        <li class="nav-item ms-2">
+          <a href="../auth/login/" class="btn btn-outline-primary btn-sm px-3 py-1 d-inline-flex align-items-center gap-1">
+            <i class="icon-login" aria-hidden="true"></i> Sign In
+          </a>
+        </li>
+      
+
+      <!-- Mobile Offcanvas Hamburger Toggler -->
+      <li class="nav-item d-lg-none">
+        <button class="navbar-toggler navbar-toggler-right align-self-center" type="button" data-toggle="offcanvas" data-bs-toggle="offcanvas" aria-label="Open mobile menu">
+          <span class="icon-menu text-dark" aria-hidden="true"></span>
+        </button>
+      </li>
+    </ul>
+  </div>
+</nav>
+
+    
+
+    <div class="container-fluid page-body-wrapper">
+      <!-- Sidebar Component -->
+      
+        
+<!-- Reusable Platform Sidebar Navigation -->
+<nav class="sidebar sidebar-offcanvas" id="sidebar" aria-label="Sidebar Navigation">
+  <ul class="nav">
+    <!-- User Profile Strip -->
+    <li class="nav-item nav-profile border-bottom">
+      <div class="nav-link">
+        <div class="profile-image">
+          <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; font-weight: 700; font-size: 0.85rem;" aria-hidden="true">
+            CT
+          </div>
+          <div class="dot-indicator bg-success" title="System Connected"></div>
+        </div>
+        <div class="text-wrapper">
+          <p class="profile-name mb-0 font-weight-bold">Control Tower</p>
+          <p class="designation mb-0 text-muted small">Governance &amp; Compliance</p>
+        </div>
+      </div>
+    </li>
+
+    
+      <!-- Default Platform Navigation Structure -->
+      <li class="nav-item nav-category">
+        <span class="nav-link">OVERVIEW</span>
+      </li>
+      <li class="nav-item ">
+        <a class="nav-link" href="#" onclick="alert('Live transactional routes require the active Django backend server: python manage.py runserver'); return false;">
+          <span class="menu-title">ESG Dashboard</span>
+          <i class="icon-screen-desktop menu-icon text-success" aria-hidden="true"></i>
+        </a>
+      </li>
+
+      <li class="nav-item nav-category">
+        <span class="nav-link">DESIGN SYSTEM</span>
+      </li>
+      <li class="nav-item active">
+        <a class="nav-link" href="../ui-preview/">
+          <span class="menu-title">UI Preview Gallery</span>
+          <i class="icon-layers menu-icon text-primary" aria-hidden="true"></i>
+        </a>
+      </li>
+
+      <!-- ESG Governance Pillars (Platform Modules) -->
+      <li class="nav-item nav-category">
+        <span class="nav-link">ESG PILLARS</span>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" data-bs-toggle="collapse" href="#envPillar" aria-expanded="false" aria-controls="envPillar">
+          <span class="menu-title">Environmental (E)</span>
+          <i class="icon-globe menu-icon text-success" aria-hidden="true"></i>
+        </a>
+        <div class="collapse" id="envPillar">
+          <ul class="nav flex-column sub-menu">
+            <li class="nav-item">
+              <a class="nav-link text-truncate" href="#" onclick="alert('Live transactional routes require the active Django backend server: python manage.py runserver'); return false;" title="Scope 3 Value Chain Emissions">
+                <i class="icon-chart me-1 text-success"></i> Scope 3 Emissions
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link text-truncate" href="#" onclick="alert('Live transactional routes require the active Django backend server: python manage.py runserver'); return false;" title="Activity Telemetry & Data Records">
+                <i class="icon-energy me-1 text-success"></i> Activity Telemetry
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link text-truncate" href="#" onclick="alert('Live transactional routes require the active Django backend server: python manage.py runserver'); return false;" title="Value Chain Procurement">
+                <i class="icon-bag me-1 text-success"></i> Procurement
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link text-truncate" href="#" onclick="alert('Live transactional routes require the active Django backend server: python manage.py runserver'); return false;" title="Logistics & Fleet Transport">
+                <i class="icon-speedometer me-1 text-success"></i> Fleet Logistics
+              </a>
+            </li>
+          </ul>
+        </div>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" data-bs-toggle="collapse" href="#socPillar" aria-expanded="false" aria-controls="socPillar">
+          <span class="menu-title">Social (S)</span>
+          <i class="icon-people menu-icon text-info" aria-hidden="true"></i>
+        </a>
+        <div class="collapse" id="socPillar">
+          <ul class="nav flex-column sub-menu">
+            <li class="nav-item">
+              <a class="nav-link text-truncate text-muted" href="javascript:void(0)" title="Workforce & Safety Disclosures">
+                <i class="icon-user-following me-1 text-info"></i> Workforce &amp; Safety
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link text-truncate text-muted" href="javascript:void(0)" title="CSR Operations & Community Outreach">
+                <i class="icon-heart me-1 text-info"></i> CSR Operations
+              </a>
+            </li>
+          </ul>
+        </div>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" data-bs-toggle="collapse" href="#govPillar" aria-expanded="false" aria-controls="govPillar">
+          <span class="menu-title">Governance (G)</span>
+          <i class="icon-shield menu-icon text-warning" aria-hidden="true"></i>
+        </a>
+        <div class="collapse" id="govPillar">
+          <ul class="nav flex-column sub-menu">
+            <li class="nav-item">
+              <a class="nav-link text-truncate" href="#" onclick="alert('Live transactional routes require the active Django backend server: python manage.py runserver'); return false;" title="BRSR Reports & Consolidation">
+                <i class="icon-doc me-1 text-warning"></i> Governed Reports
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link text-truncate" href="#" onclick="alert('Live transactional routes require the active Django backend server: python manage.py runserver'); return false;" title="GHG Emission Factor Library">
+                <i class="icon-chemistry me-1 text-warning"></i> Emission Factors
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link text-truncate" href="#" onclick="alert('Live transactional routes require the active Django backend server: python manage.py runserver'); return false;" title="Submissions Workflow">
+                <i class="icon-check me-1 text-warning"></i> Submissions
+              </a>
+            </li>
+          </ul>
+        </div>
+      </li>
+
+      <li class="nav-item nav-category">
+        <span class="nav-link">SYSTEM OPERATIONS</span>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="../#" target="_blank" rel="noopener">
+          <span class="menu-title">Health Check Probe</span>
+          <i class="icon-pulse menu-icon text-danger" aria-hidden="true"></i>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#" onclick="alert('Live transactional routes require the active Django backend server: python manage.py runserver'); return false;" target="_blank" rel="noopener">
+          <span class="menu-title">Django Admin</span>
+          <i class="icon-settings menu-icon text-secondary" aria-hidden="true"></i>
+        </a>
+      </li>
+    
+  </ul>
+</nav>
+<!-- Mobile Drawer Backdrop Overlay -->
+<div class="sidebar-overlay" id="sidebarOverlay" aria-hidden="true"></div>
+
+      
+
+      <!-- Main Content Panel -->
+      <div class="main-panel esg-main-panel">
+        <div class="content-wrapper esg-content-container">
+          <!-- Page Header & Breadcrumbs Block -->
+          
+<div class="page-header d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
+  <div class="esg-page-title-group">
+    <div class="d-flex align-items-center gap-2">
+      <h1 class="h3 font-weight-bold mb-0 text-dark">UI Component Library &amp; Design System</h1>
+      
+    </div>
+    <p class="text-muted small mt-1 mb-0">Phase 01 UI Foundation Showcase &amp; Interactive Components Gallery</p>
+  </div>
+  <div class="esg-page-actions mt-2 mt-sm-0 d-flex flex-wrap align-items-center gap-2">
+    
+    
+  <span class="badge bg-success text-white py-2 px-3">
+    <i class="icon-check me-1"></i>Phase 01 UI Foundation Ready
+  </span>
+  <a href="#" onclick="alert('Live transactional routes require the active Django backend server: python manage.py runserver'); return false;" class="btn btn-esg-secondary btn-sm">
+    <i class="icon-arrow-left me-1"></i>Back to Dashboard
+  </a>
+
+    
+  <!-- Accessible Breadcrumb Navigation Component -->
+<nav aria-label="Breadcrumb navigation">
+  <ol class="breadcrumb bg-transparent p-0 mb-0 align-items-center">
+    <li class="breadcrumb-item">
+      
+        <a href="../" class="text-decoration-none text-muted small">
+          <i class="icon-home me-1" aria-hidden="true"></i>Home
+        </a>
+      
+    </li>
+
+    
+      <li class="breadcrumb-item active text-dark small font-weight-medium" aria-current="page">
+        UI Preview Gallery
+      </li>
+    
+  </ol>
+</nav>
+
+
+  </div>
+</div>
+
+
+          <!-- Global Django Messages Framework Display -->
+          
+            
+          
+
+          <!-- Main Page Body Content -->
+          
+<div class="ui-preview-container">
+  <!-- Showcase Introduction Banner -->
+  <div class="alert alert-info d-flex align-items-center justify-content-between mb-4" role="alert">
+    <div class="d-flex align-items-center gap-2">
+      <i class="icon-layers fs-4" aria-hidden="true"></i>
+      <div>
+        <strong>MEIL ESG CONTROL TOWER &mdash; Design System Showcase</strong>
+        <p class="mb-0 small text-muted">Comprehensive preview of all reusable Bootstrap 5.x templates, design tokens, workflow badges, and ESG presentation indicators.</p>
+      </div>
+    </div>
+    <span class="badge bg-white text-info border font-weight-bold">Internal Dev Route</span>
+  </div>
+
+  <!-- =========================================================================
+       SECTION 1: BUTTONS
+       ========================================================================= -->
+  <div class="card card-esg mb-4" id="section-buttons">
+    <div class="card-esg-header">
+      <h3 class="card-esg-title"><i class="icon-cursor text-primary me-2"></i>1. Buttons &amp; Interactive Actions</h3>
+      <span class="badge bg-light text-secondary border">Accessible &amp; Focused</span>
+    </div>
+    <div class="card-esg-body">
+      <p class="text-muted small mb-3">Enterprise buttons tailored with ESG palette tokens and high-contrast visible focus rings.</p>
+      <div class="d-flex flex-wrap align-items-center gap-3">
+        <!-- Primary Button Component -->
+<button type="button"
+        class="btn btn-esg-primary "
+        
+        
+        >
+  <i class="icon-check me-1" aria-hidden="true"></i>
+  <span>Primary Action</span>
+</button>
+
+        <!-- Secondary Button Component -->
+<button type="button"
+        class="btn btn-esg-secondary "
+        
+        
+        >
+  <i class="icon-action-undo me-1" aria-hidden="true"></i>
+  <span>Secondary Button</span>
+</button>
+
+        <!-- Danger Button Component -->
+<button type="button"
+        class="btn btn-esg-danger "
+        
+        
+        >
+  <i class="icon-trash me-1" aria-hidden="true"></i>
+  <span>Destructive Action</span>
+</button>
+
+        <!-- Icon Button Component -->
+<button type="button"
+        class="btn-esg-icon "
+        
+        title="More Options"
+        aria-label="More Options"
+        >
+  <i class="icon-options-vertical" aria-hidden="true"></i>
+</button>
+
+        <!-- Icon Button Component -->
+<button type="button"
+        class="btn-esg-icon "
+        
+        title="Edit Entry"
+        aria-label="Edit Entry"
+        >
+  <i class="icon-pencil" aria-hidden="true"></i>
+</button>
+
+        <!-- Primary Button Component -->
+<button type="button"
+        class="btn btn-esg-primary "
+        
+        disabled
+        >
+  
+  <span>Disabled State</span>
+</button>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SECTION 2: WORKFLOW STATUS BADGES (12 CORE STATES)
+       ========================================================================= -->
+  <div class="card card-esg mb-4" id="section-workflow-badges">
+    <div class="card-esg-header">
+      <h3 class="card-esg-title"><i class="icon-badge text-warning me-2"></i>2. Workflow Lifecycle Status Badges (All 12 States)</h3>
+      <span class="badge bg-light text-secondary border">Consistent Presentation</span>
+    </div>
+    <div class="card-esg-body">
+      <p class="text-muted small mb-3">Standard visual presentation tokens for future governance states without embedded business logic in Phase 01.</p>
+      <div class="row g-3">
+        <div class="col-md-3 col-sm-6">
+          <div class="p-2 border rounded bg-light d-flex align-items-center justify-content-between">
+            <span class="small text-muted font-mono">1. DRAFT</span>
+            <span class="badge-workflow badge-wf-draft" title="Workflow Status: DRAFT">
+        <i class="icon-note me-1" aria-hidden="true"></i>
+        <span class="sr-only">[✎] </span>
+        <span>DRAFT</span>
+    </span>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="p-2 border rounded bg-light d-flex align-items-center justify-content-between">
+            <span class="small text-muted font-mono">2. PENDING</span>
+            <span class="badge-workflow badge-wf-pending" title="Workflow Status: PENDING">
+        <i class="icon-clock me-1" aria-hidden="true"></i>
+        <span class="sr-only">[⏳] </span>
+        <span>PENDING</span>
+    </span>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="p-2 border rounded bg-light d-flex align-items-center justify-content-between">
+            <span class="small text-muted font-mono">3. SUBMITTED</span>
+            <span class="badge-workflow badge-wf-submitted" title="Workflow Status: SUBMITTED">
+        <i class="icon-paper-plane me-1" aria-hidden="true"></i>
+        <span class="sr-only">[↗] </span>
+        <span>SUBMITTED</span>
+    </span>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="p-2 border rounded bg-light d-flex align-items-center justify-content-between">
+            <span class="small text-muted font-mono">4. UNDER_REVIEW</span>
+            <span class="badge-workflow badge-wf-under_review" title="Workflow Status: UNDER REVIEW">
+        <i class="icon-eye me-1" aria-hidden="true"></i>
+        <span class="sr-only">[👁] </span>
+        <span>UNDER REVIEW</span>
+    </span>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="p-2 border rounded bg-light d-flex align-items-center justify-content-between">
+            <span class="small text-muted font-mono">5. CORRECTION_REQUIRED</span>
+            <span class="badge-workflow badge-wf-correction_required" title="Workflow Status: CORRECTION REQUIRED">
+        <i class="icon-wrench me-1" aria-hidden="true"></i>
+        <span class="sr-only">[⚠] </span>
+        <span>CORRECTION REQUIRED</span>
+    </span>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="p-2 border rounded bg-light d-flex align-items-center justify-content-between">
+            <span class="small text-muted font-mono">6. VERIFIED</span>
+            <span class="badge-workflow badge-wf-verified" title="Workflow Status: VERIFIED">
+        <i class="icon-check me-1" aria-hidden="true"></i>
+        <span class="sr-only">[✓] </span>
+        <span>VERIFIED</span>
+    </span>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="p-2 border rounded bg-light d-flex align-items-center justify-content-between">
+            <span class="small text-muted font-mono">7. REJECTED</span>
+            <span class="badge-workflow badge-wf-rejected" title="Workflow Status: REJECTED">
+        <i class="icon-close me-1" aria-hidden="true"></i>
+        <span class="sr-only">[✕] </span>
+        <span>REJECTED</span>
+    </span>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="p-2 border rounded bg-light d-flex align-items-center justify-content-between">
+            <span class="small text-muted font-mono">8. ESCALATED</span>
+            <span class="badge-workflow badge-wf-escalated" title="Workflow Status: ESCALATED">
+        <i class="icon-fire me-1" aria-hidden="true"></i>
+        <span class="sr-only">[⚡] </span>
+        <span>ESCALATED</span>
+    </span>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="p-2 border rounded bg-light d-flex align-items-center justify-content-between">
+            <span class="small text-muted font-mono">9. APPROVED</span>
+            <span class="badge-workflow badge-wf-approved" title="Workflow Status: APPROVED">
+        <i class="icon-badge me-1" aria-hidden="true"></i>
+        <span class="sr-only">[★] </span>
+        <span>APPROVED</span>
+    </span>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="p-2 border rounded bg-light d-flex align-items-center justify-content-between">
+            <span class="small text-muted font-mono">10. FINALIZED</span>
+            <span class="badge-workflow badge-wf-finalized" title="Workflow Status: FINALIZED">
+        <i class="icon-lock me-1" aria-hidden="true"></i>
+        <span class="sr-only">[🔒] </span>
+        <span>FINALIZED</span>
+    </span>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="p-2 border rounded bg-light d-flex align-items-center justify-content-between">
+            <span class="small text-muted font-mono">11. LOCKED</span>
+            <span class="badge-workflow badge-wf-locked" title="Workflow Status: LOCKED">
+        <i class="icon-lock me-1" aria-hidden="true"></i>
+        <span class="sr-only">[🔒] </span>
+        <span>LOCKED</span>
+    </span>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="p-2 border rounded bg-light d-flex align-items-center justify-content-between">
+            <span class="small text-muted font-mono">12. FAILED</span>
+            <span class="badge-workflow badge-wf-failed" title="Workflow Status: FAILED">
+        <i class="icon-ban me-1" aria-hidden="true"></i>
+        <span class="sr-only">[✕] </span>
+        <span>FAILED</span>
+    </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4 pt-3 border-top">
+        <h6 class="small font-weight-bold text-muted text-uppercase mb-2">Live Pulsing Indicator Badges</h6>
+        <div class="d-flex flex-wrap gap-2">
+          <span class="badge badge-success badge-pill d-inline-flex align-items-center gap-1 px-2 py-1 esg-status-badge">
+        <span class="status-indicator-dot bg-success me-1"></span>
+        <span>Telemetry Online</span>
+    </span>
+          <span class="badge badge-danger badge-pill d-inline-flex align-items-center gap-1 px-2 py-1 esg-status-badge">
+        <span class="status-indicator-dot bg-danger me-1"></span>
+        <span>Threshold Breach</span>
+    </span>
+          <span class="badge badge-warning badge-pill d-inline-flex align-items-center gap-1 px-2 py-1 esg-status-badge">
+        <span class="status-indicator-dot bg-warning me-1"></span>
+        <span>Calibration Warning</span>
+    </span>
+          <span class="badge badge-primary badge-pill d-inline-flex align-items-center gap-1 px-2 py-1 esg-status-badge">
+        <span class="status-indicator-dot bg-primary me-1"></span>
+        <span>Aggregation Syncing</span>
+    </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SECTION 3: ESG PRESENTATION INDICATORS
+       ========================================================================= -->
+  <div class="card card-esg mb-4" id="section-esg-indicators">
+    <div class="card-esg-header">
+      <h3 class="card-esg-title"><i class="icon-energy text-success me-2"></i>3. ESG Presentation Indicators</h3>
+      <span class="badge bg-light text-secondary border">Audit &amp; Telemetry Traceability</span>
+    </div>
+    <div class="card-esg-body">
+      <div class="row g-3 align-items-center">
+        <div class="col-md-2 col-6">
+          <!-- ESG Evidence Presentation Indicator -->
+<div class="d-inline-flex flex-column align-items-start ">
+  
+    <span class="text-muted small fw-medium mb-1">Evidence</span>
+  
+  <span class="esg-indicator indicator-evidence" title="Attached Evidence: 3 Documents">
+    <i class="icon-check me-1" aria-hidden="true"></i>
+    <span class="sr-only">[✓] </span>
+    <span>3 Documents</span>
+  </span>
+</div>
+
+        </div>
+        <div class="col-md-2 col-6">
+          <!-- ESG Verification Presentation Indicator -->
+<div class="d-inline-flex flex-column align-items-start ">
+  
+    <span class="text-muted small fw-medium mb-1">Verification</span>
+  
+  <span class="esg-indicator indicator-verified" title="Audit Status: Verified">
+    <span class="me-1">Verified</span>
+    <i class="icon-check" aria-hidden="true"></i>
+    <span class="sr-only">[✓]</span>
+  </span>
+</div>
+
+        </div>
+        <div class="col-md-2 col-6">
+          <!-- ESG Anomaly Presentation Indicator -->
+<div class="d-inline-flex flex-column align-items-start ">
+  
+    <span class="text-muted small fw-medium mb-1">Anomaly</span>
+  
+  <span class="esg-indicator indicator-anomaly" title="Telemetry Anomaly Detected">
+    <span class="me-1">Anomaly</span>
+    <i class="icon-exclamation" aria-hidden="true"></i>
+    <span class="sr-only">[!]</span>
+  </span>
+</div>
+
+        </div>
+        <div class="col-md-2 col-6">
+          <!-- ESG Calculation Presentation Indicator -->
+<div class="d-inline-flex flex-column align-items-start ">
+  
+    <span class="text-muted small fw-medium mb-1">GHG Computation</span>
+  
+  <span class="esg-indicator indicator-calculated" title="GHG Emissions Formula Engine: Calculated">
+    <span class="me-1">Calculated</span>
+    <i class="icon-check" aria-hidden="true"></i>
+    <span class="sr-only">[✓]</span>
+  </span>
+</div>
+
+        </div>
+        <div class="col-md-2 col-6">
+          <!-- ESG Lineage & Traceability Presentation Indicator -->
+<div class="d-inline-flex flex-column align-items-start ">
+  
+    <span class="text-muted small fw-medium mb-1">Audit Trail</span>
+  
+  <span class="esg-indicator indicator-lineage" title="Full data lineage traceable from IoT raw reading to consolidated BRSR disclosure">
+    <span class="me-1">Traceable</span>
+    <i class="icon-arrow-right" aria-hidden="true"></i>
+    <span class="sr-only">[→]</span>
+  </span>
+</div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SECTION 4: CARDS (STAT, STANDARD, STATUS, METRIC)
+       ========================================================================= -->
+  <div class="card card-esg mb-4" id="section-cards">
+    <div class="card-esg-header">
+      <h3 class="card-esg-title"><i class="icon-grid text-info me-2"></i>4. Reusable Cards &amp; Metric Containers</h3>
+      <span class="badge bg-light text-secondary border">Data Densified</span>
+    </div>
+    <div class="card-esg-body">
+      <div class="row g-3">
+        <!-- Stat Card -->
+        <div class="col-md-3">
+          <!-- Stat Card Component -->
+<div class="card card-esg h-100">
+  <div class="card-body p-3 p-md-4">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+      <span class="text-muted small text-uppercase font-weight-bold letter-spacing-1">Active Sensors</span>
+      
+        <div class="esg-icon-box env">
+          <i class="icon-globe" aria-hidden="true"></i>
+        </div>
+      
+    </div>
+    <div class="d-flex align-items-baseline gap-2 mb-2">
+      <h3 class="font-weight-bold text-dark mb-0">1,420</h3>
+      
+        <span class="text-muted small font-weight-medium">IoT nodes</span>
+      
+    </div>
+    
+      <div class="small">
+        <span class='text-success'><i class='icon-arrow-up'></i>+14.2%</span>
+        
+          <span class="text-muted ms-1">vs last month</span>
+        
+      </div>
+    
+  </div>
+</div>
+
+        </div>
+        <!-- Status Card -->
+        <div class="col-md-3">
+          <!-- Status Card Component -->
+<div class="card card-esg border-start border-4 border-success h-100">
+  <div class="card-body p-3">
+    <div class="d-flex justify-content-between align-items-center mb-1">
+      <span class="text-muted small text-uppercase font-weight-bold">Grid Emission Factor</span>
+      <span class="badge bg-light text-dark border">Active</span>
+    </div>
+    <div class="h4 font-weight-bold mb-1 text-dark">0.716</div>
+    <p class="text-muted small mb-0">CEA India Baseline CO2 Database v19</p>
+  </div>
+</div>
+
+        </div>
+        <!-- Metric Card -->
+        <div class="col-md-3">
+          <!-- ESG Metric Card Component -->
+<div class="metric-card h-100 ">
+  <div class="d-flex justify-content-between align-items-center mb-1">
+    <div class="metric-card-label mb-0">Scope 1 Emissions</div>
+    
+  </div>
+
+  <div class="metric-card-value my-2">
+    <span>12,450</span>
+    <span class="fs-6 text-muted font-weight-normal ms-1">tCO₂e</span>
+  </div>
+
+  <div class="metric-card-delta">
+    
+      <span class="text-danger fw-semibold d-inline-flex align-items-center">
+        <i class="icon-arrow-up me-1" aria-hidden="true"></i>&uarr; ↑ 4.2%
+      </span>
+    
+    
+      <span class="text-muted ms-1 small">vs previous period</span>
+    
+  </div>
+</div>
+
+        </div>
+        <!-- Standard Card -->
+        <div class="col-md-3">
+          <!-- Standard Card Component -->
+<div class="card card-esg ">
+  
+    <div class="card-esg-header">
+      <div>
+        <h4 class="card-esg-title">Governance Policy</h4>
+        <p class="text-muted small mb-0">SEBI Mandated</p>
+      </div>
+      
+    </div>
+  
+  <div class="card-esg-body">
+    
+      <p class='small text-muted mb-0'>BRSR Core assurance required for top 1,000 listed entities by market capitalization.</p>
+    
+  </div>
+  
+</div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SECTION 5: ALERTS & VALIDATION SUMMARIES
+       ========================================================================= -->
+  <div class="card card-esg mb-4" id="section-alerts">
+    <div class="card-esg-header">
+      <h3 class="card-esg-title"><i class="icon-bell text-danger me-2"></i>5. Feedback &amp; Alert Notifications</h3>
+      <span class="badge bg-light text-secondary border">Accessible Semantics</span>
+    </div>
+    <div class="card-esg-body">
+      <!-- Success Alert Component -->
+<div class="alert alert-success alert-dismissible fade show d-flex align-items-start gap-2" role="alert">
+  <div class="alert-icon-wrap mt-1">
+    <i class="icon-check fs-5" aria-hidden="true"></i>
+    <span class="sr-only">[✓] </span>
+  </div>
+  <div class="flex-grow-1">
+    <strong class="d-block mb-1">Assurance Verification Complete</strong>
+    <span>All Scope 1 & Scope 2 emission factor formulas verified by Lead ESG Assurer.</span>
+  </div>
+  
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  
+</div>
+
+      <!-- Warning Alert Component -->
+<div class="alert alert-warning alert-dismissible fade show d-flex align-items-start gap-2" role="alert">
+  <div class="alert-icon-wrap mt-1">
+    <i class="icon-exclamation fs-5" aria-hidden="true"></i>
+    <span class="sr-only">[⚠] </span>
+  </div>
+  <div class="flex-grow-1">
+    <strong class="d-block mb-1">Threshold Exceeded</strong>
+    <span>Facility fuel consumption exceeds 10% tolerance limit for current accounting period.</span>
+  </div>
+  
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  
+</div>
+
+      <!-- Error / Danger Alert Component -->
+<div class="alert alert-danger alert-dismissible fade show d-flex align-items-start gap-2" role="alert">
+  <div class="alert-icon-wrap mt-1">
+    <i class="icon-close fs-5" aria-hidden="true"></i>
+    <span class="sr-only">[!] </span>
+  </div>
+  <div class="flex-grow-1">
+    <strong class="d-block mb-1">Sensor Disconnection</strong>
+    <span>Continuous Emission Monitoring System (CEMS) failed heartbeat ping.</span>
+  </div>
+  
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  
+</div>
+
+      <!-- Info Alert Component -->
+<div class="alert alert-info alert-dismissible fade show d-flex align-items-start gap-2" role="alert">
+  <div class="alert-icon-wrap mt-1">
+    <i class="icon-info fs-5" aria-hidden="true"></i>
+    <span class="sr-only">[i] </span>
+  </div>
+  <div class="flex-grow-1">
+    <strong class="d-block mb-1">Reporting Cycle Notice</strong>
+    <span>SEBI BRSR disclosures filing window opens on 15th April 2026.</span>
+  </div>
+  
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  
+</div>
+
+      <!-- Validation Summary Alert Component -->
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+  <div class="d-flex align-items-center gap-2 mb-2">
+    <i class="icon-close fs-5" aria-hidden="true"></i>
+    <span class="sr-only">[!] </span>
+    <strong class="font-weight-bold">Please correct the form errors below:</strong>
+  </div>
+  
+    <ul class="mb-0 ps-4 small">
+      
+        
+          <li><strong>Facility_Code:</strong> Facility code must follow MEIL division standard (e.g., MEIL-HYD-04).</li>
+        
+      
+        
+          <li><strong>Fuel_Consumed:</strong> Fuel volume must be a valid positive numerical reading.</li>
+        
+      
+    </ul>
+  
+  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SECTION 6: RESPONSIVE TABLES & EMPTY STATES
+       ========================================================================= -->
+  <div class="card card-esg mb-4" id="section-tables">
+    <div class="card-esg-header">
+      <h3 class="card-esg-title"><i class="icon-list text-primary me-2"></i>6. Responsive Tables, Actions &amp; Empty State</h3>
+      <span class="badge bg-light text-secondary border">Data Hierarchy</span>
+    </div>
+    <div class="card-esg-body">
+      <!-- Populated Table -->
+      <h6 class="small font-weight-bold text-muted text-uppercase mb-2">Populated Table with Row Actions</h6>
+      <!-- Responsive Table Component -->
+<div class="table-responsive table-esg-container ">
+  <table class="table table-esg table-hover align-middle mb-0" >
+    
+    <thead>
+      <tr>
+        
+          <th scope="col" class="sortable ">
+            <div class="d-inline-flex align-items-center gap-1">
+              <span>Facility Site</span>
+              
+                <i class="icon-arrow-down fs-xs text-muted" aria-hidden="true"></i>
+              
+            </div>
+          </th>
+        
+          <th scope="col" class=" ">
+            <div class="d-inline-flex align-items-center gap-1">
+              <span>Emission Scope</span>
+              
+            </div>
+          </th>
+        
+          <th scope="col" class="sortable ">
+            <div class="d-inline-flex align-items-center gap-1">
+              <span>Telemetry Reading</span>
+              
+                <i class="icon-arrow-down fs-xs text-muted" aria-hidden="true"></i>
+              
+            </div>
+          </th>
+        
+          <th scope="col" class=" ">
+            <div class="d-inline-flex align-items-center gap-1">
+              <span>Workflow Status</span>
+              
+            </div>
+          </th>
+        
+          <th scope="col" class=" ">
+            <div class="d-inline-flex align-items-center gap-1">
+              <span>Evidence Documents</span>
+              
+            </div>
+          </th>
+        
+        
+          <th scope="col" class="text-end">Actions</th>
+        
+      </tr>
+    </thead>
+    <tbody>
+      
+        
+          <tr>
+            
+              <td><strong>Polavaram Dam Project</strong></td>
+            
+              <td>Scope 1 (Diesel Generators)</td>
+            
+              <td>142.5 kL</td>
+            
+              <td><span class="badge-workflow badge-wf-verified"><i class="icon-check me-1" aria-hidden="true"></i>VERIFIED</span></td>
+            
+              <td><span class="esg-indicator indicator-evidence"><i class="icon-check me-1" aria-hidden="true"></i>3 Documents</span></td>
+            
+            
+              <td class="text-end">
+                <div class="table-row-actions">
+                  <button type="button" class="btn-esg-icon btn-sm" title="View details" aria-label="View details">
+                    <i class="icon-eye"></i>
+                  </button>
+                  <button type="button" class="btn-esg-icon btn-sm" title="Audit trail" aria-label="Audit trail">
+                    <i class="icon-clock"></i>
+                  </button>
+                </div>
+              </td>
+            
+          </tr>
+        
+          <tr>
+            
+              <td><strong>Hyderabad Central Unit</strong></td>
+            
+              <td>Scope 2 (Grid Electricity)</td>
+            
+              <td>2,450 MWh</td>
+            
+              <td><span class="badge-workflow badge-wf-under_review"><i class="icon-eye me-1" aria-hidden="true"></i>UNDER REVIEW</span></td>
+            
+              <td><span class="esg-indicator indicator-evidence"><i class="icon-check me-1" aria-hidden="true"></i>1 Document</span></td>
+            
+            
+              <td class="text-end">
+                <div class="table-row-actions">
+                  <button type="button" class="btn-esg-icon btn-sm" title="View details" aria-label="View details">
+                    <i class="icon-eye"></i>
+                  </button>
+                  <button type="button" class="btn-esg-icon btn-sm" title="Audit trail" aria-label="Audit trail">
+                    <i class="icon-clock"></i>
+                  </button>
+                </div>
+              </td>
+            
+          </tr>
+        
+          <tr>
+            
+              <td><strong>Z-Morh Tunnel Site</strong></td>
+            
+              <td>Scope 1 (Explosives & Blasting)</td>
+            
+              <td>18.2 tCO₂e</td>
+            
+              <td><span class="badge-workflow badge-wf-correction_required"><i class="icon-wrench me-1" aria-hidden="true"></i>CORRECTION REQUIRED</span></td>
+            
+              <td><span class="esg-indicator indicator-anomaly"><i class="icon-exclamation me-1" aria-hidden="true"></i>Mismatch Flag</span></td>
+            
+            
+              <td class="text-end">
+                <div class="table-row-actions">
+                  <button type="button" class="btn-esg-icon btn-sm" title="View details" aria-label="View details">
+                    <i class="icon-eye"></i>
+                  </button>
+                  <button type="button" class="btn-esg-icon btn-sm" title="Audit trail" aria-label="Audit trail">
+                    <i class="icon-clock"></i>
+                  </button>
+                </div>
+              </td>
+            
+          </tr>
+        
+          <tr>
+            
+              <td><strong>Bhadradri Thermal Unit</strong></td>
+            
+              <td>Scope 1 (Coal Combustion)</td>
+            
+              <td>4,120 tCO₂e</td>
+            
+              <td><span class="badge-workflow badge-wf-approved"><i class="icon-badge me-1" aria-hidden="true"></i>APPROVED</span></td>
+            
+              <td><span class="esg-indicator indicator-evidence"><i class="icon-check me-1" aria-hidden="true"></i>5 Documents</span></td>
+            
+            
+              <td class="text-end">
+                <div class="table-row-actions">
+                  <button type="button" class="btn-esg-icon btn-sm" title="View details" aria-label="View details">
+                    <i class="icon-eye"></i>
+                  </button>
+                  <button type="button" class="btn-esg-icon btn-sm" title="Audit trail" aria-label="Audit trail">
+                    <i class="icon-clock"></i>
+                  </button>
+                </div>
+              </td>
+            
+          </tr>
+        
+      
+    </tbody>
+  </table>
+</div>
+
+      <!-- Accessible Pagination Component -->
+<nav aria-label="Page navigation" class="mt-3">
+  <ul class="pagination pagination-sm justify-content-center justify-content-md-end mb-0">
+    <!-- Previous Page -->
+    <li class="page-item disabled">
+      <a class="page-link" href="javascript:void(0);" aria-label="Previous" tabindex="-1" aria-disabled="true">
+        <span aria-hidden="true">&laquo;</span>
+        <span class="d-none d-sm-inline ms-1">Previous</span>
+      </a>
+    </li>
+
+    <!-- Page Info Indicator -->
+    <li class="page-item disabled">
+      <span class="page-link text-muted">
+        Page 1 of 4
+      </span>
+    </li>
+
+    <!-- Next Page -->
+    <li class="page-item ">
+      <a class="page-link" href="?page=2" aria-label="Next" >
+        <span class="d-none d-sm-inline me-1">Next</span>
+        <span aria-hidden="true">&raquo;</span>
+      </a>
+    </li>
+  </ul>
+</nav>
+
+
+      <div class="mt-4 pt-4 border-top">
+        <h6 class="small font-weight-bold text-muted text-uppercase mb-2">Empty Table State Representation</h6>
+        <div class="table-esg-container">
+          <!-- Empty Table State Component -->
+<div class="p-4 text-center text-muted">
+  <div class="mb-2">
+    <i class="icon-drawer fs-1 text-secondary opacity-50" aria-hidden="true"></i>
+  </div>
+  <p class="mb-1 font-weight-medium text-dark">No Audit Discrepancies</p>
+  <p class="small text-muted mb-0">Zero discrepancies or non-conformances identified in current fiscal period.</p>
+</div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SECTION 7: FORMS & INPUTS
+       ========================================================================= -->
+  <div class="card card-esg mb-4" id="section-forms">
+    <div class="card-esg-header">
+      <h3 class="card-esg-title"><i class="icon-pencil text-secondary me-2"></i>7. Forms, Validations &amp; File Upload</h3>
+      <span class="badge bg-light text-secondary border">Accessible Controls</span>
+    </div>
+    <div class="card-esg-body">
+      <form action="#" method="post" onsubmit="event.preventDefault();">
+        <input type="hidden" name="csrfmiddlewaretoken" value="lNQ5H6RjwMMIo8D0r8U64ZCBbFiphhUwMJdvd12KjVBD1TISCrMHXI593Woszjgv">
+        <div class="row">
+          <div class="col-md-6">
+            <!-- Standard Form Field Component -->
+<div class="mb-3 ">
+  
+    <label for="facility_code" class="form-label form-label-esg">
+      <span>Facility / Unit Identifier</span>
+      
+        <span class="required-star" aria-hidden="true">*</span>
+        <span class="sr-only">(required)</span>
+      
+    </label>
+  
+
+  <input type="text"
+         class="form-control form-control-esg  "
+         id="facility_code"
+         name="facility_code"
+         value="MEIL-HYD-04"
+         placeholder=""
+         required aria-required="true"
+         
+         
+         
+         
+         
+         aria-describedby="facility_code_help">
+
+  
+    <div id="facility_code_help" class="form-help-text">Unique MEIL internal plant location identifier.</div>
+  
+
+  
+</div>
+
+          </div>
+          <div class="col-md-6">
+            <!-- Standard Form Field Component -->
+<div class="mb-3 ">
+  
+    <label for="fuel_consumed" class="form-label form-label-esg">
+      <span>Fuel Consumption (Litres)</span>
+      
+        <span class="required-star" aria-hidden="true">*</span>
+        <span class="sr-only">(required)</span>
+      
+    </label>
+  
+
+  <input type="text"
+         class="form-control form-control-esg is-invalid "
+         id="fuel_consumed"
+         name="fuel_consumed"
+         value="abc"
+         placeholder=""
+         required aria-required="true"
+         
+         
+         
+         
+         
+         >
+
+  
+
+  
+    <div class="form-error-feedback" role="alert">
+      <i class="icon-close" aria-hidden="true"></i>
+      <span>P</span>
+    </div>
+  
+</div>
+
+          </div>
+          <div class="col-md-6">
+            <!-- Select Dropdown Component -->
+<div class="mb-3 ">
+  
+    <label for="scope_cat" class="form-label form-label-esg">
+      <span>Activity Scope Category</span>
+      
+        <span class="required-star" aria-hidden="true">*</span>
+        <span class="sr-only">(required)</span>
+      
+    </label>
+  
+
+  <select class="form-select form-select-esg  "
+          id="scope_cat"
+          name="scope_cat"
+          required aria-required="true"
+          >
+    
+      <option value="" >Select GHG Scope...</option>
+    
+    
+      <option value="scope1" selected>
+        Scope 1 - Direct Fuel &amp; Process Emissions
+      </option>
+    
+      <option value="scope2" >
+        Scope 2 - Indirect Purchased Electricity
+      </option>
+    
+      <option value="scope3" >
+        Scope 3 - Upstream &amp; Downstream Value Chain
+      </option>
+    
+  </select>
+
+  
+
+  
+</div>
+
+          </div>
+          <div class="col-md-6">
+            <!-- Date Input Component -->
+<div class="mb-3 ">
+  
+    <label for="log_date" class="form-label form-label-esg">
+      <span>Measurement Date</span>
+      
+        <span class="required-star" aria-hidden="true">*</span>
+        <span class="sr-only">(required)</span>
+      
+    </label>
+  
+
+  <div class="input-group">
+    <span class="input-group-text bg-white border-end-0 text-muted">
+      <i class="icon-calendar" aria-hidden="true"></i>
+    </span>
+    <input type="date"
+           class="form-control form-control-esg border-start-0 ps-0  "
+           id="log_date"
+           name="log_date"
+           value="2026-10-06"
+           required aria-required="true"
+           >
+  </div>
+
+  
+
+  
+</div>
+
+          </div>
+          <div class="col-12">
+            <!-- Textarea Form Component -->
+<div class="mb-3 ">
+  
+    <label for="audit_notes" class="form-label form-label-esg">
+      <span>Verification Audit Notes</span>
+      
+    </label>
+  
+
+  <textarea class="form-control form-control-esg  "
+            id="audit_notes"
+            name="audit_notes"
+            rows="2"
+            placeholder="Enter auditor or manager observation details..."
+            
+            ></textarea>
+
+  
+
+  
+</div>
+
+          </div>
+          <div class="col-12">
+            <!-- Reusable File Upload Drag-and-Drop Component -->
+<div class="mb-3 ">
+  
+    <label for="showcase_file" class="form-label form-label-esg">
+      <span>Audit Evidence Document</span>
+      
+        <span class="required-star" aria-hidden="true">*</span>
+        <span class="sr-only">(required)</span>
+      
+    </label>
+  
+
+  <div class="esg-file-dropzone" id="dropzone_showcase_file">
+    <div class="dropzone-icon">
+      <i class="icon-cloud-upload" aria-hidden="true"></i>
+    </div>
+    <h5 class="dropzone-title text-dark font-weight-bold mb-1">
+      Drop evidence documents here or browse
+    </h5>
+    <p class="text-muted small mb-0">
+      Supports PDF, XLSX, CSV, JPG, PNG (Max 25MB)
+    </p>
+
+    <input type="file"
+           id="showcase_file"
+           name="evidence_file"
+           accept=".pdf,.xlsx,.csv,.png,.jpg,.jpeg"
+           required aria-required="true"
+           
+           onchange="window.handleEsgFileChange(this, 'showcase_file_feedback');"
+           aria-label="Audit Evidence Document">
+  </div>
+
+  <!-- Selected File Live Feedback -->
+  <div id="showcase_file_feedback" class="mt-2 p-2 bg-light border rounded d-none">
+    <div class="d-flex align-items-center justify-content-between">
+      <div class="d-flex align-items-center gap-2">
+        <i class="icon-doc text-success fs-5" aria-hidden="true"></i>
+        <div>
+          <p class="file-name font-weight-bold text-dark small mb-0"></p>
+          <span class="file-size text-muted small"></span>
+        </div>
+      </div>
+      <span class="badge badge-success badge-pill">Ready to upload</span>
+    </div>
+  </div>
+
+  
+    <div class="form-help-text mt-1">Upload meter calibration certificate, diesel utility invoice, or CEMS log report.</div>
+  
+
+  
+</div>
+
+          </div>
+        </div>
+
+        <!-- Form Actions Bar Component -->
+<div class="form-actions-wrapper d-flex align-items-center gap-2 justify-content-end ">
+  
+    <a href="#" class="btn btn-esg-secondary">
+      Reset Form
+    </a>
+  
+  
+  <button type="submit" class="btn btn-esg-primary" >
+    
+    <span>Submit Audit Record</span>
+  </button>
+</div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       SECTION 8: MODALS, LOADING, EMPTY & ERROR STATES
+       ========================================================================= -->
+  <div class="card card-esg mb-4" id="section-feedback-states">
+    <div class="card-esg-header">
+      <h3 class="card-esg-title"><i class="icon-layers text-danger me-2"></i>8. Modals, Loading, Empty &amp; System States</h3>
+      <span class="badge bg-light text-secondary border">Lifecycle Feedback</span>
+    </div>
+    <div class="card-esg-body">
+      <div class="row g-4">
+        <!-- Confirmation Modal Trigger -->
+        <div class="col-md-6">
+          <div class="p-3 border rounded h-100">
+            <h5 class="h6 font-weight-bold text-dark mb-2">Confirmation Modal Dialog</h5>
+            <p class="small text-muted mb-3">Accessible modal confirmation for destructive or workflow transition operations.</p>
+            <button type="button"
+                    class="btn btn-outline-danger btn-sm"
+                    data-esg-confirm="true"
+                    data-esg-confirm-title="Confirm Record Deletion"
+                    data-esg-confirm-message="Are you sure you want to delete this draft emission telemetry reading? This cannot be undone."
+                    data-esg-confirm-btn="Delete Record"
+                    data-esg-confirm-variant="btn-danger">
+              <i class="icon-trash me-1"></i>Open Confirmation Dialog
+            </button>
+          </div>
+        </div>
+
+        <!-- Loading State -->
+        <div class="col-md-6">
+          <div class="p-3 border rounded h-100">
+            <h5 class="h6 font-weight-bold text-dark mb-2">Loading &amp; Spinner State</h5>
+            <!-- Loading Spinner & Skeleton Placeholder Component -->
+<div class="esg-loading-container " role="status" aria-live="polite">
+  
+    <div class="spinner-border text-success esg-spinner-glow mb-2" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="text-muted small mb-0 font-weight-medium">
+      Aggregating Scope 1, 2, 3 carbon metrics...
+    </p>
+  
+</div>
+
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div class="col-md-12">
+          <div class="border rounded bg-light">
+            <!-- Reusable Empty State Component -->
+<div class="esg-empty-state ">
+  <div class="esg-empty-state-icon">
+    <i class="icon-folder-alt" aria-hidden="true"></i>
+  </div>
+  <h4 class="font-weight-bold text-dark mb-1">No Anomalies Flagged</h4>
+  <p class="text-muted small mb-3 mx-auto" style="max-width: 460px;">
+    All continuous emission telemetry streams operate within defined confidence bands.
+  </p>
+  
+    <button type="button" class="btn btn-esg-primary btn-sm" >
+      
+      <span>View Calibration Parameters</span>
+    </button>
+  
+</div>
+
+          </div>
+        </div>
+
+        <!-- Permission Denied State -->
+        <div class="col-md-6">
+          <!-- Permission Denied (403) Feedback Component -->
+<div class="feedback-box ">
+  <div class="feedback-icon-circle feedback-icon-danger">
+    <i class="icon-lock" aria-hidden="true"></i>
+  </div>
+  <h3 class="h4 font-weight-bold text-dark mb-1">Role Permission Required</h3>
+  <p class="text-muted small mb-3 mx-auto" style="max-width: 480px;">
+    Auditor sign-off authorization is restricted to designated Lead Assurers.
+  </p>
+  
+    <a href="../" class="btn btn-esg-secondary btn-sm">
+      <i class="icon-arrow-left me-1"></i>Return to Dashboard
+    </a>
+  
+</div>
+
+        </div>
+
+        <!-- Server Error State -->
+        <div class="col-md-6">
+          <!-- Server Error (500) Feedback Component -->
+<div class="feedback-box ">
+  <div class="feedback-icon-circle feedback-icon-danger">
+    <i class="icon-close" aria-hidden="true"></i>
+  </div>
+  <h3 class="h4 font-weight-bold text-dark mb-1">Service Exception</h3>
+  <p class="text-muted small mb-3 mx-auto" style="max-width: 480px;">
+    Unable to reach external CEA emission factor registry. Cached factor active.
+  </p>
+  <div class="d-flex justify-content-center gap-2">
+    <button type="button" class="btn btn-esg-secondary btn-sm" onclick="window.location.reload();">
+      <i class="icon-refresh me-1"></i>Try Again
+    </button>
+    <a href="../#" target="_blank" class="btn btn-outline-secondary btn-sm">
+      <i class="icon-pulse me-1"></i>System Health
+    </a>
+  </div>
+</div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+        </div>
+        <!-- content-wrapper ends -->
+
+        <!-- Platform Footer -->
+        
+          <!-- Reusable Platform Footer -->
+<footer class="footer esg-footer" role="contentinfo">
+  <div class="d-flex flex-wrap justify-content-between align-items-center py-2 px-3 gap-2">
+    <div class="d-flex flex-wrap align-items-center gap-3">
+      <span class="text-muted small">
+        &copy; 2026 <strong>MEIL</strong> &mdash; ESG CONTROL TOWER. All rights reserved.
+      </span>
+      <ul class="esg-footer-nav d-none d-md-inline-flex list-unstyled gap-3 mb-0 small">
+        <li><a href="#" onclick="alert('Live transactional routes require the active Django backend server: python manage.py runserver'); return false;" class="text-muted text-decoration-none">Dashboard</a></li>
+        <li><a href="../ui-preview/" class="text-muted text-decoration-none">UI Showcase</a></li>
+        <li><a href="../components/" class="text-muted text-decoration-none">Components</a></li>
+        <li><a href="../#" target="_blank" rel="noopener" class="text-muted text-decoration-none">Health Status</a></li>
+        
+      </ul>
+    </div>
+    <div class="text-muted small d-flex align-items-center gap-2">
+      <span class="badge bg-light border text-secondary">DEVELOPMENT</span>
+      <span>v1.0.0-phase02</span>
+      <span class="d-none d-sm-inline text-muted">&bull;</span>
+      <span class="d-none d-sm-inline">Asia/Kolkata</span>
+    </div>
+  </div>
+</footer>
+
+        
+      </div>
+      <!-- main-panel ends -->
+    </div>
+    <!-- page-body-wrapper ends -->
+  </div>
+  <!-- container-scroller ends -->
+
+  <!-- Global Modal Placeholder -->
+  
+    <!-- Reusable Confirmation Dialog Modal -->
+<div class="modal fade"
+     id="esgConfirmationModal"
+     tabindex="-1"
+     aria-labelledby="esgConfirmationModalLabel"
+     aria-hidden="true"
+     role="dialog"
+     aria-modal="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <form method="post" action="#">
+        <input type="hidden" name="csrfmiddlewaretoken" value="lNQ5H6RjwMMIo8D0r8U64ZCBbFiphhUwMJdvd12KjVBD1TISCrMHXI593Woszjgv">
+        <div class="modal-header border-bottom">
+          <h5 class="modal-title font-weight-bold text-dark d-flex align-items-center gap-2" id="esgConfirmationModalLabel">
+            <i class="icon-question text-warning" aria-hidden="true"></i>
+            <span>Confirm Action</span>
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <p class="modal-body-text text-muted mb-0">
+            Are you sure you want to perform this operation?
+          </p>
+        </div>
+        <div class="modal-footer border-top bg-light">
+          <button type="button" class="btn btn-esg-secondary" data-bs-dismiss="modal">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-esg-danger btn-confirm-action">
+            Proceed
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+  
+
+  <!-- Core Scripts -->
+  
+    
+<!-- Core Vendor JS Bundle -->
+<script src="../static/vendors/js/vendor.bundle.base.js"></script>
+
+<!-- Stellar Admin Layout Scripts -->
+<script src="../static/js/off-canvas.js"></script>
+<script src="../static/js/hoverable-collapse.js"></script>
+<script src="../static/js/misc.js"></script>
+
+<!-- MEIL ESG Vanilla Interactivity & Utilities -->
+<script src="../static/js/esg-platform.js"></script>
+
+
+
+  
+  
+</body>
+</html>

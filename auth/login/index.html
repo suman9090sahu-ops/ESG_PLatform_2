@@ -1,0 +1,351 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>Enterprise ESG Sign In | MEIL ESG</title>
+  
+<meta name="description" content="MEIL ESG CONTROL TOWER — Enterprise Environmental, Social, and Governance Monitoring, Decarbonization, and SEBI BRSR Accountability.">
+<meta name="author" content="MEIL ESG Architecture">
+
+<!-- Favicon & Brand Icons -->
+<link rel="icon" type="image/png" sizes="32x32" href="../../static/images/brand/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="../../static/images/brand/favicon-16x16.png">
+<link rel="shortcut icon" href="../../static/images/favicon.ico">
+<link rel="apple-touch-icon" sizes="180x180" href="../../static/images/brand/favicon-180x180.png">
+
+<!-- Core Stellar Admin Vendor Styles -->
+<link rel="stylesheet" href="../../static/vendors/simple-line-icons/css/simple-line-icons.css">
+<link rel="stylesheet" href="../../static/vendors/font-awesome/css/font-awesome.min.css">
+<link rel="stylesheet" href="../../static/vendors/flag-icon-css/css/flag-icons.min.css">
+<link rel="stylesheet" href="../../static/vendors/css/vendor.bundle.base.css">
+
+<!-- Layout and Platform Styles -->
+<link rel="stylesheet" href="../../static/css/vertical-light-layout/style.css">
+<link rel="stylesheet" href="../../static/css/app.css">
+
+  <link rel="stylesheet" href="../../static/css/auth-glass.css">
+  <style>
+    /* Inline baseline ensuring styles render instantly with white-noise & dev servers */
+    .auth-page-wrapper {
+      min-height: 100vh;
+      min-height: 100dvh;
+      width: 100%;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      background-image:
+        linear-gradient(135deg, rgba(6, 26, 20, 0.22) 0%, rgba(4, 18, 14, 0.36) 100%),
+        url("../../static/images/auth/sustainable-building.jpg");
+      background-size: cover;
+      background-position: center center;
+      background-repeat: no-repeat;
+      overflow-x: hidden;
+      padding: 1.25rem 1rem;
+      box-sizing: border-box;
+    }
+  </style>
+  
+</head>
+<body class="login-page">
+  <div class="auth-page-wrapper login-page-container">
+    <div class="auth-bg-overlay" aria-hidden="true"></div>
+
+    <!-- Header & Branding (Top Left) -->
+    <header class="auth-top-header" role="banner">
+      <a href="../../" class="auth-brand-pill" title="Return to Public Sustainability Portal">
+        <img src="../../static/images/brand/meil-esg-logo-light.png" alt="MEIL ESG Platform" class="auth-brand-logo-img" style="height: 32px; width: auto; object-fit: contain;">
+        <span class="auth-brand-sub" style="font-size: 0.76rem; color: #a7f3d0; font-weight: 600; letter-spacing: 0.04em; padding-left: 0.35rem; border-left: 1px solid rgba(255,255,255,0.22); margin-left: 0.25rem;">CONTROL TOWER</span>
+      </a>
+    </header>
+
+    <!-- Center Glass Card Container -->
+    <main class="auth-center-wrapper" role="main">
+      <div class="auth-card login-glass-card shadow-lg">
+        <div class="auth-card-header">
+          <div class="auth-card-icon-wrap" aria-hidden="true">
+            <i class="icon-lock"></i>
+          </div>
+          <h1 class="auth-card-title">Welcome Back</h1>
+          <p class="auth-card-subtitle">Sign in to continue to your ESG workspace.</p>
+        </div>
+
+        <div class="auth-card-body">
+          
+
+          
+  <form method="post" action="/auth/login/" novalidate id="loginForm">
+    <input type="hidden" name="csrfmiddlewaretoken" value="5m8jGtQ5bBNiljMadnABW4kD0EpEqeuewivJco1wYKCdY4R2oGscPNNbSVvHIgQd">
+    <input type="hidden" name="next" value="">
+
+    
+
+    <!-- Username Field -->
+    <div class="mb-3">
+      <label for="id_username" class="form-label text-dark font-weight-semibold small d-flex justify-content-between mb-1.5">
+        <span>Username / Enterprise ID <span class="text-danger">*</span></span>
+      </label>
+      <div class="glass-input-group">
+        <span class="glass-input-icon">
+          <i class="icon-user" aria-hidden="true"></i>
+        </span>
+        <input type="text" name="username" class="form-control" placeholder="Enter username or enterprise ID" autocomplete="username" autofocus aria-required="true" maxlength="150" required id="id_username">
+      </div>
+      
+    </div>
+
+    <!-- Password Field -->
+    <div class="mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-1.5">
+        <label for="id_password" class="form-label text-dark font-weight-semibold small mb-0">
+          Password <span class="text-danger">*</span>
+        </label>
+        <a href="#" onclick="alert('Enterprise Password Reset is governed by Corporate IT Policy. Please contact your subsidiary administrator or email sustainability@meilgroup.com'); return false;" class="small text-emerald-link text-decoration-none">Forgot password?</a>
+      </div>
+      <div class="glass-input-group">
+        <span class="glass-input-icon">
+          <i class="icon-lock" aria-hidden="true"></i>
+        </span>
+        <input type="password" name="password" class="form-control" placeholder="Enter password" autocomplete="current-password" aria-required="true" required id="id_password">
+        <button class="glass-input-toggle" type="button" id="togglePasswordBtn" title="Toggle password visibility" aria-label="Toggle password visibility">
+          <i class="icon-eye" id="togglePasswordIcon" aria-hidden="true"></i>
+        </button>
+      </div>
+      
+    </div>
+
+    <!-- Remember Me Checkbox -->
+    <div class="form-check d-flex align-items-center gap-2 mb-3">
+      <input type="checkbox" name="remember_me" class="form-check-input" id="id_remember_me">
+      <label class="form-check-label small text-muted mb-0 user-select-none" for="id_remember_me">
+        Remember this session for 8 hours
+      </label>
+    </div>
+
+    <!-- Submit Action -->
+    <div class="d-grid mb-3">
+      <button type="submit" class="btn btn-esg-signin w-100 py-2.5 d-flex align-items-center justify-content-center gap-2" id="loginSubmitBtn">
+        <i class="icon-login" aria-hidden="true"></i>
+        <span>Sign In to ESG Platform</span>
+      </button>
+    </div>
+
+    <!-- Request Access Link -->
+    <div class="text-center mb-3">
+      <span class="small text-muted">Need platform credentials? </span>
+      <a href="#" class="small text-emerald-link text-decoration-none" data-bs-toggle="modal" data-bs-target="#accessRequestModal">
+        Request Access
+      </a>
+    </div>
+
+    <!-- Test User Quick Credential Guidance Box -->
+    <div class="mt-3 pt-3 border-top border-light-subtle">
+      <div class="accordion accordion-flush" id="devCredentialsAccordion">
+        <div class="accordion-item glass-accordion-item rounded-3">
+          <h2 class="accordion-header" id="headingCredentials">
+            <button class="accordion-button collapsed py-2 px-3 small rounded-3" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCredentials" aria-expanded="false" aria-controls="collapseCredentials">
+              <i class="icon-info me-2 text-success" aria-hidden="true"></i>
+              <span>RBAC Test Accounts &amp; Quick Credentials</span>
+            </button>
+          </h2>
+          <div id="collapseCredentials" class="accordion-collapse collapse" aria-labelledby="headingCredentials" data-bs-parent="#devCredentialsAccordion">
+            <div class="accordion-body py-2 px-3 small">
+              <p class="text-muted mb-2" style="font-size: 0.8rem;">Click any role to autofill test credentials:</p>
+              <div class="table-responsive">
+                <table class="table table-sm table-borderless align-middle mb-0" style="font-size: 0.8rem;">
+                  <thead>
+                    <tr class="text-muted border-bottom" style="font-size: 0.72rem;">
+                      <th>ROLE</th>
+                      <th>USERNAME</th>
+                      <th>SCOPE</th>
+                      <th class="text-end">ACTION</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><span class="badge bg-success">SITE</span></td>
+                      <td><code class="text-dark">site_manager</code></td>
+                      <td class="text-muted">Site 101</td>
+                      <td class="text-end"><button type="button" class="btn btn-sm btn-link p-0 text-success fw-bold text-decoration-none autofill-btn" data-user="site_manager" data-pass="SiteManagerPass123!">Use</button></td>
+                    </tr>
+                    <tr>
+                      <td><span class="badge bg-primary">SUB</span></td>
+                      <td><code class="text-dark">subsidiary_manager</code></td>
+                      <td class="text-muted">Hydro Division</td>
+                      <td class="text-end"><button type="button" class="btn btn-link btn-sm p-0 text-primary fw-bold text-decoration-none autofill-btn" data-user="subsidiary_manager" data-pass="SubManagerPass123!">Use</button></td>
+                    </tr>
+                    <tr>
+                      <td><span class="badge bg-info text-dark">ESG</span></td>
+                      <td><code class="text-dark">esg_manager</code></td>
+                      <td class="text-muted">Enterprise</td>
+                      <td class="text-end"><button type="button" class="btn btn-link btn-sm p-0 text-info fw-bold text-decoration-none autofill-btn" data-user="esg_manager" data-pass="ESGManagerPass123!">Use</button></td>
+                    </tr>
+                    <tr>
+                      <td><span class="badge bg-warning text-dark">AUD</span></td>
+                      <td><code class="text-dark">auditor</code></td>
+                      <td class="text-muted">Assurance</td>
+                      <td class="text-end"><button type="button" class="btn btn-link btn-sm p-0 text-warning fw-bold text-decoration-none autofill-btn" data-user="auditor" data-pass="AuditorPass123!">Use</button></td>
+                    </tr>
+                    <tr>
+                      <td><span class="badge bg-danger">OP</span></td>
+                      <td><code class="text-dark">meil_operator</code></td>
+                      <td class="text-muted">Command</td>
+                      <td class="text-end"><button type="button" class="btn btn-link btn-sm p-0 text-danger fw-bold text-decoration-none autofill-btn" data-user="meil_operator" data-pass="OperatorPass123!">Use</button></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      // Password toggle
+      var toggleBtn = document.getElementById("togglePasswordBtn");
+      var passInput = document.getElementById("id_password");
+      var passIcon = document.getElementById("togglePasswordIcon");
+      if (toggleBtn && passInput) {
+        toggleBtn.addEventListener("click", function () {
+          var isPass = passInput.getAttribute("type") === "password";
+          passInput.setAttribute("type", isPass ? "text" : "password");
+          if (passIcon) {
+            passIcon.className = isPass ? "icon-eye-off" : "icon-eye";
+          }
+        });
+      }
+
+      // Autofill buttons for testing
+      var autofillButtons = document.querySelectorAll(".autofill-btn");
+      var userInput = document.getElementById("id_username");
+      autofillButtons.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          if (userInput) userInput.value = btn.getAttribute("data-user");
+          if (passInput) passInput.value = btn.getAttribute("data-pass");
+        });
+      });
+    });
+  </script>
+
+        </div>
+
+        
+      </div>
+
+      <!-- Sustainability Tagline & Portal Return -->
+      <div class="auth-tagline-wrap">
+        <p class="auth-sustainability-caption">
+          <i class="icon-globe me-1 text-success" aria-hidden="true"></i> Building a more sustainable tomorrow.
+        </p>
+        <div class="d-flex flex-wrap justify-content-center align-items-center gap-3 mt-1">
+          <a href="../../" class="auth-return-portal-link" title="Return to Public Sustainability Portal">
+            <i class="icon-arrow-left me-1" aria-hidden="true"></i> Sustainability Portal
+          </a>
+          <span class="text-white-50 small">&bull;</span>
+          <a href="#" data-bs-toggle="modal" data-bs-target="#accessRequestModal" class="auth-return-portal-link">
+            Access Policy
+          </a>
+          <span class="text-white-50 small">&bull;</span>
+          <a href="../../" class="auth-return-portal-link">
+            System Status
+          </a>
+        </div>
+      </div>
+    </main>
+
+    <!-- Bottom balanced spacing -->
+    <div style="height: 1px; visibility: hidden;" aria-hidden="true"></div>
+  </div>
+
+  <!-- Enterprise Account Request / Access Policy Modal -->
+  <div class="modal fade" id="accessRequestModal" tabindex="-1" aria-labelledby="accessRequestModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content" style="background: #0f241d; border: 1px solid rgba(255, 255, 255, 0.18); color: #f8fafc; border-radius: 16px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);">
+        <div class="modal-header" style="border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding: 1.25rem 1.5rem;">
+          <div class="d-flex align-items-center gap-2">
+            <img src="../../static/images/brand/meil-esg-icon.png" alt="MEIL" style="height: 28px; width: 28px; object-fit: contain;">
+            <h5 class="modal-title h6 font-weight-bold mb-0 text-white" id="accessRequestModalLabel">
+              Account Registration &amp; Access Policy
+            </h5>
+          </div>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="mb-3">
+            <h6 class="text-white font-weight-bold mb-1">Enterprise Role-Based Access Governance</h6>
+            <p class="text-muted small mb-0">
+              The MEIL ESG Control Tower is an enterprise regulatory system. Self-registration is restricted by organization policy to ensure audit integrity and SEBI BRSR compliance.
+            </p>
+          </div>
+
+          <div class="mb-2 p-3 rounded" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);">
+            <div class="d-flex align-items-start gap-2">
+              <i class="icon-user text-success mt-1"></i>
+              <div>
+                <strong class="d-block text-white small">Site Managers &amp; Operators</strong>
+                <span class="text-muted small">Account creation is provisioned by your Project Manager or Subsidiary Admin.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-2 p-3 rounded" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);">
+            <div class="d-flex align-items-start gap-2">
+              <i class="icon-briefcase text-info mt-1"></i>
+              <div>
+                <strong class="d-block text-white small">ESG Managers &amp; Division Heads</strong>
+                <span class="text-muted small">Credentials are issued directly through Corporate Sustainability Governance.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-2 p-3 rounded" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);">
+            <div class="d-flex align-items-start gap-2">
+              <i class="icon-badge text-warning mt-1"></i>
+              <div>
+                <strong class="d-block text-white small">Assurance Officers &amp; Auditors</strong>
+                <span class="text-muted small">Independent audit access is authorized by the ESG Governance Committee.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-3 p-3 rounded" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2);">
+            <div class="small text-white-50">
+              <i class="icon-envelope me-1 text-success"></i>
+              To request platform credentials, email the Corporate ESG Office:
+              <a href="mailto:sustainability@meilgroup.com?subject=MEIL%20ESG%20Platform%20Account%20Request" class="text-success text-decoration-none font-weight-bold d-block mt-1">
+                sustainability@meilgroup.com
+              </a>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer" style="border-top: 1px solid rgba(255, 255, 255, 0.1); padding: 1rem 1.5rem;">
+          <button type="button" class="btn btn-success btn-sm px-4" data-bs-dismiss="modal">
+            Understood
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  
+<!-- Core Vendor JS Bundle -->
+<script src="../../static/vendors/js/vendor.bundle.base.js"></script>
+
+<!-- Stellar Admin Layout Scripts -->
+<script src="../../static/js/off-canvas.js"></script>
+<script src="../../static/js/hoverable-collapse.js"></script>
+<script src="../../static/js/misc.js"></script>
+
+<!-- MEIL ESG Vanilla Interactivity & Utilities -->
+<script src="../../static/js/esg-platform.js"></script>
+
+
+
+</body>
+</html>
