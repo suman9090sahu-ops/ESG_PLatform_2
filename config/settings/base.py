@@ -145,8 +145,7 @@ else:
                 shutil.copy2(db_path, tmp_db_path)
             except Exception:
                 pass
-        if tmp_db_path.exists():
-            db_path = tmp_db_path
+        db_path = tmp_db_path
 
     DATABASES = {
         "default": {
