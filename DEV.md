@@ -1934,15 +1934,15 @@ A platform-wide audit and polish pass was conducted across all public and authen
 - **`static/css/authenticated-glass.css`:** Corrected `body.esg-body::before` and `::after` fixed background layers from `width: 100vw; height: 100vh;` to `width: 100%; height: 100%;`. Applied `overflow-x: hidden;` and `max-width: 100%;` to `.container-scroller`, `.page-body-wrapper`, and `.content-wrapper`.
 
 #### B. Page Titles & Meta Descriptions
-- **`templates/base/_head.html`:** Added customizable `{% block meta_description %}` falling back gracefully to descriptive platform text.
-- **`templates/base/base.html`:** Refined title logic to cleanly append `| {{ SITE_SHORT_NAME|default:"MEIL ESG" }}` without repeated suffixes.
+- **`templates/base/_head.html`:** Added customizable `{% raw %}{% block meta_description %}{% endraw %}` falling back gracefully to descriptive platform text.
+- **`templates/base/base.html`:** Refined title logic to cleanly append `{% raw %}| {{ SITE_SHORT_NAME|default:"MEIL ESG" }}{% endraw %}` without repeated suffixes.
 - **`templates/layouts/dashboard.html`:** Nested `page_heading` and `page_title` blocks for automated synchronization of browser tab title and `<h1>` headings.
 - **`templates/layouts/auth.html`:** Renamed card heading block to avoid title collision; added unique meta descriptions and titles to all auth templates (`login.html`, `password_reset.html`, `password_change.html`, etc.).
 - **View Enhancements:** Injected explicit `page_title`, `page_subtitle`, and `meta_description` in `apps/core/procurement_views.py`, `apps/core/transport_views.py`, and `scope3_views.py`.
 
 #### C. Navbars, Sidebars & Footers
 - **`templates/base/_navbar.html` & `templates/components/navbar.html`:** Rewired notification dropdown alerts to live routes (`core:submission_list`, `core:activity_record_list`, `core:anomaly_list`), wired sign-out button, and added Bootstrap 5 offcanvas/minimize toggle attributes.
-- **`templates/base/_sidebar.html` & `templates/components/sidebar.html`:** Removed truncated `(Phase 01/02/03)` suffixes; wired Environmental and Governance sub-menus directly to Scope 3 Inventory, Activity Telemetry, Procurement, Logistics, and Reports; updated Django Admin link to reverse `{% url 'admin:index' %}`.
+- **`templates/base/_sidebar.html` & `templates/components/sidebar.html`:** Removed truncated `(Phase 01/02/03)` suffixes; wired Environmental and Governance sub-menus directly to Scope 3 Inventory, Activity Telemetry, Procurement, Logistics, and Reports; updated Django Admin link to reverse `{% raw %}{% url 'admin:index' %}{% endraw %}`.
 - **`templates/base/_footer.html`:** Added quick-links navigation to Dashboard, Components Showcase, UI Preview Gallery, Health Check, and Django Admin.
 - **`templates/landing/index.html`:** Added direct links to UI Preview and Components Showcase in the public portal footer.
 
