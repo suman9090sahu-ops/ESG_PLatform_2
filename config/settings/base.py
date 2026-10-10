@@ -29,6 +29,24 @@ DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() in ("true", "1", "yes")
 _allowed_hosts = os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,0.0.0.0")
 ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts.split(",") if h.strip()]
 
+# Automatically support Vercel serverless domains
+if os.getenv("VERCEL"):
+    ALLOWED_HOSTS.extend([".vercel.app", "esg-p-latform-2.vercel.app"])
+    vercel_url = os.getenv("VERCEL_URL")
+    if vercel_url and vercel_url not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(vercel_url)
+
+_csrf_origins = os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "")
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_origins.split(",") if o.strip()]
+if os.getenv("VERCEL"):
+    CSRF_TRUSTED_ORIGINS.extend([
+        "https://*.vercel.app",
+        "https://esg-p-latform-2.vercel.app",
+    ])
+    vercel_url = os.getenv("VERCEL_URL")
+    if vercel_url:
+        CSRF_TRUSTED_ORIGINS.append(f"https://{vercel_url}")
+
 # -----------------------------------------------------------------------------
 # APPLICATION DEFINITION
 # -----------------------------------------------------------------------------
@@ -116,10 +134,24 @@ elif os.getenv("POSTGRES_DB"):
         }
     }
 else:
+    db_path = BASE_DIR / "db.sqlite3"
+    # On Vercel / serverless runtimes, /var/task is read-only.
+    # Copy bundled SQLite database to writable /tmp directory if running on Vercel.
+    if os.getenv("VERCEL"):
+        import shutil
+        tmp_db_path = Path("/tmp/db.sqlite3")
+        if not tmp_db_path.exists() and db_path.exists():
+            try:
+                shutil.copy2(db_path, tmp_db_path)
+            except Exception:
+                pass
+        if tmp_db_path.exists():
+            db_path = tmp_db_path
+
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
+            "NAME": db_path,
         }
     }
 

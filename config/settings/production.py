@@ -9,9 +9,13 @@ DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() in ("true", "1", "yes")
 
 # Validate SECRET_KEY in production
 if not SECRET_KEY or "django-insecure" in SECRET_KEY:  # noqa: F405
-    raise ImproperlyConfigured(
-        "DJANGO_SECRET_KEY must be set in environment variables to a secure, unique value for production."
-    )
+    if os.getenv("VERCEL"):
+        import secrets
+        SECRET_KEY = os.getenv("DJANGO_SECRET_KEY") or secrets.token_urlsafe(50)
+    else:
+        raise ImproperlyConfigured(
+            "DJANGO_SECRET_KEY must be set in environment variables to a secure, unique value for production."
+        )
 
 # Validate ALLOWED_HOSTS in production
 if not ALLOWED_HOSTS or ALLOWED_HOSTS == ["*"]:  # noqa: F405
