@@ -198,7 +198,7 @@ def get_site_manager_dashboard_context(user, as_of_date=None, requested_site_id=
                 CorrectionStatus.IN_PROGRESS,
                 CorrectionStatus.READY_FOR_RESUBMISSION,
             ],
-        ).select_related("activity_record", "activity_record__activity", "requested_by", "submission").order_by("-requested_at")
+        ).select_related("activity_record", "activity_record__activity", "requested_by", "submission").order_by("-created_at")
         site_submissions_qs = Submission.objects.filter(
             site=selected_site,
         ).select_related("activity_record", "activity_record__activity", "reporting_period", "submitted_by").order_by("-submitted_at")
