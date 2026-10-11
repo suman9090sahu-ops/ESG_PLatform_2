@@ -3,9 +3,15 @@
   <ol class="breadcrumb bg-transparent p-0 mb-0 align-items-center">
     <li class="breadcrumb-item">
       {% if request.user.is_authenticated %}
-        <a href="{% url 'core:control_tower_dashboard' %}" class="text-decoration-none text-muted small">
-          <i class="icon-home me-1" aria-hidden="true"></i>Control Tower
-        </a>
+        {% if user_primary_role == 'SITE_MANAGER' %}
+          <a href="{% url 'core:site_manager_dashboard' %}" class="text-decoration-none text-muted small">
+            <i class="icon-location-pin me-1" aria-hidden="true"></i>My Assigned Site
+          </a>
+        {% else %}
+          <a href="{% url 'core:control_tower_dashboard' %}" class="text-decoration-none text-muted small">
+            <i class="icon-home me-1" aria-hidden="true"></i>Control Tower
+          </a>
+        {% endif %}
       {% else %}
         <a href="{% url 'core:index' %}" class="text-decoration-none text-muted small">
           <i class="icon-home me-1" aria-hidden="true"></i>Home
@@ -25,7 +31,7 @@
           </li>
         {% endif %}
       {% endfor %}
-    {% elif current_page %}
+    {% elif current_page and current_page != "My Assigned Site" and current_page != "Dashboard" %}
       <li class="breadcrumb-item active text-dark small font-weight-medium" aria-current="page">
         {{ current_page }}
       </li>

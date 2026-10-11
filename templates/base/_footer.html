@@ -6,10 +6,14 @@
         &copy; {{ CURRENT_YEAR|default:"2026" }} <strong>MEIL</strong> &mdash; ESG CONTROL TOWER. All rights reserved.
       </span>
       <ul class="esg-footer-nav d-none d-md-inline-flex list-unstyled gap-3 mb-0 small">
-        <li><a href="{% url 'core:control_tower_dashboard' %}" class="text-muted text-decoration-none">Dashboard</a></li>
-        <li><a href="{% url 'core:ui_preview' %}" class="text-muted text-decoration-none">UI Showcase</a></li>
-        <li><a href="{% url 'core:components_showcase' %}" class="text-muted text-decoration-none">Components</a></li>
-        <li><a href="{% url 'core:health_check' %}" target="_blank" rel="noopener" class="text-muted text-decoration-none">Health Status</a></li>
+        {% if user_primary_role == 'SITE_MANAGER' %}
+          <li><a href="{% url 'core:site_manager_dashboard' %}" class="text-muted text-decoration-none">My Assigned Site</a></li>
+        {% else %}
+          <li><a href="{% url 'core:control_tower_dashboard' %}" class="text-muted text-decoration-none">Dashboard</a></li>
+          <li><a href="{% url 'core:ui_preview' %}" class="text-muted text-decoration-none">UI Showcase</a></li>
+          <li><a href="{% url 'core:components_showcase' %}" class="text-muted text-decoration-none">Components</a></li>
+          <li><a href="{% url 'core:health_check' %}" target="_blank" rel="noopener" class="text-muted text-decoration-none">Health Status</a></li>
+        {% endif %}
         {% if request.user.is_staff %}
           <li><a href="{% url 'admin:index' %}" class="text-muted text-decoration-none">Administration</a></li>
         {% endif %}

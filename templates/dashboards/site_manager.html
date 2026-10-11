@@ -1,21 +1,58 @@
 {% extends "layouts/dashboard.html" %}
 {% load static esg_tags %}
 
-{% block page_title %}{{ page_title }}{% endblock %}
-{% block page_subtitle %}{{ page_subtitle }}{% endblock %}
+{% block page_title %}{{ page_title|default:"My Assigned Site" }}{% endblock %}
+{% block page_subtitle %}{{ page_subtitle|default:"Operational Telemetry, ESG Workflow & Assigned Site Oversight" }}{% endblock %}
 
 {% block page_header %}
 <div class="page-header d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom">
   <div class="esg-page-title-group">
     <div class="d-flex align-items-center gap-2">
-      <h1 class="h3 font-weight-bold mb-0 text-dark">{{ page_title|default:"Site Manager Operational Dashboard" }}</h1>
+      <h1 class="h3 font-weight-bold mb-0 text-dark">My Assigned Site</h1>
       <span class="badge badge-success badge-pill py-1 px-2 font-weight-normal fs-6">
         <span class="status-indicator-dot bg-success me-1"></span> Live Operational
       </span>
     </div>
-    <p class="text-muted small mt-1 mb-0">{{ page_subtitle|default:"Operational Telemetry, ESG Workflow & Assigned Site Oversight" }}</p>
+    {% if selected_site %}
+      <div class="d-flex flex-wrap align-items-center gap-3 mt-2 text-muted small">
+        <span class="fw-bold text-dark fs-6">
+          <i class="icon-location-pin text-success me-1"></i>{{ selected_site.name }}
+        </span>
+        <span class="badge bg-light text-dark border px-2 py-1">
+          Site Code: <code class="fw-bold">{{ selected_site.code }}</code>
+        </span>
+        <span class="text-secondary">
+          <i class="icon-folder me-1 text-primary"></i>Project: <strong>{{ selected_site.project.name }}</strong>
+        </span>
+        {% if selected_site.project.subsidiary %}
+          <span class="text-secondary">
+            <i class="icon-briefcase me-1 text-info"></i>Division: <span class="badge bg-light text-secondary border">{{ selected_site.project.subsidiary.short_name|default:selected_site.project.subsidiary.name }}</span>
+          </span>
+        {% endif %}
+        {% if current_period %}
+          <span class="text-secondary">
+            <i class="icon-calendar me-1 text-success"></i>Reporting Period: <strong class="text-dark">{{ current_period.code }}</strong>
+          </span>
+        {% endif %}
+      </div>
+    {% else %}
+      <p class="text-muted small mt-1 mb-0">{{ page_subtitle|default:"Site Manager Operational Dashboard &bull; Dedicated Operational Workspace" }}</p>
+    {% endif %}
   </div>
-  <div class="esg-page-actions mt-2 mt-sm-0 d-flex flex-wrap align-items-center gap-2">
+
+  <div class="esg-page-actions mt-3 mt-xl-0 d-flex flex-wrap align-items-center gap-2">
+    <!-- Multiple Sites Selector (only rendered if manager has > 1 authorized site) -->
+    {% if sites_count > 1 %}
+      <form method="GET" action="{% url 'core:site_manager_dashboard' %}" class="d-flex align-items-center me-2">
+        <label for="site-selector" class="small text-muted fw-bold mb-0 me-2 text-nowrap">Switch Site:</label>
+        <select id="site-selector" name="site_id" class="form-select form-select-sm shadow-xs" onchange="this.form.submit()">
+          {% for s in assigned_sites %}
+            <option value="{{ s.id }}" {% if selected_site and s.id == selected_site.id %}selected{% endif %}>{{ s.code }} &mdash; {{ s.name }}</option>
+          {% endfor %}
+        </select>
+      </form>
+    {% endif %}
+
     <span class="badge bg-light text-dark border px-3 py-2 fs-6 shadow-xs">
       <i class="icon-calendar me-1 text-primary"></i> {{ check_date|date:"D, d M Y" }}
     </span>
@@ -31,168 +68,410 @@
     <span class="badge badge-primary px-3 py-2 fs-6 shadow-xs">
       <i class="icon-user me-1"></i> Role: {{ request.user.get_primary_role }}
     </span>
-    {% include "components/breadcrumbs/breadcrumb.html" with current_page="Dashboard" %}
+    {% include "components/breadcrumbs/breadcrumb.html" with current_page="My Assigned Site" %}
   </div>
 </div>
 {% endblock %}
 
 {% block kpi_section %}
-  <div class="row g-3 mb-4">
-    <!-- KPI 1: Assigned Sites -->
-    <div class="col-xl col-md-4 col-sm-6">
-      <div class="card card-statistics border-0 shadow-sm h-100">
-        <div class="card-body">
-          <div class="d-flex align-items-center justify-content-between">
-            <div>
-              <h6 class="text-muted font-weight-normal mb-1 small text-uppercase">Assigned Sites</h6>
-              <h3 class="mb-0 font-weight-bold text-dark">{{ sites_count }}</h3>
-            </div>
-            <div class="icon-box bg-light-success text-success p-3 rounded-circle">
-              <i class="icon-location-pin" style="font-size: 1.4rem;"></i>
-            </div>
-          </div>
-          <p class="text-muted small mt-2 mb-0">
-            <i class="icon-check text-success me-1"></i>
-            {{ active_sites_count }} Active Operational Boundar{{ active_sites_count|pluralize:"y,ies" }}
-          </p>
-        </div>
+  {% if sites_count == 0 %}
+    <!-- Zero Assigned Sites Mandatory Guidance Banner -->
+    <div class="alert alert-warning border shadow-xs d-flex align-items-center mb-4" role="alert">
+      <i class="icon-exclamation fs-3 me-3 text-warning"></i>
+      <div>
+        <h6 class="mb-1 fw-bold">No Assigned Operational Sites</h6>
+        <p class="mb-1"><strong>No site has been assigned to your account. Please contact your administrator.</strong></p>
+        <p class="mb-0 small text-muted">No operational sites are currently assigned to your account. Please contact your subsidiary manager or platform administrator if this is unexpected.</p>
       </div>
     </div>
-
-    <!-- KPI 2: Active Projects -->
-    <div class="col-xl col-md-4 col-sm-6">
-      <div class="card card-statistics border-0 shadow-sm h-100">
-        <div class="card-body">
-          <div class="d-flex align-items-center justify-content-between">
-            <div>
-              <h6 class="text-muted font-weight-normal mb-1 small text-uppercase">Active Projects</h6>
-              <h3 class="mb-0 font-weight-bold text-dark">{{ active_projects_count }}</h3>
+    {% include "components/empty_state.html" with title="No Sites Assigned" description="No site has been assigned to your account. Please contact your administrator. No operational sites are currently assigned to your account. Please contact your subsidiary manager or platform administrator if this is unexpected." icon="icon-location-pin" %}
+  {% else %}
+    <!-- Section 4.B: Compact Site Summary Scoped strictly to the Selected Authorized Site -->
+    <div class="row g-3 mb-4">
+      <!-- Summary 1: Selected Site & Project -->
+      <div class="col-xl col-md-4 col-sm-6">
+        <div class="card card-statistics border-0 shadow-sm h-100">
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between">
+              <div>
+                <h6 class="text-muted font-weight-normal mb-1 small text-uppercase">Assigned Site</h6>
+                <h4 class="mb-0 font-weight-bold text-dark text-truncate" style="max-width: 170px;" title="{{ selected_site.name }}">{{ selected_site.code }}</h4>
+              </div>
+              <div class="icon-box bg-light-success text-success p-3 rounded-circle">
+                <i class="icon-location-pin" style="font-size: 1.4rem;"></i>
+              </div>
             </div>
-            <div class="icon-box bg-light-primary text-primary p-3 rounded-circle">
-              <i class="icon-layers" style="font-size: 1.4rem;"></i>
-            </div>
+            <p class="text-muted small mt-2 mb-0 text-truncate" title="{{ selected_site.name }} &bull; {{ selected_site.project.name }}">
+              <i class="icon-check text-success me-1"></i>{{ selected_site.name }}
+            </p>
           </div>
-          <p class="text-muted small mt-2 mb-0">
-            <i class="icon-folder text-primary me-1"></i> Parent Infrastructure Scope
-          </p>
         </div>
       </div>
-    </div>
 
-    <!-- KPI 3: Current Reporting Period -->
-    <div class="col-xl col-md-4 col-sm-6">
-      <div class="card card-statistics border-0 shadow-sm h-100">
-        <div class="card-body">
-          <div class="d-flex align-items-center justify-content-between">
-            <div>
-              <h6 class="text-muted font-weight-normal mb-1 small text-uppercase">Current Period</h6>
-              <h4 class="mb-0 font-weight-bold {% if current_period %}text-success{% else %}text-muted{% endif %}">
-                {{ current_period.code|default:"None Open" }}
-              </h4>
+      <!-- Summary 2: Data Entry Tasks Required -->
+      <div class="col-xl col-md-4 col-sm-6">
+        <div class="card card-statistics border-0 shadow-sm h-100">
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between">
+              <div>
+                <h6 class="text-muted font-weight-normal mb-1 small text-uppercase">Data Entry Tasks</h6>
+                <h3 class="mb-0 font-weight-bold {% if site_summary.activities_requiring_data_entry > 0 %}text-warning{% else %}text-dark{% endif %}">
+                  {{ site_summary.activities_requiring_data_entry }}
+                </h3>
+              </div>
+              <div class="icon-box bg-light-warning text-warning p-3 rounded-circle">
+                <i class="icon-pencil" style="font-size: 1.4rem;"></i>
+              </div>
             </div>
-            <div class="icon-box bg-light-info text-info p-3 rounded-circle">
-              <i class="icon-calendar" style="font-size: 1.4rem;"></i>
-            </div>
-          </div>
-          <p class="text-muted small mt-2 mb-0">
-            {% if current_period %}
-              <i class="icon-clock text-info me-1"></i>
-              {% if period_days_remaining is not None %}
-                {{ period_days_remaining }} day{{ period_days_remaining|pluralize }} remaining
+            <p class="text-muted small mt-2 mb-0">
+              {% if site_summary.activities_requiring_data_entry > 0 %}
+                <i class="icon-clock text-warning me-1"></i>{{ site_summary.activities_requiring_data_entry }} Draft Record{{ site_summary.activities_requiring_data_entry|pluralize }} Requiring Action
               {% else %}
-                Open Cycle
+                <i class="icon-check text-success me-1"></i>All Saved Records Complete
               {% endif %}
-            {% else %}
-              <i class="icon-close text-danger me-1"></i> Inactive Temporal Scope
-            {% endif %}
-          </p>
+            </p>
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- KPI 4: ESG Activity Catalog Readiness -->
-    <div class="col-xl col-md-6 col-sm-6">
-      <div class="card card-statistics border-0 shadow-sm h-100">
-        <div class="card-body">
-          <div class="d-flex align-items-center justify-content-between">
-            <div>
-              <h6 class="text-muted font-weight-normal mb-1 small text-uppercase">Activity Catalog</h6>
-              <h3 class="mb-0 font-weight-bold text-dark">{{ active_activities_count }}</h3>
+      <!-- Summary 3: Missing Required Evidence -->
+      <div class="col-xl col-md-4 col-sm-6">
+        <div class="card card-statistics border-0 shadow-sm h-100">
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between">
+              <div>
+                <h6 class="text-muted font-weight-normal mb-1 small text-uppercase">Missing Evidence</h6>
+                <h3 class="mb-0 font-weight-bold {% if site_summary.missing_evidence_count > 0 %}text-danger{% else %}text-success{% endif %}">
+                  {{ site_summary.missing_evidence_count }}
+                </h3>
+              </div>
+              <div class="icon-box {% if site_summary.missing_evidence_count > 0 %}bg-light-danger text-danger{% else %}bg-light-success text-success{% endif %} p-3 rounded-circle">
+                <i class="icon-paper-clip" style="font-size: 1.4rem;"></i>
+              </div>
             </div>
-            <div class="icon-box bg-light-warning text-warning p-3 rounded-circle">
-              <i class="icon-list" style="font-size: 1.4rem;"></i>
-            </div>
+            <p class="text-muted small mt-2 mb-0">
+              {% if site_summary.missing_evidence_count > 0 %}
+                <i class="icon-exclamation text-danger me-1"></i>Attachment Documents Needed
+              {% else %}
+                <i class="icon-check text-success me-1"></i>All Documents Attached
+              {% endif %}
+            </p>
           </div>
-          <p class="text-muted small mt-2 mb-0">
-            <i class="icon-tag text-warning me-1"></i>
-            {{ active_categories_count }} Approved Categor{{ active_categories_count|pluralize:"y,ies" }}
-          </p>
         </div>
       </div>
-    </div>
 
-    <!-- KPI 5: Pending Actions -->
-    <div class="col-xl col-md-6 col-sm-6">
-      <div class="card card-statistics border-0 shadow-sm h-100">
-        <div class="card-body">
-          <div class="d-flex align-items-center justify-content-between">
-            <div>
-              <h6 class="text-muted font-weight-normal mb-1 small text-uppercase">Pending Actions</h6>
-              <h3 class="mb-0 font-weight-bold {% if pending_actions_count > 0 %}text-warning{% else %}text-success{% endif %}">
-                {{ pending_actions_count }}
-              </h3>
+      <!-- Summary 4: Validation Issues -->
+      <div class="col-xl col-md-6 col-sm-6">
+        <div class="card card-statistics border-0 shadow-sm h-100">
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between">
+              <div>
+                <h6 class="text-muted font-weight-normal mb-1 small text-uppercase">Validation Issues</h6>
+                <h3 class="mb-0 font-weight-bold {% if site_summary.validation_issues_count > 0 %}text-danger{% else %}text-success{% endif %}">
+                  {{ site_summary.validation_issues_count }}
+                </h3>
+              </div>
+              <div class="icon-box {% if site_summary.validation_issues_count > 0 %}bg-light-danger text-danger{% else %}bg-light-success text-success{% endif %} p-3 rounded-circle">
+                <i class="icon-shield" style="font-size: 1.4rem;"></i>
+              </div>
             </div>
-            <div class="icon-box {% if pending_actions_count > 0 %}bg-light-warning text-warning{% else %}bg-light-success text-success{% endif %} p-3 rounded-circle">
-              <i class="{% if pending_actions_count > 0 %}icon-exclamation{% else %}icon-check{% endif %}" style="font-size: 1.4rem;"></i>
-            </div>
+            <p class="text-muted small mt-2 mb-0">
+              {% if site_summary.validation_issues_count > 0 %}
+                <i class="icon-close text-danger me-1"></i>Validation Errors Requiring Fix
+              {% else %}
+                <i class="icon-check text-success me-1"></i>0 Validation Errors
+              {% endif %}
+            </p>
           </div>
-          <p class="text-muted small mt-2 mb-0">
-            {% if pending_actions_count == 0 %}
-              <i class="icon-check text-success me-1"></i> All Caught Up &bull; 0 Pending
-            {% else %}
-              <i class="icon-wrench text-warning me-1"></i> Action Required
-            {% endif %}
-          </p>
         </div>
       </div>
-    </div>
-  </div>
-{% endblock %}
 
-{% block analytics_section %}
-  <!-- Operational Alerts Area -->
-  {% if alerts %}
-    <div class="mb-4">
-      {% for alert in alerts %}
-        <div class="alert alert-{{ alert.type }} alert-dismissible fade show border shadow-xs d-flex align-items-center mb-2" role="alert">
-          <i class="{{ alert.icon }} fs-4 me-3"></i>
-          <div>
-            <strong class="d-block">{{ alert.title }}</strong>
-            <span class="small">{{ alert.message }}</span>
+      <!-- Summary 5: Submissions & Corrections -->
+      <div class="col-xl col-md-6 col-sm-6">
+        <div class="card card-statistics border-0 shadow-sm h-100">
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between">
+              <div>
+                <h6 class="text-muted font-weight-normal mb-1 small text-uppercase">Pending Actions</h6>
+                <h3 class="mb-0 font-weight-bold {% if site_summary.corrections_count > 0 %}text-danger{% elif pending_actions_count > 0 %}text-warning{% else %}text-success{% endif %}">
+                  {{ pending_actions_count }}
+                </h3>
+              </div>
+              <div class="icon-box {% if site_summary.corrections_count > 0 %}bg-light-danger text-danger{% elif pending_actions_count > 0 %}bg-light-warning text-warning{% else %}bg-light-success text-success{% endif %} p-3 rounded-circle">
+                <i class="{% if site_summary.corrections_count > 0 %}icon-action-undo{% elif pending_actions_count > 0 %}icon-wrench{% else %}icon-check{% endif %}" style="font-size: 1.4rem;"></i>
+              </div>
+            </div>
+            <p class="text-muted small mt-2 mb-0">
+              {% if site_summary.corrections_count > 0 %}
+                <span class="text-danger fw-bold"><i class="icon-action-undo me-1"></i>{{ site_summary.corrections_count }} Correction{{ site_summary.corrections_count|pluralize }} Requested</span>
+              {% elif site_summary.submissions_awaiting_action > 0 %}
+                <span class="text-info"><i class="icon-clock me-1"></i>{{ site_summary.submissions_awaiting_action }} In Subsidiary Review</span>
+              {% else %}
+                <span class="text-success"><i class="icon-check me-1"></i>All Caught Up &bull; 0 Pending</span>
+              {% endif %}
+            </p>
           </div>
-          <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
-      {% endfor %}
+      </div>
     </div>
   {% endif %}
 {% endblock %}
 
-{% block main_panel %}
-  <!-- Section 1: My Authorized Operational Sites -->
-  <div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
-      <div class="d-flex align-items-center">
-        <h6 class="mb-0 font-weight-bold text-dark me-2">
-          <i class="icon-location-pin me-2 text-success"></i> My Authorized Operational Sites
-        </h6>
-        <span class="badge bg-light text-dark border">{{ sites_count }} Site{{ sites_count|pluralize }}</span>
+{% block analytics_section %}
+  {% if sites_count > 0 %}
+    <!-- Actionable Status Banners (Revisions & Catch-up) -->
+    {% if site_summary.corrections_count > 0 %}
+      <div class="alert alert-danger border shadow-xs d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4" role="alert">
+        <div class="d-flex align-items-center">
+          <i class="icon-action-undo fs-3 me-3 text-danger"></i>
+          <div>
+            <strong class="d-block">{{ site_summary.corrections_count }} Correction Request(s) Awaiting Revision</strong>
+            <span class="small">Subsidiary Reviewers have requested revisions on submitted activity records for this site.</span>
+          </div>
+        </div>
+        <a href="{% url 'core:correction_inbox' %}" class="btn btn-sm btn-danger px-3 shadow-xs">
+          <i class="icon-pencil me-1"></i> Resolve Corrections
+        </a>
       </div>
-      <span class="badge badge-outline-primary small">
-        <i class="icon-shield me-1"></i> Server-Enforced RBAC Scope
-      </span>
+    {% endif %}
+
+    {% if not current_period %}
+      <div class="alert alert-warning border shadow-xs d-flex align-items-center mb-4" role="alert">
+        <i class="icon-calendar fs-3 me-3 text-warning"></i>
+        <div>
+          <strong class="d-block">No Active Reporting Period &bull; None Open</strong>
+          <span class="small">There is currently no open reporting cycle for your assigned organization scope. Operational data ingestion will commence once a period is opened.</span>
+        </div>
+      </div>
+    {% endif %}
+
+    {% if site_summary.corrections_count == 0 and site_summary.activities_requiring_data_entry == 0 and site_summary.validation_issues_count == 0 %}
+      <div class="alert alert-success border shadow-xs d-flex align-items-center mb-4" role="alert">
+        <i class="icon-check fs-3 me-3 text-success"></i>
+        <div>
+          <strong class="d-block">You're All Caught Up &bull; 0 Pending</strong>
+          <span class="small text-muted">No pending actions, corrections, or unvalidated drafts require your immediate attention for {{ selected_site.name }}.</span>
+        </div>
+      </div>
+    {% endif %}
+  {% endif %}
+{% endblock %}
+
+{% block main_panel %}
+  {% if sites_count > 0 and selected_site %}
+    <!-- Section 4.C: My Site Workflow — Single Guided 4-Step Operational Pipeline -->
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div class="d-flex align-items-center">
+          <h6 class="mb-0 font-weight-bold text-dark me-2">
+            <i class="icon-graph me-2 text-primary"></i> My Site Workflow
+          </h6>
+          <span class="badge badge-outline-success small">Guided Operational Pipeline</span>
+        </div>
+        <span class="badge bg-light text-secondary border small">
+          Scope: {{ selected_site.code }} &bull; {{ current_period.code|default:"Cycle Pending" }}
+        </span>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          {% for step in guided_workflow %}
+            <div class="col-md-6 col-xl-3">
+              <div class="p-3 border rounded bg-light-subtle h-100 d-flex flex-column justify-content-between shadow-xs">
+                <div>
+                  <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span class="fw-bold text-dark small text-uppercase">{{ step.step_number }}. {{ step.title }}</span>
+                    <span class="badge {{ step.badge_class }}">{{ step.badge }}</span>
+                  </div>
+                  <p class="small text-muted mb-3">{{ step.description }}</p>
+                </div>
+                <div>
+                  <div class="d-flex justify-content-between align-items-center border-top pt-2 mb-3 small text-muted">
+                    <span>{{ step.metric_label }}:</span>
+                    <strong class="text-dark">{{ step.metric_value }}</strong>
+                  </div>
+                  <a href="{{ step.action_url }}" class="btn btn-sm {{ step.action_class }} w-100 d-flex align-items-center justify-content-center gap-1 shadow-xs">
+                    <i class="{{ step.action_icon }}"></i> {{ step.action_label }}
+                  </a>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+
+        <div class="alert alert-light border small text-muted mb-0 mt-3 d-flex align-items-center">
+          <i class="icon-info me-2 text-primary fs-5"></i>
+          <div>
+            <strong>Guided Flow:</strong> Complete activity records in sequence (<strong>1. Data Entry</strong> &rarr; <strong>2. Evidence</strong> &rarr; <strong>3. Validation</strong> &rarr; <strong>4. Submit &amp; Track</strong>) to advance telemetry cleanly through governance review.
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="card-body p-0">
-      {% if assigned_sites %}
+
+    <!-- Section 4.D: My Site Submissions — Scoped Submissions Ledger for Selected Site -->
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div class="d-flex align-items-center">
+          <h6 class="mb-0 font-weight-bold text-dark me-2">
+            <i class="icon-paper-plane me-2 text-success"></i> My Site Submissions
+          </h6>
+          <span class="badge bg-light text-dark border">{{ site_submissions|length }} Record{{ site_submissions|length|pluralize }}</span>
+        </div>
+        <a href="{% url 'core:submission_list' %}?site={{ selected_site.id }}" class="btn btn-sm btn-outline-primary shadow-xs">
+          <i class="icon-list me-1"></i> View All Submissions
+        </a>
+      </div>
+      <div class="card-body p-0">
+        {% if site_submissions %}
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="site-submissions-table">
+              <thead class="bg-light">
+                <tr class="small text-muted text-uppercase">
+                  <th>Submission Ref</th>
+                  <th>Activity Telemetry</th>
+                  <th>Period</th>
+                  <th>Submission Date</th>
+                  <th>Workflow Status</th>
+                  <th class="text-end">Next Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for sub in site_submissions %}
+                  <tr>
+                    <td>
+                      <code class="fw-bold">#SUB-{{ sub.id }}</code>
+                      <div class="small text-muted">Iter #{{ sub.submission_number }}</div>
+                    </td>
+                    <td>
+                      <strong>{{ sub.activity_record.activity.name }}</strong>
+                      <div class="small text-muted">
+                        <span class="badge bg-light text-secondary border me-1">{{ sub.activity_record.activity.code }}</span>
+                        {{ sub.activity_record.consumption_value }} {{ sub.activity_record.unit.code }}
+                      </div>
+                    </td>
+                    <td>
+                      <span class="badge bg-light text-dark border">{{ sub.reporting_period.code }}</span>
+                    </td>
+                    <td>
+                      <small class="text-muted">{{ sub.submitted_at|date:"d M Y, H:i" }}</small>
+                    </td>
+                    <td>
+                      {% if sub.status == 'SUBMITTED' %}
+                        <span class="badge bg-info-subtle text-info border border-info px-2 py-1">
+                          <i class="icon-clock me-1"></i>SUBMITTED
+                        </span>
+                      {% elif sub.status == 'UNDER_REVIEW' %}
+                        <span class="badge bg-warning-subtle text-warning border border-warning px-2 py-1">
+                          <i class="icon-magnifier me-1"></i>UNDER REVIEW
+                        </span>
+                      {% elif sub.status == 'APPROVED' %}
+                        <span class="badge bg-success-subtle text-success border border-success px-2 py-1">
+                          <i class="icon-check me-1"></i>APPROVED
+                        </span>
+                      {% elif sub.status == 'REJECTED' %}
+                        <span class="badge bg-danger-subtle text-danger border border-danger px-2 py-1">
+                          <i class="icon-close me-1"></i>REJECTED
+                        </span>
+                      {% elif sub.status == 'WITHDRAWN' %}
+                        <span class="badge bg-secondary-subtle text-secondary border border-secondary px-2 py-1">
+                          WITHDRAWN
+                        </span>
+                      {% else %}
+                        <span class="badge bg-light text-dark border">{{ sub.status }}</span>
+                      {% endif %}
+                    </td>
+                    <td class="text-end text-nowrap">
+                      <a href="{% url 'core:submission_detail' submission_id=sub.id %}" class="btn btn-sm btn-outline-primary py-1 px-2" title="Inspect Submission Handover">
+                        <i class="icon-eye me-1"></i> Track
+                      </a>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          {% include "components/empty_state.html" with title="No Submissions Yet" description="No activity submissions have been created for this site. Save and validate your activity entries to submit them for subsidiary review." icon="icon-paper-plane" %}
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Section 4.E: My Site Details & Operational Boundaries (Expandable Supporting Information) -->
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <h6 class="mb-0 font-weight-bold text-dark">
+          <i class="icon-info me-2 text-info"></i> My Site Details &amp; Operational Boundaries
+        </h6>
+        <button class="btn btn-sm btn-outline-secondary py-0 px-2" type="button" data-bs-toggle="collapse" data-bs-target="#siteDetailsPanel" aria-expanded="true" aria-controls="siteDetailsPanel">
+          <i class="icon-arrow-down me-1"></i> Toggle Details
+        </button>
+      </div>
+      <div class="collapse show" id="siteDetailsPanel">
+        <div class="card-body">
+          <div class="row g-3 small">
+            <div class="col-md-4">
+              <span class="text-muted d-block mb-1">Site Name &amp; Code:</span>
+              <strong class="text-dark fs-6">{{ selected_site.name }}</strong>
+              <div class="text-muted"><code class="fw-bold">{{ selected_site.code }}</code></div>
+            </div>
+            <div class="col-md-4">
+              <span class="text-muted d-block mb-1">Associated Infrastructure Project:</span>
+              <a href="{% url 'core:project_detail' project_id=selected_site.project.id %}" class="fw-semibold text-decoration-none text-dark">
+                {{ selected_site.project.name }}
+              </a>
+              <div class="text-muted"><code>{{ selected_site.project.code }}</code></div>
+            </div>
+            <div class="col-md-4">
+              <span class="text-muted d-block mb-1">Parent Subsidiary / Division:</span>
+              <strong class="text-dark">{{ selected_site.project.subsidiary.short_name|default:selected_site.project.subsidiary.name }}</strong>
+              <div class="text-muted"><code>{{ selected_site.project.subsidiary.code }}</code> &bull; {{ selected_site.project.subsidiary.company.code }}</div>
+            </div>
+            <div class="col-md-4">
+              <span class="text-muted d-block mb-1">Physical Location:</span>
+              <span class="text-dark"><i class="icon-map me-1 text-secondary"></i>{{ selected_site.location|default:"Not specified" }}</span>
+            </div>
+            <div class="col-md-4">
+              <span class="text-muted d-block mb-1">Assigned Reporting Period:</span>
+              <span class="badge bg-light text-dark border">{{ current_period.code|default:"None Open" }}</span>
+              <span class="text-muted ms-1">({{ current_period.fiscal_year|default:"—" }})</span>
+            </div>
+            <div class="col-md-4">
+              <span class="text-muted d-block mb-1">Current Operational Status:</span>
+              {% if selected_site.status == 'ACTIVE' %}
+                <span class="badge bg-success-subtle text-success border border-success px-2 py-1">
+                  <i class="icon-check me-1"></i>ACTIVE
+                </span>
+              {% else %}
+                <span class="badge bg-secondary-subtle text-secondary border border-secondary px-2 py-1">
+                  {{ selected_site.status }}
+                </span>
+              {% endif %}
+            </div>
+            <div class="col-12 border-top pt-2">
+              <span class="text-muted d-block mb-1">Authorized Assignment Scope:</span>
+              <span class="small text-muted">
+                <i class="icon-shield text-success me-1"></i>
+                Server-Enforced RBAC: Access strictly scoped to {{ request.user.username }}'s authorized operational site assignment under {{ selected_site.project.subsidiary.name }}.
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Supporting Authorized Sites Reference Table (Preserved for Multi-Site Managers & Tests) -->
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div class="d-flex align-items-center">
+          <h6 class="mb-0 font-weight-bold text-dark me-2">
+            <i class="icon-location-pin me-2 text-success"></i> My Authorized Operational Sites
+          </h6>
+          <span class="badge bg-light text-dark border">{{ sites_count }} Site{{ sites_count|pluralize }}</span>
+        </div>
+        <span class="badge badge-outline-primary small">
+          <i class="icon-shield me-1"></i> Server-Enforced RBAC Scope
+        </span>
+      </div>
+      <div class="card-body p-0">
         <div class="table-responsive">
           <table class="table table-hover align-middle mb-0" id="sites-table">
             <thead class="bg-light">
@@ -207,9 +486,12 @@
             </thead>
             <tbody>
               {% for site in assigned_sites %}
-                <tr>
+                <tr {% if selected_site and site.id == selected_site.id %}class="table-active"{% endif %}>
                   <td>
                     <code class="fw-bold">{{ site.code }}</code>
+                    {% if selected_site and site.id == selected_site.id %}
+                      <span class="badge bg-success text-white ms-1 small">ACTIVE WORKSPACE</span>
+                    {% endif %}
                   </td>
                   <td>
                     <strong>{{ site.name }}</strong>
@@ -244,17 +526,14 @@
                   </td>
                   <td class="text-end text-nowrap">
                     <div class="btn-group btn-group-sm" role="group">
-                      <a href="{% url 'core:site_detail' site_id=site.id %}" class="btn btn-sm btn-outline-primary" title="Inspect Site Telemetry">
+                      <a href="{% url 'core:site_manager_dashboard' %}?site_id={{ site.id }}" class="btn btn-sm btn-outline-success" title="Switch workspace to {{ site.name }}">
+                        <i class="icon-target me-1"></i> Select
+                      </a>
+                      <a href="{% url 'core:site_detail' site_id=site.id %}" class="btn btn-sm btn-outline-primary" title="Inspect Site Details">
                         <i class="icon-eye me-1"></i> Inspect
                       </a>
-                      <a href="{% url 'core:project_detail' project_id=site.project.id %}" class="btn btn-sm btn-outline-secondary" title="View Parent Project">
-                        <i class="icon-folder me-1"></i> Project
-                      </a>
-                      <a href="{% url 'core:activity_list' %}" class="btn btn-sm btn-outline-info" title="View Approved ESG Activity Catalog">
-                        <i class="icon-list me-1"></i> Catalog
-                      </a>
-                      <a href="{% url 'core:activity_record_create' %}?site_id={{ site.id }}" class="btn btn-sm btn-outline-success" title="Record ESG Activity Data for {{ site.name }}">
-                        <i class="icon-pencil me-1"></i> Data Entry
+                      <a href="{% url 'core:activity_record_create' %}?site_id={{ site.id }}" class="btn btn-sm btn-outline-secondary" title="Record ESG Activity Data for {{ site.name }}">
+                        <i class="icon-pencil me-1"></i> Data Entry (Phase 08)
                       </a>
                     </div>
                   </td>
@@ -263,169 +542,9 @@
             </tbody>
           </table>
         </div>
-      {% else %}
-        {% include "components/empty_state.html" with title="No Sites Assigned" description="No operational sites are currently assigned to your account. Please contact your subsidiary manager or platform administrator if this is unexpected." icon="icon-location-pin" %}
-      {% endif %}
-    </div>
-  </div>
-
-  <!-- Section 2: ESG Workflow & Submission Readiness (Phase 08-12 Pipeline) -->
-  <div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
-      <h6 class="mb-0 font-weight-bold text-dark">
-        <i class="icon-graph me-2 text-primary"></i> ESG Workflow Status &amp; Readiness
-      </h6>
-      <span class="badge badge-outline-info small">Downstream Phase 08–12 Integration</span>
-    </div>
-    <div class="card-body">
-      <div class="row g-3 mb-3">
-        <!-- Module 1: Data Entry Readiness -->
-        <div class="col-md-4">
-          <div class="p-3 border rounded bg-light-subtle h-100">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-              <span class="fw-bold text-dark small text-uppercase">1. Data Entry</span>
-              {% if workflow_status.is_data_entry_ready %}
-                <span class="badge bg-success text-white">READY</span>
-              {% else %}
-                <span class="badge bg-warning text-dark">PAUSED</span>
-              {% endif %}
-            </div>
-            <p class="small text-muted mb-2">
-              {% if workflow_status.is_data_entry_ready %}
-                Cycle <code>{{ current_period.code }}</code> is OPEN. Active ESG activity telemetry logging enabled.
-              {% else %}
-                Waiting for open reporting cycle or assigned operational sites.
-              {% endif %}
-            </p>
-            <div class="d-flex justify-content-between align-items-center text-muted small mt-2">
-              <span>Draft Records: <strong>{{ workflow_status.draft_records_count }}</strong></span>
-              <a href="{% url 'core:activity_record_create' %}" class="btn btn-sm btn-outline-primary py-0 px-2">
-                <i class="icon-plus me-1"></i> Log Data
-              </a>
-            </div>
-          </div>
-        </div>
-
-        <!-- Module 2: Evidence & OCR Status -->
-        <div class="col-md-4">
-          <div class="p-3 border rounded bg-light-subtle h-100">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-              <span class="fw-bold text-dark small text-uppercase">2. Evidence &amp; OCR</span>
-              <span class="badge bg-success text-white">LIVE</span>
-            </div>
-            <p class="small text-muted mb-2">
-              Challans, invoices, and meter scan evidence attachments linked directly to telemetry records.
-            </p>
-            <div class="d-flex justify-content-between align-items-center text-muted small mt-2">
-              <span>Pending Evidence: <strong>{{ workflow_status.pending_evidence_count }}</strong></span>
-              <a href="{% url 'core:activity_record_list' %}" class="btn btn-sm btn-outline-primary py-0 px-2">
-                <i class="icon-docs me-1"></i> Records
-              </a>
-            </div>
-          </div>
-        </div>
-
-        <!-- Module 3: Submissions & Corrections -->
-        <div class="col-md-4">
-          <div class="p-3 border rounded bg-light-subtle h-100">
-            <div class="d-flex align-items-center justify-content-between mb-2">
-              <span class="fw-bold text-dark small text-uppercase">3. Governance Review</span>
-              <span class="badge bg-success text-white">LIVE</span>
-            </div>
-            <p class="small text-muted mb-2">
-              Site submissions, validation checks, and subsidiary review handover workflow.
-            </p>
-            <div class="d-flex justify-content-between align-items-center text-muted small mt-2">
-              <span>Corrections: <strong>{{ workflow_status.corrections_count }}</strong></span>
-              <a href="{% url 'core:submission_list' %}" class="btn btn-sm btn-outline-primary py-0 px-2">
-                <i class="icon-paper-plane me-1"></i> Submissions
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="alert alert-light border small text-muted mb-0">
-        <i class="icon-info me-1 text-primary"></i>
-        <strong>Workflow Note:</strong> MEIL ESG Platform End-to-End Governance is LIVE. Operational data flows seamlessly through automated validation, evidence attachment, subsidiary review, correction lifecycle, verification, and audit traceability.
       </div>
     </div>
-  </div>
-
-  <!-- Section 3: Pending Actions & Corrections -->
-  <div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
-      <h6 class="mb-0 font-weight-bold text-dark">
-        <i class="icon-wrench me-2 text-warning"></i> Pending Actions &amp; Corrections
-      </h6>
-      <span class="badge {% if pending_actions_count == 0 %}badge-success{% else %}badge-warning{% endif %} small">
-        {{ pending_actions_count }} Action{{ pending_actions_count|pluralize }}
-      </span>
-    </div>
-    <div class="card-body">
-      {% if pending_actions_list %}
-        <div class="list-group list-group-flush">
-          {% for action in pending_actions_list %}
-            <div class="list-group-item px-0 py-2 d-flex justify-content-between align-items-center">
-              <div>
-                <strong class="text-dark">{{ action.title }}</strong>
-                <p class="mb-0 small text-muted">{{ action.description }}</p>
-              </div>
-              <span class="badge bg-{{ action.level }}-subtle text-{{ action.level }} border">{{ action.category }}</span>
-            </div>
-          {% endfor %}
-        </div>
-      {% else %}
-        {% include "components/empty_state.html" with title="You're All Caught Up" description="No pending actions, corrections, or drafts require your attention at this time." icon="icon-check" %}
-      {% endif %}
-    </div>
-  </div>
-
-  <!-- Section 4: Recent Operational Activity & Security Audit Lineage -->
-  <div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
-      <h6 class="mb-0 font-weight-bold text-dark">
-        <i class="icon-clock me-2 text-info"></i> Recent Operational &amp; Security Activity
-      </h6>
-      <span class="badge badge-outline-secondary small">AuthAuditLog Scoped</span>
-    </div>
-    <div class="card-body p-0">
-      {% if recent_activity %}
-        <div class="table-responsive">
-          <table class="table table-hover align-middle mb-0">
-            <thead class="bg-light">
-              <tr class="small text-muted text-uppercase">
-                <th>Timestamp</th>
-                <th>Event Type</th>
-                <th>Resource</th>
-                <th>Details</th>
-                <th class="text-end">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for log in recent_activity %}
-                <tr>
-                  <td><small class="text-muted">{{ log.created_at|date:"d M Y, H:i" }}</small></td>
-                  <td><span class="badge bg-light text-dark border">{{ log.event_type }}</span></td>
-                  <td><small class="text-dark fw-semibold">{{ log.resource_accessed|default:"System" }}</small></td>
-                  <td><small class="text-muted text-truncate d-inline-block" style="max-width: 250px;">{{ log.details|default:"—" }}</small></td>
-                  <td class="text-end">
-                    {% if log.success %}
-                      <span class="badge bg-success-subtle text-success border border-success"><i class="icon-check me-1"></i>SUCCESS</span>
-                    {% else %}
-                      <span class="badge bg-danger-subtle text-danger border border-danger"><i class="icon-close me-1"></i>DENIED</span>
-                    {% endif %}
-                  </td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      {% else %}
-        {% include "components/empty_state.html" with title="No Recent Activity" description="No operational activity or audit events have been logged for your assigned sites." icon="icon-clock" %}
-      {% endif %}
-    </div>
-  </div>
+  {% endif %}
 {% endblock %}
 
 {% block side_panel %}
@@ -464,7 +583,7 @@
       <h6 class="mb-0 font-weight-bold text-dark">
         <i class="icon-calendar me-2 text-primary"></i> Temporal Governance
       </h6>
-      <a href="{% url 'core:period_list' %}" class="small text-decoration-none">View All</a>
+      <span class="badge bg-light text-secondary border small">{{ current_period.code|default:"None Open" }}</span>
     </div>
     <div class="card-body small">
       {% if current_period %}
@@ -491,71 +610,31 @@
     </div>
   </div>
 
-  <!-- Side Card 3: Offline & Telemetry Pipeline -->
+  <!-- Side Card 3: Scoped Recent Operational Activity -->
   <div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-white py-3 border-bottom">
+    <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between">
       <h6 class="mb-0 font-weight-bold text-dark">
-        <i class="icon-feed me-2 text-success"></i> Telemetry &amp; Sync Status
+        <i class="icon-clock me-2 text-info"></i> Recent Operational &amp; Security Activity
       </h6>
+      <span class="badge badge-outline-secondary small">Scoped Audit</span>
     </div>
-    <div class="card-body small">
-      <div class="d-flex align-items-center justify-content-between mb-2">
-        <span class="text-muted">Connection Mode:</span>
-        <span class="badge {{ offline_sync_status.badge_class }}">
-          <span class="status-indicator-dot bg-white me-1"></span> {{ offline_sync_status.status }}
-        </span>
-      </div>
-      <div class="d-flex align-items-center justify-content-between mb-2">
-        <span class="text-muted">Pipeline Type:</span>
-        <span class="fw-bold text-dark">{{ offline_sync_status.mode }}</span>
-      </div>
-      <div class="d-flex align-items-center justify-content-between mb-3">
-        <span class="text-muted">Offline Queue:</span>
-        <span class="badge bg-light text-dark border">{{ offline_sync_status.pending_sync_count }} pending</span>
-      </div>
-      <p class="small text-muted border-top pt-2 mb-0">
-        <i class="icon-cloud-upload me-1 text-primary"></i>
-        {{ offline_sync_status.notice }}
-      </p>
-    </div>
-  </div>
-
-  <!-- Side Card 4: Quick Navigation Shortcuts -->
-  <div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-white py-3 border-bottom">
-      <h6 class="mb-0 font-weight-bold text-dark">
-        <i class="icon-compass me-2 text-primary"></i> Operational Shortcuts
-      </h6>
-    </div>
-    <div class="list-group list-group-flush small">
-      <a href="{% url 'core:activity_record_create' %}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between">
-        <span><i class="icon-pencil me-2 text-warning"></i> ESG Data Entry</span>
-        <span class="badge bg-success-subtle text-success border border-success">New</span>
-      </a>
-      <a href="{% url 'core:activity_record_list' %}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between">
-        <span><i class="icon-docs me-2 text-primary"></i> Activity Records Ledger</span>
-        <i class="icon-arrow-right text-muted"></i>
-      </a>
-      <a href="{% url 'core:org_site_list' %}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between">
-        <span><i class="icon-location-pin me-2 text-success"></i> All Assigned Sites</span>
-        <i class="icon-arrow-right text-muted"></i>
-      </a>
-      <a href="{% url 'core:org_project_list' %}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between">
-        <span><i class="icon-layers me-2 text-warning"></i> Infrastructure Projects</span>
-        <i class="icon-arrow-right text-muted"></i>
-      </a>
-      <a href="{% url 'core:period_list' %}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between">
-        <span><i class="icon-calendar me-2 text-info"></i> Reporting Cycles</span>
-        <i class="icon-arrow-right text-muted"></i>
-      </a>
-      <a href="{% url 'core:activity_list' %}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between">
-        <span><i class="icon-list me-2 text-primary"></i> ESG Activity Master</span>
-        <i class="icon-arrow-right text-muted"></i>
-      </a>
-      <a href="{% url 'core:health_check' %}" target="_blank" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between">
-        <span><i class="icon-pulse me-2 text-danger"></i> System Health Probe</span>
-        <i class="icon-share-alt text-muted"></i>
-      </a>
+    <div class="card-body p-0">
+      {% if recent_activity %}
+        <div class="list-group list-group-flush small">
+          {% for log in recent_activity %}
+            <div class="list-group-item px-3 py-2">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="badge bg-light text-dark border">{{ log.event_type }}</span>
+                <small class="text-muted">{{ log.created_at|date:"d M, H:i" }}</small>
+              </div>
+              <div class="text-dark fw-semibold text-truncate">{{ log.resource_accessed|default:"System" }}</div>
+              <div class="text-muted small text-truncate">{{ log.details|default:"—" }}</div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        {% include "components/empty_state.html" with title="No Recent Activity" description="No operational activity or audit events have been logged for your assigned sites." icon="icon-clock" %}
+      {% endif %}
     </div>
   </div>
 {% endblock %}

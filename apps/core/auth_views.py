@@ -226,12 +226,16 @@ class CustomPasswordResetCompleteView(PasswordResetCompleteView):
 @role_required(Role.Code.SITE_MANAGER, Role.Code.MEIL_OPERATOR)
 def site_manager_dashboard(request):
     """
-    Site Manager operational dashboard.
+    Site Manager dedicated operational workspace.
     Restricted to SITE_MANAGER and MEIL_OPERATOR.
-    Displays operational sites explicitly assigned to the authenticated user.
+    Displays operational workspace strictly scoped to the user's authorized assigned site.
     Aggregates authoritative operational context via dashboard_services.
     """
-    context = get_site_manager_dashboard_context(request.user)
+    requested_site_id = request.GET.get("site_id") or request.session.get("selected_site_id")
+    context = get_site_manager_dashboard_context(request.user, requested_site_id=requested_site_id)
+    selected_site = context.get("selected_site")
+    if selected_site:
+        request.session["selected_site_id"] = selected_site.id
     return render(request, "dashboards/site_manager.html", context)
 
 

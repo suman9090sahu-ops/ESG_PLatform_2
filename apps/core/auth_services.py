@@ -31,6 +31,7 @@ from apps.core.models import (
     SiteAssignment,
     Subsidiary,
     SubsidiaryAssignment,
+    ValidationStatus,
 )
 
 logger = logging.getLogger("apps.core")
@@ -212,13 +213,14 @@ def get_post_login_redirect_url(request, user):
     Determines post-login destination URL.
     1. Validates 'next' parameter if present to prevent Open Redirects.
     2. Routes deterministically by primary role:
-       - SITE_MANAGER -> /site-manager/dashboard/
+       - SITE_MANAGER -> /site-manager/dashboard/ (My Assigned Site workspace)
        - SUBSIDIARY_MANAGER -> /subsidiary-manager/dashboard/
        - ESG_MANAGER -> /esg-manager/dashboard/
        - AUDITOR -> /auditor/dashboard/
        - MEIL_OPERATOR -> /meil-operator/dashboard/
        - Fallback -> /
     """
+    primary_role = user.get_primary_role() if hasattr(user, "get_primary_role") else None
     next_url = request.POST.get("next") or request.GET.get("next")
 
     if next_url and url_has_allowed_host_and_scheme(
@@ -226,9 +228,20 @@ def get_post_login_redirect_url(request, user):
         allowed_hosts={request.get_host()},
         require_https=request.is_secure(),
     ):
+        # Prevent Site Manager from being redirected to generic executive dashboard
+        if primary_role == Role.Code.SITE_MANAGER:
+            generic_dashboard_urls = [
+                reverse("core:control_tower_dashboard"),
+                reverse("core:control_tower_dashboard_alias"),
+                reverse("core:control_tower"),
+                "/dashboard/",
+                "/dashboard/control-tower/",
+                "/control-tower/",
+            ]
+            if any(next_url == g_url or next_url.startswith(g_url + "?") for g_url in generic_dashboard_urls):
+                return reverse("core:site_manager_dashboard")
         return next_url
 
-    primary_role = user.get_primary_role()
     role_dashboard_map = {
         Role.Code.SITE_MANAGER: reverse("core:site_manager_dashboard"),
         Role.Code.SUBSIDIARY_MANAGER: reverse("core:subsidiary_manager_dashboard"),
@@ -262,34 +275,10 @@ def get_role_sidebar_menu(user):
                 "title": "Site Operations",
                 "items": [
                     {
-                        "nav_id": "site_dashboard",
-                        "label": "Site Dashboard",
+                        "nav_id": "my_assigned_site",
+                        "label": "My Assigned Site",
                         "url": reverse("core:site_manager_dashboard"),
-                        "icon": "icon-screen-desktop text-success",
-                    },
-                    {
-                        "nav_id": "site_list",
-                        "label": "My Assigned Sites",
-                        "url": reverse("core:org_site_list"),
-                        "icon": "icon-location-pin text-primary",
-                    },
-                    {
-                        "nav_id": "projects",
-                        "label": "My Projects",
-                        "url": reverse("core:org_project_list"),
-                        "icon": "icon-layers text-warning",
-                    },
-                    {
-                        "nav_id": "reporting_periods",
-                        "label": "Reporting Periods",
-                        "url": reverse("core:period_list"),
-                        "icon": "icon-calendar text-info",
-                    },
-                    {
-                        "nav_id": "activity_master",
-                        "label": "Activity Catalog",
-                        "url": reverse("core:activity_list"),
-                        "icon": "icon-list text-success",
+                        "icon": "icon-location-pin text-success",
                     },
                     {
                         "nav_id": "data_entry",
@@ -305,15 +294,15 @@ def get_role_sidebar_menu(user):
                     },
                     {
                         "nav_id": "evidence",
-                        "label": "Evidence Uploads",
+                        "label": "Evidence",
                         "url": reverse("core:evidence_list"),
-                        "icon": "icon-camera text-info",
+                        "icon": "icon-paper-clip text-info",
                     },
                     {
-                        "nav_id": "ocr_results",
-                        "label": "OCR Ingestion",
-                        "url": reverse("core:evidence_list"),
-                        "icon": "icon-refresh text-secondary",
+                        "nav_id": "validation_issues",
+                        "label": "Validation Issues",
+                        "url": reverse("core:activity_record_list") + f"?validation_status={ValidationStatus.INVALID}",
+                        "icon": "icon-check text-danger",
                     },
                     {
                         "nav_id": "submissions",
@@ -326,41 +315,6 @@ def get_role_sidebar_menu(user):
                         "label": "Corrections",
                         "url": reverse("core:correction_inbox"),
                         "icon": "icon-action-undo text-danger",
-                    },
-                    {
-                        "nav_id": "procurement",
-                        "label": "Procurement Ledger",
-                        "url": reverse("core:procurement_list"),
-                        "icon": "icon-basket text-warning",
-                    },
-                    {
-                        "nav_id": "suppliers",
-                        "label": "Supplier Directory",
-                        "url": reverse("core:supplier_list"),
-                        "icon": "icon-people text-info",
-                    },
-                    {
-                        "nav_id": "transport",
-                        "label": "Transport & Logistics",
-                        "url": reverse("core:transport_list"),
-                        "icon": "icon-cursor text-info",
-                    },
-                    {
-                        "nav_id": "carriers",
-                        "label": "Carriers & Fleet",
-                        "url": reverse("core:carrier_list"),
-                        "icon": "icon-globe text-primary",
-                    },
-                ],
-            },
-            {
-                "title": "System Tools",
-                "items": [
-                    {
-                        "nav_id": "health",
-                        "label": "Health Telemetry",
-                        "url": reverse("core:health_check"),
-                        "icon": "icon-pulse text-danger",
                     },
                 ],
             },

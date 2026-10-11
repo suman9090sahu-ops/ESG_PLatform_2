@@ -8,9 +8,10 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db import connection
 from django.http import JsonResponse, HttpResponseServerError
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.utils.safestring import mark_safe
+from apps.core.models import Role
 
 logger = logging.getLogger("apps.core")
 
@@ -74,9 +75,12 @@ def index_view(request):
 def control_tower_dashboard(request):
     """
     MEIL ESG CONTROL TOWER primary executive dashboard.
-    Protected view accessible only to authenticated users.
-    Renders executive ESG metrics, recent activity, data status, and pending actions.
+    Protected view accessible only to authorized managerial and auditor roles.
+    Site Managers are strictly redirected to their dedicated assigned site workspace.
     """
+    if hasattr(request.user, "get_primary_role") and request.user.get_primary_role() == Role.Code.SITE_MANAGER:
+        return redirect("core:site_manager_dashboard")
+
     context = {
         "page_title": "Executive ESG Control Tower",
         "page_subtitle": "Continuous ESG Governance, BRSR Core Disclosures & Compliance Audit",

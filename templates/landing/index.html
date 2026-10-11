@@ -510,9 +510,15 @@
 
       <nav class="header-actions" aria-label="Authentication Actions">
         {% if request.user.is_authenticated %}
-          <a href="{% url 'core:control_tower_dashboard' %}" class="btn-nav-signup" id="headerDashboardBtn">
-            <i class="icon-speedometer me-1" aria-hidden="true"></i> Dashboard
-          </a>
+          {% if user_primary_role == 'SITE_MANAGER' %}
+            <a href="{% url 'core:site_manager_dashboard' %}" class="btn-nav-signup" id="headerDashboardBtn">
+              <i class="icon-location-pin me-1" aria-hidden="true"></i> My Assigned Site
+            </a>
+          {% else %}
+            <a href="{% url 'core:control_tower_dashboard' %}" class="btn-nav-signup" id="headerDashboardBtn">
+              <i class="icon-speedometer me-1" aria-hidden="true"></i> Dashboard
+            </a>
+          {% endif %}
           <a href="{% url 'core:logout' %}" class="btn-nav-login" id="headerLogoutBtn">
             Sign Out
           </a>
@@ -550,10 +556,17 @@
         <!-- Primary Actions -->
         <div class="hero-actions">
           {% if request.user.is_authenticated %}
-            <a href="{% url 'core:control_tower_dashboard' %}" class="btn-action-primary" id="heroDashboardAction">
-              <span>Go to Control Tower</span>
-              <i class="icon-arrow-right ms-1" aria-hidden="true"></i>
-            </a>
+            {% if user_primary_role == 'SITE_MANAGER' %}
+              <a href="{% url 'core:site_manager_dashboard' %}" class="btn-action-primary" id="heroDashboardAction">
+                <span>Go to My Assigned Site</span>
+                <i class="icon-arrow-right ms-1" aria-hidden="true"></i>
+              </a>
+            {% else %}
+              <a href="{% url 'core:control_tower_dashboard' %}" class="btn-action-primary" id="heroDashboardAction">
+                <span>Go to Control Tower</span>
+                <i class="icon-arrow-right ms-1" aria-hidden="true"></i>
+              </a>
+            {% endif %}
           {% else %}
             <a href="{% url 'core:login' %}" class="btn-action-primary" id="heroLoginAction">
               <span>Login</span>

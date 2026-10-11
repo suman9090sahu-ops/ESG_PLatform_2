@@ -161,8 +161,7 @@ class RBACTests(TestCase):
         site_nav = get_role_sidebar_menu(self.site_user)
         self.assertEqual(site_nav[0]["title"], "Site Operations")
         site_labels = [item["label"] for item in site_nav[0]["items"]]
-        self.assertIn("Site Dashboard", site_labels)
-        self.assertIn("My Assigned Sites", site_labels)
+        self.assertIn("My Assigned Site", site_labels)
         self.assertIn("ESG Data Entry", site_labels)
 
         sub_nav = get_role_sidebar_menu(self.sub_user)

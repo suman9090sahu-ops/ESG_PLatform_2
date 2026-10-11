@@ -7,7 +7,7 @@
 {% block header_actions %}
   <div class="d-flex align-items-center gap-2">
     <a href="{% url 'core:site_manager_dashboard' %}" class="btn btn-sm btn-outline-secondary">
-      <i class="icon-screen-desktop me-1"></i> Dashboard
+      <i class="icon-location-pin me-1"></i> My Assigned Site
     </a>
     <a href="{% url 'core:submission_list' %}" class="btn btn-sm btn-outline-primary">
       <i class="icon-paper-plane me-1"></i> My Submissions
@@ -226,7 +226,7 @@
           <h5 class="fw-bold text-dark">No correction requests require your attention.</h5>
           <p class="small text-muted mb-3">All activity submissions across your assigned sites are either verified, under active review, or have been resolved.</p>
           <a href="{% url 'core:site_manager_dashboard' %}" class="btn btn-sm btn-outline-primary">
-            <i class="icon-screen-desktop me-1"></i> Return to Site Dashboard
+            <i class="icon-location-pin me-1"></i> Return to My Assigned Site
           </a>
         </div>
       {% endif %}
@@ -274,7 +274,7 @@
     <div class="card-body p-0">
       <div class="list-group list-group-flush small">
         <a href="{% url 'core:site_manager_dashboard' %}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between">
-          <span><i class="icon-screen-desktop text-success me-2"></i> Operational Dashboard</span>
+          <span><i class="icon-location-pin text-success me-2"></i> My Assigned Site</span>
           <i class="icon-arrow-right text-muted"></i>
         </a>
         <a href="{% url 'core:activity_record_list' %}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between">
