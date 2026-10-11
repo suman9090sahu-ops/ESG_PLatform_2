@@ -137,6 +137,18 @@ urlpatterns = [
     path("data-entry/<int:record_id>/delete/", data_entry_views.activity_record_delete_view, name="activity_record_delete"),
     path("data-entry/api/activity-units/", data_entry_views.activity_units_api_view, name="activity_units_api"),
 
+    # Aliases supporting /data_entry/... with underscores
+    path("data_entry/", data_entry_views.activity_record_list_view),
+    path("data_entry/create/", data_entry_views.activity_record_create_view),
+    path("data_entry/<int:record_id>/", data_entry_views.activity_record_detail_view),
+    path("data_entry/<int:record_id>/edit/", data_entry_views.activity_record_edit_view),
+    path("data_entry/<int:record_id>/delete/", data_entry_views.activity_record_delete_view),
+    path("data_entry/<int:record_id>/evidence/upload/", evidence_views.evidence_upload_view),
+    path("data_entry/<int:record_id>/evidence/<int:evidence_id>/delete/", evidence_views.evidence_delete_view),
+    path("data_entry/<int:record_id>/validate/", validation_views.record_validate_view),
+    path("data_entry/<int:record_id>/run-validation/", validation_views.record_validate_view),
+    path("data_entry/<int:record_id>/submit/", submission_views.activity_record_submit_view),
+
     # -------------------------------------------------------------------------
     # Phase 09 Evidence Management Routes (/evidence/... & /data-entry/<id>/evidence/...)
     # -------------------------------------------------------------------------
