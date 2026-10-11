@@ -31,7 +31,11 @@ ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts.split(",") if h.strip()]
 
 # Automatically support Vercel serverless domains
 if os.getenv("VERCEL"):
-    ALLOWED_HOSTS.extend([".vercel.app", "esg-p-latform-2.vercel.app"])
+    ALLOWED_HOSTS.extend([
+        ".vercel.app",
+        "esg-platform-2.vercel.app",
+        "esg-p-latform-2.vercel.app",
+    ])
     vercel_url = os.getenv("VERCEL_URL")
     if vercel_url and vercel_url not in ALLOWED_HOSTS:
         ALLOWED_HOSTS.append(vercel_url)
@@ -41,11 +45,23 @@ CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_origins.split(",") if o.strip()
 if os.getenv("VERCEL"):
     CSRF_TRUSTED_ORIGINS.extend([
         "https://*.vercel.app",
+        "https://esg-platform-2.vercel.app",
         "https://esg-p-latform-2.vercel.app",
+        "http://*.vercel.app",
+        "http://esg-platform-2.vercel.app",
+        "http://esg-p-latform-2.vercel.app",
     ])
     vercel_url = os.getenv("VERCEL_URL")
     if vercel_url:
         CSRF_TRUSTED_ORIGINS.append(f"https://{vercel_url}")
+        CSRF_TRUSTED_ORIGINS.append(f"http://{vercel_url}")
+
+    # Terminate HTTPS behind Vercel edge proxy
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+    # Use signed cookie sessions on Vercel when running on SQLite to persist sessions across serverless containers
+    if not os.getenv("DATABASE_URL") and not os.getenv("POSTGRES_DB"):
+        SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"
 
 # -----------------------------------------------------------------------------
 # APPLICATION DEFINITION

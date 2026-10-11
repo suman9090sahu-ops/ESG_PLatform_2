@@ -60,3 +60,23 @@ class SettingsConfigurationTests(SimpleTestCase):
         # Restore base settings
         import config.settings.base
         importlib.reload(config.settings.base)
+
+    def test_vercel_csrf_and_secret_key_stability(self):
+        """When running in Vercel environment, CSRF trusted origins and secret key must be stable."""
+        import importlib
+        with mock.patch.dict(os.environ, {"VERCEL": "1", "DJANGO_ALLOWED_HOSTS": "esg-platform-2.vercel.app"}):
+            import config.settings.base
+            importlib.reload(config.settings.base)
+            self.assertIn("https://esg-platform-2.vercel.app", config.settings.base.CSRF_TRUSTED_ORIGINS)
+            self.assertIn("https://esg-p-latform-2.vercel.app", config.settings.base.CSRF_TRUSTED_ORIGINS)
+            self.assertEqual(config.settings.base.SECURE_PROXY_SSL_HEADER, ("HTTP_X_FORWARDED_PROTO", "https"))
+
+            import config.settings.production
+            importlib.reload(config.settings.production)
+            # Must have non-empty stable secret key without error
+            self.assertTrue(bool(config.settings.production.SECRET_KEY))
+            self.assertFalse(config.settings.production.CSRF_COOKIE_HTTPONLY)
+
+        # Restore base settings
+        import config.settings.base
+        importlib.reload(config.settings.base)
