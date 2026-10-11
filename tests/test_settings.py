@@ -47,3 +47,16 @@ class SettingsConfigurationTests(SimpleTestCase):
                 import importlib
                 import config.settings.production
                 importlib.reload(config.settings.production)
+
+    def test_vercel_media_root_redirects_to_tmp(self):
+        """When running in Vercel environment, MEDIA_ROOT must point to writable /tmp/media."""
+        import importlib
+        with mock.patch.dict(os.environ, {"VERCEL": "1"}):
+            import config.settings.base
+            importlib.reload(config.settings.base)
+            self.assertTrue(
+                str(config.settings.base.MEDIA_ROOT).endswith("media") and "tmp" in str(config.settings.base.MEDIA_ROOT).lower()
+            )
+        # Restore base settings
+        import config.settings.base
+        importlib.reload(config.settings.base)

@@ -203,7 +203,23 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
 MEDIA_URL = os.getenv("MEDIA_URL", "/media/").strip()
 if not MEDIA_URL.endswith("/"):
     MEDIA_URL += "/"
-MEDIA_ROOT = BASE_DIR / "media"
+
+# On Vercel / serverless runtimes, /var/task is strictly read-only.
+# Redirect MEDIA_ROOT to the writable /tmp directory and preserve bundled media.
+if os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"):
+    import shutil
+    tmp_media_path = Path("/tmp/media")
+    bundled_media_path = BASE_DIR / "media"
+    try:
+        if not tmp_media_path.exists():
+            tmp_media_path.mkdir(parents=True, exist_ok=True)
+            if bundled_media_path.exists():
+                shutil.copytree(bundled_media_path, tmp_media_path, dirs_exist_ok=True)
+    except Exception:
+        pass
+    MEDIA_ROOT = tmp_media_path
+else:
+    MEDIA_ROOT = BASE_DIR / "media"
 
 # -----------------------------------------------------------------------------
 # COOKIES & CSRF PROTECTION BASICS
